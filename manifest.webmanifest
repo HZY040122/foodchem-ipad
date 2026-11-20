@@ -1,0 +1,26 @@
+{
+  "name": "食品化学复习站",
+  "short_name": "食品化学",
+  "description": "食品化学考研复习：2004–2026 真题、知识点、图解、模拟卷，离线可用",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f3ec",
+  "theme_color": "#f5f3ec",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
