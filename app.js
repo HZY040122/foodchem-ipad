@@ -205,6 +205,46 @@ function openModal(node, title) {
   $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
+/* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
+const CHANGELOG = [
+  { v: '1.3', d: '2026-11-21', t: '更新提示与更新日志', items: [
+    '新增更新提示：每次更新后第一次打开，会弹出这次更新了什么，看过就不再出现',
+    '「设置」里新增「更新日志」，可以随时翻看每个版本的改动',
+    'iPad 主屏幕版：新版本下载好后，页面底部会提示「点此刷新」，不用再等下次打开'] },
+  { v: '1.2', d: '2026-11-20', t: '书本风格与离线版', items: [
+    '新增「书本」风格（设置 → 外观 → 风格）：纸张质感、目录式侧栏、丝带书签、页码，换页时有翻书动画，深色模式是「夜读」配色',
+    '新增安卓 App 和 iPad 主屏幕版，不联网也能用，进度保存在本机',
+    '每日自测：每做一题，进度条和「掌握 / 模糊 / 不会」的数量都会马上更新',
+    '整理了 78 道题参考答案的加粗和分点，小标题统一加粗，挤在一起的分点分行显示'] },
+  { v: '1.1', d: '2026-11-19', t: '设置页、自动计时和模拟卷', items: [
+    '新增「设置」页：名字、目标、座右铭、考试日期、每日题量、颜色、字号，首页会显示「xxx，欢迎回来」',
+    '学习时间自动记录：页面开着、有操作就计时，离开或长时间不动会自动停止',
+    '模拟卷按现行卷型组卷：填空 10×3、名词解释 10×3、简答 6×10、论述 2×15，共 150 分',
+    '真题卷里的选择题、判断题改成点选，交卷后自动判分',
+    '对答案后可以「隐藏答案」，方便收起来默背',
+    '每日自测保留作答状态，切换页面回来不用重做；专项练习默认显示题目列表',
+    '电脑大屏自动放大、铺满宽度；修复了 2025–26 答案里混入的章节标题'] },
+  { v: '1.0', d: '2026-11-18', t: '复习站上线', items: [
+    '11 个考纲模块，2004–2026 年真题，按考点整理',
+    '复习路径（新题锚定 → 旧题补充 → 题型转换）、专项练习、每日自测、错题本、模拟卷、检索、进度统计',
+    '知识结构图和反应机理图解'] }
+];
+const APP_VERSION = CHANGELOG[0].v;
+function logItems(c) { return `<ul class="chg">${c.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`; }
+function showUpdate() {
+  if (S.settings.seenVer === APP_VERSION) return;
+  const c = CHANGELOG[0], m = $('#modal');
+  m.innerHTML = `<div class="modal upd" role="dialog" aria-modal="true" aria-label="更新说明"><div class="card">
+    <div class="uh">${MARK}<div><div class="kick" style="margin:0">更新 · v${esc(c.v)} · ${esc(c.d)}</div><h3>${esc(c.t)}</h3></div></div>
+    ${logItems(c)}
+    <div class="row" style="margin-top:14px"><button class="btn" data-log>查看全部更新日志</button><span class="sp"></span><button class="btn pri" data-ok>开始复习</button></div></div></div>`;
+  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) { location.hash = 'settings'; setTimeout(() => { const t = document.getElementById('changelog'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 700); } };
+  const k = e => { if (e.key === 'Escape') close(); };
+  $('[data-ok]', m).onclick = () => close(); $('[data-log]', m).onclick = () => close(true);
+  $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
+  document.addEventListener('keydown', k);
+  $('[data-ok]', m).focus();
+}
 function openDiagram(id) { const d = document.createElement('div'); DG.mount(d, id); openModal(d, DG.title(id)); }
 function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
 
@@ -675,6 +715,8 @@ function pSettings(m) {
     <div class="row"><span class="lab">颜色</span>${seg('th', [['', '跟随系统'], ['light', '浅色'], ['dark', '深色']], st.theme || '')}</div>
     <div class="row"><span class="lab">字号</span>${seg('zm', [[1, '标准'], [1.1, '大'], [1.2, '特大']], st.zoom || 1)}</div>
   </div>
+  <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。每次更新后第一次打开会弹出说明，之后都可以在这里查看。</p>
+    ${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b>v${esc(c.v)}</b> · ${esc(c.t)}<span class="sp"></span><span class="note">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>
   <h2>备份与恢复</h2><div class="card"><p class="note">同步状态：<span class="sync">${esc(syncMsg)}</span></p>${window.AndroidApp ? '<p class="note">进度保存在这台手机里，不联网也能用。卸载 App 或清除应用数据会清空进度，建议隔一段时间点「生成备份 → 分享备份」，存一份到网盘或聊天记录里。</p>' : window.__PWA ? '<p class="note">进度保存在这台 iPad 里，不联网也能用。从主屏幕删除这个图标会清空进度，建议隔一段时间点「生成备份 → 复制」，把文字存到备忘录或发给自己。</p>' : ''}<p class="note">进度会自动保存。想手动备份时，点「生成备份」后复制文本保存；恢复时把文本粘贴进来点「导入」。</p><div class="row"><button class="btn" id="exp">生成备份</button><button class="btn" id="cp" hidden>复制</button><button class="btn" id="imp">导入</button><span class="sp"></span><button class="btn ghost" id="rst">清空全部进度</button></div><textarea id="bk" style="margin-top:8px" aria-label="备份文本" placeholder="备份文本"></textarea><p class="note" id="bkm"></p></div>`;
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save(); });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
@@ -693,4 +735,5 @@ function pSettings(m) {
 }
 
 render();
+setTimeout(showUpdate, 400);
 })();

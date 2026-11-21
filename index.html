@@ -399,6 +399,24 @@ main.swing::after { content: ""; position: absolute; inset: 0; pointer-events: n
 @keyframes swingShade { from { opacity: 1; } to { opacity: 0; } }
 @keyframes underShade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes flipShade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 更新提示弹窗与更新日志 */
+.modal.upd { align-items: center; }
+.modal.upd .card { max-width: 540px; padding: 22px 24px; }
+.upd .uh { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+.upd .uh .mk { width: 42px; height: 42px; flex: none; }
+.upd h3 { margin: 2px 0 0; font-family: var(--f-disp); font-size: 20px; }
+ul.chg { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+ul.chg li { line-height: 1.65; }
+ul.chg li::marker { color: var(--accent); }
+details.chlog { border-top: 1px solid var(--line); padding: 10px 0; }
+details.chlog:first-of-type { border-top: 0; }
+details.chlog summary { cursor: pointer; display: flex; align-items: center; gap: 6px; list-style: none; }
+details.chlog summary::-webkit-details-marker { display: none; }
+details.chlog summary::before { content: "›"; color: var(--accent); font-weight: 700; transition: transform .2s; display: inline-block; width: 10px; }
+details.chlog[open] summary::before { transform: rotate(90deg); }
+details.chlog ul.chg { margin-left: 16px; }
+@media (prefers-reduced-motion: no-preference) { .modal.upd .card { animation: updIn .35s cubic-bezier(.2,.8,.3,1); } @keyframes updIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } } }
 </style>
 </head>
 <body>
@@ -412,7 +430,12 @@ main.swing::after { content: ""; position: absolute; inset: 0; pointer-events: n
 <script src="data/meta.js"></script>
 <script src="diagrams.js"></script>
 <script src="app.js"></script>
+<div id="pwa-upd" class="pwa-upd" hidden><span>新版本已下载好</span><button class="btn pri sm" onclick="location.reload()">点此刷新</button></div>
+<style>.pwa-upd{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:flex;gap:12px;align-items:center;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;box-shadow:0 8px 28px rgba(0,0,0,.18)}.pwa-upd[hidden]{display:none}</style>
 <script>
+/* 已经装过旧版时：新版本在后台下载完成后，提示刷新 */
+var hadController = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadController) document.getElementById('pwa-upd').hidden = false; });
 /* 离线缓存：第一次联网打开时把全部内容存到 iPad 上，之后断网也能打开 */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 /* 请求浏览器长期保存数据，避免存储空间紧张时被清理 */
