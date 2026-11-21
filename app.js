@@ -16,6 +16,9 @@ const LVL = ['未练', '不会', '模糊', '掌握'];
 
 const SV = (d, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  dlApple: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
+  dlAndroid: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
+  dl: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
   today: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',
   map: '<circle cx="5.5" cy="12" r="2.3"/><circle cx="18.5" cy="5" r="2.3"/><circle cx="18.5" cy="12" r="2.3"/><circle cx="18.5" cy="19" r="2.3"/><path d="M7.8 12h8.4M7.4 10.7c3.5-1 5-4.6 8.8-5.4M7.4 13.3c3.5 1 5 4.6 8.8 5.4"/>',
   learn: '<path d="M12 6.5C10 5 7.2 4.5 4 4.8v13.6c3.2-.3 6 .2 8 1.7 2-1.5 4.8-2 8-1.7V4.8c-3.2-.3-6 .2-8 1.7z"/><path d="M12 6.5v13.6"/>',
@@ -207,10 +210,18 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '1.4', d: '2026-11-21', t: '下载 App', items: [
+    '「设置」里新增「下载 App」：iPad / iPhone 可以把复习站添加到主屏幕当 App 用，安卓手机可以直接下载安装包',
+    '侧栏底部新增「下载 App」入口，点一下直接跳过去',
+    '两种 App 都能离线使用，进度保存在设备里；换设备时用「备份与恢复」搬进度'] },
+  { v: '1.3.1', d: '2026-11-21', t: '安卓 App 一键更新测试', items: [
+    '这是一次测试更新：在安卓 App 里看到这条说明，就说明 App 内「检查更新 → 下载 → 安装」整套流程成功了',
+    '更新后学习进度、设置、错题本都会保留'] },
   { v: '1.3', d: '2026-11-21', t: '更新提示与更新日志', items: [
     '新增更新提示：每次更新后第一次打开，会弹出这次更新了什么，看过就不再出现',
     '「设置」里新增「更新日志」，可以随时翻看每个版本的改动',
-    'iPad 主屏幕版：新版本下载好后，页面底部会提示「点此刷新」，不用再等下次打开'] },
+    'iPad 主屏幕版：新版本下载好后，页面底部会提示「点此刷新」，不用再等下次打开',
+    '安卓 App：联网时自动检查新版本，可以在 App 里直接下载安装；「设置」里也能手动「检查更新」'] },
   { v: '1.2', d: '2026-11-20', t: '书本风格与离线版', items: [
     '新增「书本」风格（设置 → 外观 → 风格）：纸张质感、目录式侧栏、丝带书签、页码，换页时有翻书动画，深色模式是「夜读」配色',
     '新增安卓 App 和 iPad 主屏幕版，不联网也能用，进度保存在本机',
@@ -245,6 +256,62 @@ function showUpdate() {
   document.addEventListener('keydown', k);
   $('[data-ok]', m).focus();
 }
+/* ---------- 安卓 App：联网时检查 GitHub 上的新版本，可在 App 里直接下载安装 ---------- */
+const HAS_UPD = !!(window.AndroidApp && window.AndroidApp.checkUpdate);
+let updInfo = null;
+function updBar(html) {
+  let b = document.getElementById('app-upd');
+  if (!html) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'app-upd'; b.className = 'app-upd'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
+  b.innerHTML = html;
+  b.onclick = e => { const t = e.target.closest('[data-u]'); if (!t) return; const a = t.dataset.u;
+    if (a === 'go' && updInfo) window.AndroidApp.download(updInfo.url, updInfo.name || '');
+    if (a === 'web' && updInfo) window.AndroidApp.openUrl(updInfo.page || updInfo.url);
+    if (a === 'x') updBar(''); };
+}
+function updStatus(t) { const e = document.getElementById('ust'); if (e) e.textContent = t; }
+window.onAppUpdate = raw => {
+  let o; try { o = JSON.parse(raw); } catch (e) { return; }
+  if (o.url) updInfo = o;
+  if (o.latest) o.latest = 'v' + String(o.latest).replace(/^\D*/, '');
+  const web = '<button class="btn sm" data-u="web">用浏览器下载</button>';
+  switch (o.status) {
+    case 'available':
+      updStatus(`发现新版本 ${o.latest}（当前 v${o.current}）`);
+      updBar(`<span><b>发现新版本 ${esc(o.latest)}</b><small>当前 v${esc(o.current)} · 进度不会丢失</small></span><button class="btn pri sm" data-u="go">下载并安装</button><button class="btn sm ghost" data-u="x" aria-label="稍后">稍后</button>`); break;
+    case 'latest': updStatus(`已经是最新版本（v${o.current}）`); break;
+    case 'error': updStatus('检查失败：请确认手机已联网，稍后再试'); break;
+    case 'downloading': updStatus('正在下载新版本……'); updBar('<span><b>正在下载新版本</b><small>通知栏可以看进度，下载完会自动打开安装界面</small></span>'); break;
+    case 'downloaded': updStatus('下载完成'); updBar(`<span><b>下载完成，正在打开安装界面</b><small>没有弹出来的话，可以改用浏览器下载</small></span>${web}<button class="btn sm ghost" data-u="x">关闭</button>`); break;
+    case 'permission': updBar('<span><b>请允许「安装未知应用」</b><small>在刚打开的设置里打开开关，返回后会自动继续安装</small></span><button class="btn sm ghost" data-u="x">关闭</button>'); break;
+    case 'failed': updStatus('下载或安装没有成功'); updBar(`<span><b>更新没有成功</b><small>可以改用浏览器下载新版本，再手动安装</small></span>${web}<button class="btn sm ghost" data-u="x">关闭</button>`); break;
+  }
+};
+if (HAS_UPD) setTimeout(() => { try { window.AndroidApp.checkUpdate(false); } catch (e) { } }, 3000);
+/* ---------- 下载 App：苹果设备添加到主屏幕；安卓下载安装包（始终指向最新版） ---------- */
+const PWA_URL = 'https://hzy040122.github.io/foodchem-ipad/';
+const APK_URL = 'https://hzy040122.github.io/foodchem-ipad/android/FoodChemReview.apk';
+function downloadSection() {
+  const ua = navigator.userAgent, apple = /iPad|iPhone|iPod|Macintosh/.test(ua) && 'ontouchend' in document, android = /Android/i.test(ua);
+  const standalone = window.__PWA && ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone);
+  const appleCard = standalone ? `<div class="dl-card"><div class="dl-h">${icon('dlApple', 'dl-i')}<div><b>iPad / iPhone</b><small>你正在使用主屏幕版</small></div></div><p class="note">已经可以离线使用。更新会在联网时自动下载，底部出现「点此刷新」时点一下即可。</p></div>`
+    : `<div class="dl-card${apple ? ' hl' : ''}"><div class="dl-h">${icon('dlApple', 'dl-i')}<div><b>iPad / iPhone</b><small>添加到主屏幕，像 App 一样使用</small></div></div>
+      <ol class="dl-steps">
+        <li>在 iPad 或 iPhone 上用 <b>Safari</b> 打开：<br><a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a></li>
+        <li>点地址栏旁的<b>「分享」</b>按钮（方框加向上箭头）</li>
+        <li>往下找到<b>「添加到主屏幕」</b>，点右上角<b>「添加」</b></li>
+        <li>联网时从主屏幕图标打开一次，侧栏底部显示<b>「已可离线使用」</b>就装好了</li>
+      </ol><div class="row"><a class="btn pri sm" href="${PWA_URL}" target="_blank" rel="noopener">打开主屏幕版网址</a><button class="btn sm" data-cp="${PWA_URL}">复制网址</button></div></div>`;
+  const andCard = window.AndroidApp ? `<div class="dl-card"><div class="dl-h">${icon('dlAndroid', 'dl-i')}<div><b>安卓手机 / 平板</b><small>你正在使用安卓 App</small></div></div><p class="note">联网时会自动检查新版本，也可以在下面的「App 更新」里手动检查。</p></div>`
+    : `<div class="dl-card${android ? ' hl' : ''}"><div class="dl-h">${icon('dlAndroid', 'dl-i')}<div><b>安卓手机 / 平板</b><small>下载安装包，离线使用</small></div></div>
+      <ol class="dl-steps">
+        <li>在安卓手机上点下面的<b>「下载安装包」</b>（下载的始终是最新版）</li>
+        <li>打开下载好的文件安装；第一次会提示「安装未知应用」，按提示允许即可</li>
+        <li>以后联网打开 App 会自动提示更新，点一下就能装好，进度不会丢</li>
+      </ol><div class="row"><a class="btn pri sm" href="${APK_URL}" target="_blank" rel="noopener" download>下载安装包</a><button class="btn sm" data-cp="${APK_URL}">复制下载链接</button></div></div>`;
+  return `<h2 id="download">下载 App</h2><div class="dl-grid">${appleCard}${andCard}</div>
+    <p class="note" id="dlm">App 里的进度和网页版是分开保存的。想把进度带过去：在这里「备份与恢复 → 生成备份 → 复制」，再到 App 的「设置」里粘贴并「导入」。</p>`;
+}
 function openDiagram(id) { const d = document.createElement('div'); DG.mount(d, id); openModal(d, DG.title(id)); }
 function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
 
@@ -254,12 +321,15 @@ const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '
 function navHTML() {
   const cur = location.hash.slice(1) || 'today';
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="toc" aria-hidden="true">目　录</div>` +
-    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}<span class="nm">${n}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot"><span class="sync">${esc(syncMsg)}</span></div>`;
+    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}<span class="nm">${n}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
   $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
 window.addEventListener('hashchange', () => { render(); toTop(); });
+/* 侧栏「下载 App」：跳到设置页的下载区 */
+document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
+  if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 function render() {
   navHTML();
   const p = location.hash.slice(1) || 'today';
@@ -715,9 +785,15 @@ function pSettings(m) {
     <div class="row"><span class="lab">颜色</span>${seg('th', [['', '跟随系统'], ['light', '浅色'], ['dark', '深色']], st.theme || '')}</div>
     <div class="row"><span class="lab">字号</span>${seg('zm', [[1, '标准'], [1.1, '大'], [1.2, '特大']], st.zoom || 1)}</div>
   </div>
+  ${downloadSection()}
+  ${HAS_UPD ? `<h2>App 更新</h2><div class="card"><div class="row"><span>当前 App 版本 <b>v${esc(window.AndroidApp.version ? window.AndroidApp.version() : '')}</b></span><span class="sp"></span><button class="btn" id="chk">检查更新</button></div><p class="note" id="ust" style="margin-bottom:0">联网时打开 App 会自动检查一次；有新版本会在底部提示，可以直接下载安装，进度不会丢失。</p></div>` : ''}
   <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。每次更新后第一次打开会弹出说明，之后都可以在这里查看。</p>
     ${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b>v${esc(c.v)}</b> · ${esc(c.t)}<span class="sp"></span><span class="note">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>
   <h2>备份与恢复</h2><div class="card"><p class="note">同步状态：<span class="sync">${esc(syncMsg)}</span></p>${window.AndroidApp ? '<p class="note">进度保存在这台手机里，不联网也能用。卸载 App 或清除应用数据会清空进度，建议隔一段时间点「生成备份 → 分享备份」，存一份到网盘或聊天记录里。</p>' : window.__PWA ? '<p class="note">进度保存在这台 iPad 里，不联网也能用。从主屏幕删除这个图标会清空进度，建议隔一段时间点「生成备份 → 复制」，把文字存到备忘录或发给自己。</p>' : ''}<p class="note">进度会自动保存。想手动备份时，点「生成备份」后复制文本保存；恢复时把文本粘贴进来点「导入」。</p><div class="row"><button class="btn" id="exp">生成备份</button><button class="btn" id="cp" hidden>复制</button><button class="btn" id="imp">导入</button><span class="sp"></span><button class="btn ghost" id="rst">清空全部进度</button></div><textarea id="bk" style="margin-top:8px" aria-label="备份文本" placeholder="备份文本"></textarea><p class="note" id="bkm"></p></div>`;
+  m.addEventListener('click', async e => { const b = e.target.closest('[data-cp]'); if (!b) return; const t = b.dataset.cp;
+    try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });
+  if (location.hash === '#settings' && pSettings.jump) { const j = pSettings.jump; pSettings.jump = null; setTimeout(() => { const t = document.getElementById(j); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
+  if (HAS_UPD) $('#chk').onclick = () => { updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); };
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save(); });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
   $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });

@@ -417,6 +417,30 @@ details.chlog summary::before { content: "›"; color: var(--accent); font-weigh
 details.chlog[open] summary::before { transform: rotate(90deg); }
 details.chlog ul.chg { margin-left: 16px; }
 @media (prefers-reduced-motion: no-preference) { .modal.upd .card { animation: updIn .35s cubic-bezier(.2,.8,.3,1); } @keyframes updIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } } }
+
+/* 安卓 App 更新提示条 */
+.app-upd { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; width: min(560px, calc(100% - 24px));
+  display: flex; gap: 10px; align-items: center; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 10px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.2); }
+.app-upd > span { flex: 1; display: grid; gap: 1px; line-height: 1.45; }
+.app-upd small { color: var(--muted); font-size: 12.5px; }
+
+/* 下载 App */
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.dl-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r, 14px); padding: 16px 18px; display: grid; gap: 10px; align-content: start; }
+.dl-card.hl { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.dl-h { display: flex; gap: 12px; align-items: center; }
+.dl-h b { display: block; font-size: 16px; } .dl-h small { color: var(--muted); font-size: 12.5px; }
+.dl-i { width: 40px; height: 40px; padding: 8px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.dl-steps { margin: 0; padding-left: 20px; display: grid; gap: 7px; line-height: 1.65; }
+.dl-steps li::marker { color: var(--accent); font-weight: 700; }
+.dl-steps a { color: var(--accent); word-break: break-all; }
+.dl-card .row { gap: 8px; flex-wrap: wrap; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.foot .dl-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.foot .dl-link .ico { width: 16px; height: 16px; }
+.foot { display: grid; }
+[data-skin="book"] .dl-card { background: color-mix(in srgb, var(--surface) 70%, transparent); border-color: var(--rule); border-radius: 4px; }
+[data-skin="book"] .dl-i { border-radius: 50%; }
 </style>
 </head>
 <body>

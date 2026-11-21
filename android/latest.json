@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.0.4",
-  "apk": "FoodChemReview-v1.0.4.apk",
-  "notes": "一键更新测试版。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 5,
+  "versionName": "1.0.5",
+  "apk": "FoodChemReview-v1.0.5.apk",
+  "notes": "新增「下载 App」说明。新版本可以直接覆盖安装，学习进度会保留。"
 }
