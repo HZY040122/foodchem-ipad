@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.0.10",
-  "apk": "FoodChemReview-v1.0.10.apk",
-  "notes": "新增账号登录与多设备自动同步。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 11,
+  "versionName": "2.0.11",
+  "apk": "FoodChemReview-v2.0.11.apk",
+  "notes": "复习站 2.0：新增 Material 3 风格（安卓 12 及以上可跟随壁纸取色）和底部导航栏。新版本可以直接覆盖安装，学习进度会保留。"
 }

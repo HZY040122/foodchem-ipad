@@ -73,7 +73,24 @@ const LS = 'fcsite.v1';
 const blank = () => ({ q: {}, k: {}, daily: {}, mocks: [], log: {}, path: {}, settings: { newPer: 8, exam: '', theme: '' }, updated: 0 });
 let S = blank();
 try { const r = localStorage.getItem(LS); if (r) S = Object.assign(blank(), JSON.parse(r)); } catch (e) { }
-function applyLook() { const de = document.documentElement; if (S.settings.skin === 'book') de.setAttribute('data-skin', 'book'); else de.removeAttribute('data-skin'); if (S.settings.theme) de.setAttribute('data-theme', S.settings.theme); else de.removeAttribute('data-theme'); const az = innerWidth > 860 ? Math.min(1.3, Math.max(1, innerWidth / 1536)) : 1; /* 1536 宽以下不放大，1920 约 1.25 倍，最大 1.3 倍 */
+const PLATFORM = window.AndroidApp ? 'android' : (window.__PWA || (/iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document))) ? 'apple' : 'web';
+const SKINS = [['', '现代', '简洁卡片，适合快速刷题', 'm'], ['book', '书本', '纸张质感、目录侧栏、翻页动效', 'b']]
+  .concat(PLATFORM !== 'apple' ? [['md3', 'Material 3', '安卓 Material You：色调、圆润形状、弹性动效、底部导航', 'md']] : [])
+  .concat(PLATFORM !== 'android' ? [['glass', '液态玻璃', 'iPadOS 27 风格：Liquid Glass、通栏侧边栏、浮动标签栏', 'gl']] : []);
+/* 安卓 12 起：Material 3 风格可以跟随手机壁纸取色（由 App 提供系统色调） */
+function dynColorCSS() {
+  if (!(window.AndroidApp && window.AndroidApp.dynamicColors)) return '';
+  let P; try { P = JSON.parse(window.AndroidApp.dynamicColors() || 'null'); } catch (e) { P = null; } if (!P || !P.a1) return '';
+  const c = (p, t) => P[p][t], mix = (a, b, f) => '#' + [1, 3, 5].map(i => Math.round(parseInt(a.substr(i, 2), 16) * (1 - f) + parseInt(b.substr(i, 2), 16) * f).toString(16).padStart(2, '0')).join('');
+  const L = `--bg:${c('n1', 10)};--surface:${c('n1', 50)};--surface2:${mix(c('n1', 50), c('n1', 100), .5)};--ink:${c('n1', 900)};--muted:${c('n2', 700)};--line:${c('n2', 200)};--accent:${c('a1', 600)};--accent-2:${c('a1', 700)};--accent-soft:${c('a1', 100)};--on-accent-soft:${c('a1', 900)};--sec:${c('a2', 100)};--on-sec:${c('a2', 900)};--hot:${c('a3', 600)};--hot-soft:${c('a3', 100)};--outline:${c('n2', 500)};`;
+  const D = `--bg:${c('n1', 900)};--surface:${mix(c('n1', 900), c('n1', 800), .3)};--surface2:${mix(c('n1', 900), c('n1', 800), .65)};--ink:${c('n1', 100)};--muted:${c('n2', 200)};--line:${c('n2', 700)};--accent:${c('a1', 200)};--accent-2:${c('a1', 100)};--accent-soft:${c('a1', 700)};--on-accent-soft:${c('a1', 100)};--sec:${c('a2', 700)};--on-sec:${c('a2', 100)};--hot:${c('a3', 200)};--hot-soft:${c('a3', 700)};--outline:${c('n2', 400)};`;
+  return `:root[data-skin="md3"]{${L}} :root[data-skin="md3"][data-theme="dark"]{${D}} @media (prefers-color-scheme: dark){:root[data-skin="md3"]:not([data-theme="light"]){${D}}}`;
+}
+function applyLook() { const de = document.documentElement; const sk = SKINS.some(x => x[0] === S.settings.skin) ? S.settings.skin : (S.settings.skin === 'md3' || S.settings.skin === 'glass' ? '' : S.settings.skin);
+  if (sk) de.setAttribute('data-skin', sk); else de.removeAttribute('data-skin');
+  let dyn = document.getElementById('dyncolor'); if (!dyn) { dyn = document.createElement('style'); dyn.id = 'dyncolor'; document.head.appendChild(dyn); }
+  dyn.textContent = sk === 'md3' && S.settings.md3Dyn !== false ? dynColorCSS() : '';
+  const ga = S.settings.glassA == null ? 50 : S.settings.glassA; de.style.setProperty('--glass-a', (0.22 + ga / 100 * 0.6).toFixed(3)); de.style.setProperty('--glass-blur', Math.round(16 + ga / 100 * 18) + 'px'); if (S.settings.theme) de.setAttribute('data-theme', S.settings.theme); else de.removeAttribute('data-theme'); const az = innerWidth > 860 ? Math.min(1.3, Math.max(1, innerWidth / 1536)) : 1; /* 1536 宽以下不放大，1920 约 1.25 倍，最大 1.3 倍 */
   de.style.setProperty('--az', az); de.style.setProperty('--zoom', (S.settings.zoom || 1) * az); }
 applyLook();
 let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(applyLook, 120); });
@@ -407,6 +424,12 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0', d: '2026-11-22', t: '复习站 2.0：Material 3 与液态玻璃', items: [
+    '安卓 App 新增「Material 3」风格（设置 → 外观 → 风格）：Material You 色调、圆润的容器和药丸按钮、按下时变形的弹性按钮、底部导航栏；安卓 12 以上可以跟随手机壁纸取色',
+    'iPad 新增「液态玻璃」风格：参照 iPadOS 27 的 Liquid Glass 设计，半透明玻璃卡片、通栏侧边栏、iOS 风格的分段控件和开关；竖屏时使用浮动的玻璃标签栏，并可以在设置里调节玻璃从清透到磨砂',
+    '两种新风格在窄屏上都改用底部导航：今日、自测、路径、错题本常驻，「更多」里能找到全部页面',
+    '换页时新增与风格相配的过渡动画；系统开启「减少动态效果」时会自动关闭',
+    '这一版汇总了近期的全部更新：账号登录与多设备同步、背诵模式与按要点自评（试验性功能）、进度图表、朗读、每日提醒'] },
   { v: '1.6', d: '2026-11-22', t: '账号登录与多设备自动同步', items: [
     '「设置」最上面新增「账号与同步」：用邮箱注册、登录，忘记密码可以发重置邮件',
     '登录后，GitHub Pages 网页版、iPad 主屏幕版和安卓 App 的进度自动同步：做题记录、错题本、笔记、设置、学习时间都包括在内',
@@ -540,6 +563,20 @@ function navHTML() {
     PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
   $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
+  /* 底部导航栏（Material 3 和液态玻璃风格在窄屏上使用）：四个常用页面 + 「更多」 */
+  const bn = document.getElementById('bnav');
+  if (bn) { const main4 = ['today', 'daily', 'path', 'wrong'], inMain = main4.includes(cur);
+    bn.innerHTML = main4.map(id => { const pg = PAGES.find(x => x[0] === id); return `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span class="bl">${id === 'daily' ? '自测' : id === 'path' ? '路径' : pg[1]}</span></a>`; }).join('')
+      + `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`;
+    $('#bmore').onclick = openMoreSheet; }
+}
+/* 「更多」：从底部弹出的全部页面列表 */
+function openMoreSheet() {
+  const m = $('#modal'), cur = location.hash.slice(1) || 'today';
+  m.innerHTML = `<div class="modal sheet-wrap" role="dialog" aria-modal="true" aria-label="全部页面"><div class="sheet"><div class="grab" aria-hidden="true"></div><div class="sh-t">全部页面</div><div class="sh-grid">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span>${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span></a>`).join('')}</div></div></div>`;
+  const close = () => { m.innerHTML = ''; };
+  $('.sheet-wrap', m).addEventListener('click', e => { if (e.target.classList.contains('sheet-wrap') || e.target.closest('a')) close(); });
+  document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
 window.addEventListener('hashchange', () => { render(); toTop(); });
@@ -554,7 +591,7 @@ function render() {
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
-  if (changed) { const fwd = pi > render.lastIdx; if (fwd) m.className = 'turn'; pageFlip(main, old, fwd); }
+  if (changed) { const fwd = pi > render.lastIdx; m.className = (fwd ? 'turn ' : '') + 'pg-in ' + (fwd ? 'fwd' : 'back'); pageFlip(main, old, fwd); }
   render.last = p; render.lastIdx = pi;
   main.replaceChildren(m); f(m);
 }
@@ -1131,9 +1168,10 @@ function pSettings(m) {
   </div>
   <h2>外观</h2><div class="card form">
     <div class="row" style="align-items:flex-start"><span class="lab">风格</span><div class="skins" id="sk">
-      <button data-v="" aria-pressed="${st.skin !== 'book'}"><span class="pv pv-m" aria-hidden="true"><i></i><b></b><b></b><b></b></span><span class="sn">现代</span><span class="note">简洁卡片，适合快速刷题</span></button>
-      <button data-v="book" aria-pressed="${st.skin === 'book'}"><span class="pv pv-b" aria-hidden="true"><i></i><b></b><em></em></span><span class="sn">书本</span><span class="note">纸张质感、目录侧栏、翻页动效</span></button>
+      ${SKINS.map(([v, n, d, pv]) => `<button data-v="${v}" aria-pressed="${(document.documentElement.getAttribute('data-skin') || '') === v}"><span class="pv pv-${pv}" aria-hidden="true"><i></i><b></b><b></b><em></em></span><span class="sn">${n}${(v === 'md3' && PLATFORM === 'android') || (v === 'glass' && PLATFORM === 'apple') ? ' <span class="chip ok" style="font-size:11px">本机推荐</span>' : ''}</span><span class="note">${d}</span></button>`).join('')}
     </div></div>
+    ${(document.documentElement.getAttribute('data-skin') || '') === 'glass' ? `<div class="row"><span class="lab">玻璃效果</span><span class="note">清透</span><input type="range" id="glassA" min="0" max="100" step="5" value="${st.glassA == null ? 50 : st.glassA}" aria-label="玻璃透明度" style="flex:1;max-width:260px"><span class="note">磨砂</span></div>` : ''}
+    ${(document.documentElement.getAttribute('data-skin') || '') === 'md3' && window.AndroidApp && window.AndroidApp.dynamicColors && dynColorCSS() ? `<div class="row"><span class="lab">跟随壁纸取色</span>${seg('md3d', [['on', '开启'], ['off', '关闭']], st.md3Dyn === false ? 'off' : 'on')}<span class="note">用手机壁纸的颜色作为主色调（Material You）</span></div>` : ''}
     <div class="row"><span class="lab">颜色</span>${seg('th', [['', '跟随系统'], ['light', '浅色'], ['dark', '深色']], st.theme || '')}</div>
     <div class="row"><span class="lab">字号</span>${seg('zm', [[1, '标准'], [1.1, '大'], [1.2, '特大']], st.zoom || 1)}</div>
   </div>
@@ -1158,7 +1196,9 @@ function pSettings(m) {
     $('#remt').onchange = setR; }
   if ($('#ttr')) { pick('ttr', v => st.ttsRate = +v); $('#ttsTry').onclick = e => { if (TTS.on) ttsStop(); else ttsSpeak('美拉德反应是羰基化合物与氨基化合物之间发生的非酶褐变反应。', e.target); }; }
   pick('sdur', v => st.dur = +v); pick('sdn', v => st.dailyN = +v); pick('sat', v => { flushTime(); st.autoTime = v === 'on'; });
-  pick('sk', v => st.skin = v); pick('th', v => st.theme = v); pick('zm', v => st.zoom = +v);
+  pick('sk', v => st.skin = v);
+  const ga = $('#glassA'); if (ga) ga.oninput = () => { st.glassA = +ga.value; applyLook(); clearTimeout(ga.t); ga.t = setTimeout(save, 400); };
+  if ($('#md3d')) pick('md3d', v => st.md3Dyn = v === 'on'); pick('th', v => st.theme = v); pick('zm', v => st.zoom = +v);
   $('#exp').onclick = () => { $('#bk').value = JSON.stringify(S); $('#cp').hidden = false; $('#bkm').textContent = '备份已生成。'; };
   if (window.AndroidApp) { const sh = document.createElement('button'); sh.className = 'btn'; sh.id = 'shr'; sh.textContent = '分享备份'; sh.hidden = true; $('#cp').after(sh);
     sh.onclick = () => { try { window.AndroidApp.share($('#bk').value); } catch (e) { } };
