@@ -106,6 +106,7 @@ function merge(R) {
   const ms = new Map(); (R.mocks || []).concat(S.mocks || []).forEach(m => ms.set(m.ts, m)); o.mocks = [...ms.values()].sort((a, b) => a.ts - b.ts).slice(-40);
   o.log = Object.assign({}, R.log || {}); for (const [k, v] of Object.entries(S.log || {})) { const r = o.log[k] || { min: 0, done: 0 }; o.log[k] = { min: Math.max(r.min || 0, v.min || 0), done: Math.max(r.done || 0, v.done || 0) }; }
   o.path = Object.assign({}, R.path || {}, S.path || {});
+  if (R.planPath && (!S.planPath || (R.planPath.t || 0) > (S.planPath.t || 0))) o.planPath = R.planPath;
   if ((R.updated || 0) > (S.updated || 0)) o.settings = Object.assign({}, S.settings, R.settings);
   o.updated = Math.max(S.updated || 0, R.updated || 0);
   return o;
@@ -134,7 +135,15 @@ function rate(id, l) {
   if (l === 1) { s.c = 0; s.d = now + 10 * 60e3; s.w = 1; }
   else if (l === 2) { s.c = 0; s.d = sod() + DAY; s.w = 1; }
   else { s.c = (s.c || 0) + 1; s.d = sod() + [2, 4, 7, 15, 30][Math.min(s.c - 1, 4)] * DAY; if (s.c >= 2) s.w = 0; }
-  S.q[id] = s; logDone(); save();
+  S.q[id] = s; logDone(); save(); refreshRows(id);
+}
+/* 打分后，页面上同一道题的列表行（色条、掌握状态）马上跟着更新，不用重新进页面 */
+function refreshRows(id) {
+  const l = qs(id).l;
+  document.querySelectorAll(`[data-q="${CSS.escape(id)}"]`).forEach(r => {
+    const st = r.querySelector(':scope > .stripe'); if (st) st.className = st.className.replace(/\bl\d\b/g, '').trim() + ' l' + l;
+    r.querySelectorAll('.lv').forEach(v => { v.className = 'lv l' + l; v.innerHTML = '<i></i>' + LVL[l]; });
+  });
 }
 const isDue = id => { const s = S.q[id]; return s && s.l > 0 && s.d <= Date.now() && !(s.l === 3 && s.c >= 5); };
 
@@ -210,6 +219,10 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '1.4.1', d: '2026-11-22', t: '今日计划与复习路径修复', items: [
+    '今日计划里的复习路径：三步都完成之前固定是同一个考点，退出再进来不会换；按钮会显示「继续（第 X 步）」，直接回到没做完的那一步',
+    '三步都完成后显示「今日已完成」，可以点「加练一个新路径」再换一个；第二天会自动换新的考点',
+    '复习路径「旧题补充」里：在展开的题卡上打分后，上面那一行的「未练 / 不会 / 模糊 / 掌握」马上更新；检索、错题本等列表也一样'] },
   { v: '1.4', d: '2026-11-21', t: '下载 App', items: [
     '「设置」里新增「下载 App」：iPad / iPhone 可以把复习站添加到主屏幕当 App 用，安卓手机可以直接下载安装包',
     '侧栏底部新增「下载 App」入口，点一下直接跳过去',
@@ -390,7 +403,10 @@ function pToday(m) {
   let week = 0; for (let i = 0; i < 7; i++) week += (S.log[dkey(Date.now() - i * DAY)] || {}).min || 0;
   let cd = '';
   if (S.settings.exam) { const d = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY); if (d >= 0) cd = `距离考试还有 <b>${d}</b> 天。`; }
-  const rec = recommendCluster(); const rc = CL[rec];
+  const PL = planPath(); const rec = PL.c; const rc = CL[rec];
+  const PP = S.path[rec] || {}, pStep = [PP.s1, PP.s2, PP.s3].filter(Boolean).length, pNext = !PP.s1 ? 1 : !PP.s2 ? 2 : 3;
+  const pathBtn = PL.done ? `<div class="pdone"><span class="chip ok">✓ 今日已完成</span><button class="btn sm" id="morePath">加练一个新路径</button></div>`
+    : `<button class="btn pri" data-go="path" data-c="${rec}" data-step="${pNext}">${pStep ? `继续（第 ${pNext} 步）` : '开始'}</button>`;
   const item = MODS.flatMap(x => x.items).find(it => it.cs.includes(rec));
   const dur = S.settings.dur || 90;
   const plan = { 60: [30, 20, 10, 0], 90: [40, 25, 15, 10], 120: [50, 30, 25, 15] }[dur];
@@ -406,7 +422,7 @@ function pToday(m) {
   <h2>今日计划</h2>
   <div class="card"><div class="row" style="margin-bottom:10px"><span class="note">今天打算学多久？</span><div class="seg" id="dur">${[60, 90, 120].map(x => `<button aria-pressed="${dur === x}" data-d="${x}">${x} 分钟</button>`).join('')}</div><span class="sp"></span><span class="timer" id="tm">${S.settings.autoTime === false ? '学习时间记录已暂停' : '正在记录 · 今天 ' + Math.floor(L.min + pend) + ' 分钟'}</span><button class="btn sm" id="tbtn">${S.settings.autoTime === false ? '恢复记录' : '暂停记录'}</button></div>
   <div class="plan">
-    <div class="pi"><span class="min">${plan[0]}′</span><div><b>复习路径：${esc(rc.n)}</b><div class="note">${esc(MODN[rc.m])} · 出现 ${CS[rec].n} 年，最近 ${CS[rec].last}。先做最新一年的题锚定考点，再补旧题，最后做题型转换。</div></div><button class="btn pri" data-go="path" data-c="${rec}">开始</button></div>
+    <div class="pi"><span class="min">${plan[0]}′</span><div><b>复习路径：${esc(rc.n)}</b><div class="note">${esc(MODN[rc.m])} · 出现 ${CS[rec].n} 年，最近 ${CS[rec].last}。${PL.done ? '三步都完成了，可以加练一个新路径，或者去做下面的任务。' : `已完成 ${pStep}/3 步。先做最新一年的题锚定考点，再补旧题，最后做题型转换；完成三步前这里不会换。`}</div><div class="psteps" aria-hidden="true">${[1, 2, 3].map(n => `<i class="${PP['s' + n] ? 'on' : ''}"></i>`).join('')}</div></div>${pathBtn}</div>
     <div class="pi"><span class="min">${plan[1]}′</span><div><b>每日自测（${dTot} 题）</b><div class="note">客观题 + 名解 + 简答 + 论述/情境，优先抽到期和薄弱的题。</div></div><button class="btn" data-go="daily">去自测</button></div>
     <div class="pi"><span class="min">${plan[2]}′</span><div><b>错题与到期复习（${due} 题到期）</b><div class="note">把"不会""模糊"的题再过一遍，写下易错点。</div></div><button class="btn" data-go="due">去复习</button></div>
     ${plan[3] ? `<div class="pi"><span class="min">${plan[3]}′</span><div><b>知识点与图解：${esc(item ? item.t : rc.n)}</b><div class="note">读一遍要点，看机理图，标记掌握程度。</div></div><button class="btn" data-go="learn" data-it="${item ? item.id : ''}">去阅读</button></div>` : ''}
@@ -414,12 +430,13 @@ function pToday(m) {
   <h2>高频考点（按出现年数和近年热度排序）</h2>
   <div class="list" id="hot"></div>`;
   $('#hot').innerHTML = Object.entries(CS).sort((a, b) => b[1].prio - a[1].prio).slice(0, 8).map(([id, s]) => clusterRow(id)).join('');
+  const mp = $('#morePath'); if (mp) mp.onclick = () => { S.planPath = { c: recommendCluster(S.planPath.c), t: Date.now() }; save(); render(); };
   $('#dur').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { S.settings.dur = +b.dataset.d; save(); render(); } };
   $('#tbtn').onclick = () => { flushTime(); S.settings.autoTime = S.settings.autoTime === false; save(); render(); };
   m.addEventListener('click', e => {
     const b = e.target.closest('[data-go]'); if (b) {
       const g = b.dataset.go;
-      if (g === 'path') { NAV.pathC = b.dataset.c; NAV.pathStep = 1; go('path'); }
+      if (g === 'path') { NAV.pathC = b.dataset.c; NAV.pathStep = +(b.dataset.step || 1); go('path'); }
       else if (g === 'due') { const ids = BANK.filter(q => isDue(q.id)).map(q => q.id); const w = BANK.filter(q => qs(q.id).w && !ids.includes(q.id)).map(q => q.id); startPractice(ids.concat(w), '到期复习 + 错题'); }
       else if (g === 'learn') { const it = b.dataset.it; if (it) { NAV.learnMod = +it.split('-')[0]; NAV.learnOpen = it; } go('learn'); }
       else go(g);
@@ -434,8 +451,23 @@ function clusterRow(id) {
   const st = [P.s1, P.s2, P.s3].filter(Boolean).length;
   return `<div class="li" data-cl="${id}" style="cursor:pointer"><div class="stripe ${hotSet.has(id) ? 'hot' : ''}"></div><div class="main"><div class="t">${esc(c.n)}</div><div class="s"><span>${esc(MODN[c.m])}</span><span>出现 ${s.n} 年 · 最近 ${s.last || '—'}</span>${heatHTML(id)}<span>路径 ${st}/3</span><span>掌握 ${mm.m3}/${mm.tot}</span></div></div></div>`;
 }
-function recommendCluster() {
-  const arr = Object.entries(CS).map(([id, s]) => { const P = S.path[id] || {}; const st = [P.s1, P.s2, P.s3].filter(Boolean).length; const mm = clusterMastery(id); return [id, s.prio * (st === 3 ? 0.15 : 1 - st * 0.2) * (1.4 - mm.m3 / mm.tot)]; });
+/* 今日计划里的复习路径：完成三步之前一直保持同一个考点；完成当天显示“今日已完成”，第二天自动换新的 */
+function pathDone(id) { const P = S.path[id] || {}; return !!(P.s1 && P.s2 && P.s3); }
+function planPath() {
+  let pl = S.planPath;
+  if (!pl || !CS[pl.c]) {   // 第一次：优先接着做已经做了一半的路径
+    const half = Object.keys(CS).filter(id => { const P = S.path[id] || {}; const n = [P.s1, P.s2, P.s3].filter(Boolean).length; return n > 0 && n < 3; }).sort((a, b) => CS[b].prio - CS[a].prio);
+    pl = S.planPath = { c: half[0] || recommendCluster(), t: Date.now() }; save();
+  }
+  if (pathDone(pl.c)) {
+    if (!pl.done) { pl.done = dkey(); pl.t = Date.now(); save(); }
+    if (pl.done !== dkey()) { pl = S.planPath = { c: recommendCluster(pl.c), t: Date.now() }; save(); }
+  } else if (pl.done) { delete pl.done; pl.t = Date.now(); save(); }   // 取消了某一步的完成，回到进行中
+  return pl;
+}
+function recommendCluster(skip) {
+  const arr = Object.entries(CS).filter(([id]) => id !== skip && !pathDone(id)).map(([id, s]) => { const P = S.path[id] || {}; const st = [P.s1, P.s2, P.s3].filter(Boolean).length; const mm = clusterMastery(id); return [id, s.prio * (st === 3 ? 0.15 : 1 - st * 0.2) * (1.4 - mm.m3 / mm.tot)]; });
+  if (!arr.length) return Object.keys(CS).filter(id => id !== skip)[0];   // 全部完成时随便给一个
   arr.sort((a, b) => b[1] - a[1]); return arr[0][0];
 }
 

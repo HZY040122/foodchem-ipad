@@ -441,6 +441,13 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .foot { display: grid; }
 [data-skin="book"] .dl-card { background: color-mix(in srgb, var(--surface) 70%, transparent); border-color: var(--rule); border-radius: 4px; }
 [data-skin="book"] .dl-i { border-radius: 50%; }
+
+/* 今日计划：复习路径进度与“今日已完成” */
+.psteps { display: flex; gap: 4px; margin-top: 6px; }
+.psteps i { width: 26px; height: 5px; border-radius: 3px; background: var(--line); }
+.psteps i.on { background: var(--accent); }
+.pdone { display: grid; gap: 6px; justify-items: end; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; font-weight: 600; white-space: nowrap; }
 </style>
 </head>
 <body>
