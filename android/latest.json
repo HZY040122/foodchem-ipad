@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.9",
-  "apk": "FoodChemReview-v1.0.9.apk",
-  "notes": "书本风格目录对齐修复。"
+  "versionCode": 10,
+  "versionName": "1.0.10",
+  "apk": "FoodChemReview-v1.0.10.apk",
+  "notes": "新增账号登录与多设备自动同步。新版本可以直接覆盖安装，学习进度会保留。"
 }

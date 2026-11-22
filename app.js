@@ -81,6 +81,7 @@ let dbRef = null, syncOK = false, saveT = null, chain = Promise.resolve(), syncM
 function save() {
   S.updated = Date.now();
   try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { }
+  if (typeof CLOUD !== 'undefined' && CLOUD.user) cloudSchedule();
   if (!dbRef || !syncOK) return;
   clearTimeout(saveT);
   saveT = setTimeout(() => {
@@ -114,8 +115,74 @@ function merge(R) {
   return o;
 }
 /* 账号同步：先把云端进度合并进来，再显示页面（最多等 4 秒），避免开机时的默认设置把云端的个人设置盖掉 */
+/* ---------- 账号与云同步（Firebase）：网页版（GitHub Pages）、iPad 主屏幕版、安卓 App 共用 ----------
+   不用 Firebase 官方代码包（需要联网加载），直接调用它的网页接口：
+   注册/登录用 Identity Toolkit，进度存在 Firestore 的 users/{uid} 文档里（整份进度存成一段文字）。
+   安全规则限定每个账号只能读写自己的文档。在 Claude 里打开的版本仍用 Claude 账号同步，不走这里。 */
+const FB = { key: 'AIzaSyD9-Fb5-BoOUiEipv5szrlsQX5r84s3cRE', project: 'foodchem' };
+const AUTH_LS = 'fcsite.auth';
+var CLOUD = { on: !window.claude, user: null, busy: false, t: null, lastPull: 0, lastOk: 0, err: '' };
+try { CLOUD.user = JSON.parse(localStorage.getItem(AUTH_LS) || 'null'); } catch (e) { }
+const AUTH_ERR = { EMAIL_EXISTS: '这个邮箱已经注册过了，请直接登录', EMAIL_NOT_FOUND: '没有找到这个邮箱的账号，请先注册', INVALID_PASSWORD: '密码不对', INVALID_LOGIN_CREDENTIALS: '邮箱或密码不对', INVALID_EMAIL: '邮箱格式不对', MISSING_PASSWORD: '请输入密码', WEAK_PASSWORD: '密码至少要 6 位', TOO_MANY_ATTEMPTS_TRY_LATER: '尝试次数太多，请稍后再试', USER_DISABLED: '这个账号已被停用', OPERATION_NOT_ALLOWED: 'Firebase 里还没启用「电子邮件/密码」登录' };
+function authErr(code) { const k = String(code || '').split(' ')[0].split(':')[0]; return AUTH_ERR[k] || ('出错了：' + (code || '请检查网络')); }
+async function fbAuth(path, body) {
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/${path}?key=${FB.key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status)); return j;
+}
+function setUser(j, email) { CLOUD.user = { uid: j.localId || j.user_id, email: email || (CLOUD.user && CLOUD.user.email), idToken: j.idToken || j.id_token, refresh: j.refreshToken || j.refresh_token, exp: Date.now() + (+(j.expiresIn || j.expires_in || 3600) - 120) * 1000 }; try { localStorage.setItem(AUTH_LS, JSON.stringify(CLOUD.user)); } catch (e) { } }
+async function fbToken() {
+  const u = CLOUD.user; if (!u) throw new Error('NOT_SIGNED_IN');
+  if (u.idToken && u.exp > Date.now()) return u.idToken;
+  const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB.key}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(u.refresh) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) { const m = (j.error && j.error.message) || ''; if (/TOKEN_EXPIRED|INVALID_REFRESH_TOKEN|USER_NOT_FOUND|USER_DISABLED/.test(m)) { cloudSignOut(true); throw new Error('登录已过期，请重新登录'); } throw new Error(m || 'HTTP ' + r.status); }
+  setUser(j); return CLOUD.user.idToken;
+}
+const docUrl = () => `https://firestore.googleapis.com/v1/projects/${FB.project}/databases/(default)/documents/users/${CLOUD.user.uid}`;
+async function cloudGet() {
+  const r = await fetch(docUrl(), { headers: { Authorization: 'Bearer ' + await fbToken() } });
+  if (r.status === 404) return null;
+  if (r.status === 403) throw new Error('RULES');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json(); const f = j.fields || {}; try { return f.data ? JSON.parse(f.data.stringValue) : null; } catch (e) { return null; }
+}
+async function cloudPut(state, keepalive) {
+  const body = JSON.stringify({ fields: { data: { stringValue: JSON.stringify(state) }, updated: { integerValue: String(state.updated || Date.now()) }, email: { stringValue: CLOUD.user.email || '' } } });
+  const r = await fetch(docUrl(), { method: 'PATCH', keepalive: !!keepalive && body.length < 60000, headers: { Authorization: 'Bearer ' + await fbToken(), 'Content-Type': 'application/json' }, body });
+  if (r.status === 403) throw new Error('RULES'); if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+function cloudMsg(e) { const m = e && e.message || ''; return m === 'RULES' ? '同步被拒绝：请在 Firebase 里贴好数据库安全规则' : /Failed to fetch|NetworkError|Load failed|network/i.test(m) ? '现在没有网络，联网后会自动同步' : m.length < 40 ? '同步失败：' + m : '同步失败，稍后会自动重试'; }
+function agoText(t) { if (!t) return ''; const s = (Date.now() - t) / 1000; return s < 60 ? '刚刚' : s < 3600 ? Math.round(s / 60) + ' 分钟前' : new Date(t).toTimeString().slice(0, 5); }
+/* 同步一次：先取云端、合并进本机，再把合并结果写回云端。两边都不会丢东西 */
+async function cloudSync(opts = {}) {
+  if (!CLOUD.on || !CLOUD.user || CLOUD.busy) return;
+  CLOUD.busy = true; if (!opts.quiet) setSync('正在同步……');
+  try {
+    const R = await cloudGet(); CLOUD.lastPull = Date.now();
+    const before = JSON.stringify(S);
+    if (R) { S = merge(R); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } }
+    const changedLocal = JSON.stringify(S) !== before;
+    if (!R || JSON.stringify(S) !== JSON.stringify(R)) await cloudPut(S);
+    CLOUD.lastOk = Date.now(); CLOUD.err = '';
+    setSync(`已同步到 ${CLOUD.user.email} · ${agoText(CLOUD.lastOk)}`);
+    if (changedLocal && !opts.noRender) { const a = document.activeElement; if (!(a && /TEXTAREA|INPUT/.test(a.tagName))) render(); }
+  } catch (e) { CLOUD.err = cloudMsg(e); setSync(CLOUD.err); }
+  finally { CLOUD.busy = false; }
+}
+function cloudSchedule() { if (!CLOUD.on || !CLOUD.user) return; clearTimeout(CLOUD.t); CLOUD.t = setTimeout(() => cloudSync({ quiet: true }), 20000); }
+function cloudSignOut(expired) { CLOUD.user = null; clearTimeout(CLOUD.t); try { localStorage.removeItem(AUTH_LS); } catch (e) { } setSync(expired ? '登录已过期，请在「设置」里重新登录' : '进度保存在本机'); }
+if (CLOUD.on) {
+  /* 离开页面时把还没上传的进度推上去；回到页面时拉一次别的设备的进度 */
+  document.addEventListener('visibilitychange', () => {
+    if (!CLOUD.user) return;
+    if (document.visibilityState === 'hidden') { clearTimeout(CLOUD.t); if ((S.updated || 0) > CLOUD.lastOk) cloudPut(S, true).then(() => { CLOUD.lastOk = Date.now(); }).catch(() => { }); }
+    else if (Date.now() - CLOUD.lastPull > 60000) cloudSync({ quiet: true });
+  });
+  window.addEventListener('online', () => { if (CLOUD.user) cloudSync({ quiet: true }); });
+  setInterval(() => { if (CLOUD.user && !CLOUD.err && CLOUD.lastOk) setSync(`已同步到 ${CLOUD.user.email} · ${agoText(CLOUD.lastOk)}`); }, 60000);
+}
 const syncReady = (async () => {
   try {
+    if (CLOUD.on) { if (CLOUD.user) await cloudSync({ noRender: true }); return; }
     if (!window.claude || !window.claude.use) return;
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
     const uid = user ? await user.id() : null;
@@ -340,6 +407,11 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '1.6', d: '2026-11-22', t: '账号登录与多设备自动同步', items: [
+    '「设置」最上面新增「账号与同步」：用邮箱注册、登录，忘记密码可以发重置邮件',
+    '登录后，GitHub Pages 网页版、iPad 主屏幕版和安卓 App 的进度自动同步：做题记录、错题本、笔记、设置、学习时间都包括在内',
+    '第一次登录时，这台设备上已有的进度会和账号里的合并，不会被覆盖；同一道题以最近一次作答为准',
+    '没网时照常使用，联网后自动补上同步；侧栏底部会显示上次同步的时间'] },
   { v: '1.5.1', d: '2026-11-22', t: '试验性功能', items: [
     '侧栏新增「试验性功能」（beta），大题背诵模式和按要点自评移到这里，各有一个开关',
     '两个功能默认关闭，刷题界面保持原样；在「试验性功能」里打开后，对应按钮才会出现'] },
@@ -1003,12 +1075,48 @@ function pLabs(m) {
     b.setAttribute('aria-checked', !!st[k]); const c = b.closest('.lab'); c.classList.toggle('on', !!st[k]); $('.lab-st', c).textContent = st[k] ? '已开启 · 去刷题界面试试吧' : '未开启'; });
 }
 
+/* ---------- 设置 · 账号与同步 ---------- */
+function accountSection() {
+  if (!CLOUD.on) return `<h2>账号与同步</h2><div class="card"><p class="note" style="margin:0">在 Claude 里打开的这个版本，进度会同步到你的 Claude 账号。想和 iPad、安卓 App 同步，请用 GitHub Pages 网页版（<a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a>）或 App 登录同一个复习站账号。</p></div>`;
+  const u = CLOUD.user;
+  if (u) return `<h2>账号与同步</h2><div class="card acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div><span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button></div>
+    <p class="note" style="margin:8px 0 0">做题记录、错题本、笔记、设置、学习时间会在网页版、iPad 和安卓 App 之间自动同步：改动后 20 秒内上传，打开或回到页面时下载。没网时照常使用，联网后自动补上。</p></div>`;
+  return `<h2>账号与同步</h2><div class="card acct form">
+    <p class="note" style="margin:0">登录后，网页版、iPad 主屏幕版和安卓 App 的进度会自动同步。不登录也能用，进度只存在这台设备上。</p>
+    <div class="row"><label for="acem">邮箱</label><input type="email" id="acem" autocomplete="email" placeholder="you@example.com" style="flex:1;min-width:200px"></div>
+    <div class="row"><label for="acpw">密码</label><input type="password" id="acpw" autocomplete="current-password" placeholder="至少 6 位" style="flex:1;min-width:200px"></div>
+    <div class="row"><button class="btn pri" id="acin">登录</button><button class="btn" id="acup">注册新账号</button><span class="sp"></span><button class="btn sm ghost" id="acrs">忘记密码</button></div>
+    <p class="note" id="acmsg" style="margin:0"></p></div>`;
+}
+function bindAccount(m) {
+  if (!CLOUD.on) return;
+  const msg = t => { const e = $('#acmsg'); if (e) e.textContent = t; };
+  const go2 = async (path, label) => {
+    const email = $('#acem').value.trim(), pw = $('#acpw').value;
+    if (!email) return msg('请先填写邮箱');
+    msg(label + '中……'); $$('#acin,#acup').forEach(b => b.disabled = true);
+    try { const j = await fbAuth(path, { email, password: pw, returnSecureToken: true }); setUser(j, email); msg('成功！正在把这台设备的进度和账号合并……'); await cloudSync(); render(); toast(path === 'accounts:signUp' ? '注册成功，已开始同步' : '登录成功，进度已同步'); }
+    catch (e) { msg(authErr(e.message)); }
+    finally { $$('#acin,#acup').forEach(b => b && (b.disabled = false)); }
+  };
+  if (CLOUD.user) {
+    $('#acsync').onclick = async () => { $('#acst').textContent = '正在同步……'; await cloudSync(); const e = $('#acst'); if (e) e.textContent = CLOUD.err || '上次同步：' + agoText(CLOUD.lastOk); };
+    $('#acout').onclick = () => { const b = $('#acout'); if (!b.dataset.c) { b.dataset.c = 1; b.textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); toast('已退出登录，这台设备上的进度还保留着'); }); };
+    return;
+  }
+  $('#acin').onclick = () => go2('accounts:signInWithPassword', '登录');
+  $('#acup').onclick = () => go2('accounts:signUp', '注册');
+  $('#acpw').onkeydown = e => { if (e.key === 'Enter') go2('accounts:signInWithPassword', '登录'); };
+  $('#acrs').onclick = async () => { const email = $('#acem').value.trim(); if (!email) return msg('先在上面填好邮箱，再点「忘记密码」'); msg('正在发送……'); try { await fbAuth('accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email }); msg('重置密码的邮件已发到 ' + email + '，没收到的话看看垃圾邮件'); } catch (e) { msg(authErr(e.message)); } };
+}
+
 /* ---------- 设置 ---------- */
 function greet() { const h = new Date().getHours(); return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'; }
 function pSettings(m) {
   const st = S.settings;
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, n]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}">${n}</button>`).join('')}</div>`;
   m.innerHTML = `<div class="kick">SETTINGS</div><h1>设置</h1><p class="lead">个人信息、学习安排和外观都在这里，改完自动保存。</p>
+  ${accountSection()}
   <h2>个人资料</h2><div class="card form">
     <div class="row"><label for="nm">你的名字</label><input type="text" id="nm" maxlength="20" placeholder="例如：小林" value="${esc(st.name || '')}"><span class="note">填写后首页显示「${greet()}，${esc(st.name || 'xxx')}，欢迎回来」</span></div>
     <div class="row"><label for="gl">目标</label><input type="text" id="gl" maxlength="30" placeholder="例如：江南大学 食品科学" value="${esc(st.goal || '')}"><span class="note">显示在首页日期旁</span></div>
@@ -1039,6 +1147,7 @@ function pSettings(m) {
     try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });
   if (location.hash === '#settings' && pSettings.jump) { const j = pSettings.jump; pSettings.jump = null; setTimeout(() => { const t = document.getElementById(j); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
   if (HAS_UPD) $('#chk').onclick = () => { updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); };
+  bindAccount(m);
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save(); });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
   $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });
