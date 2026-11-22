@@ -376,7 +376,8 @@ h2::before { content: ""; width: 9px; height: 9px; border: 2px solid var(--accen
 @media (min-width: 861px) {
   [data-skin="book"] body { overflow: hidden; }
   [data-skin="book"] .shell { height: calc(100vh - 38px); height: calc(100dvh - 38px); min-height: 0; }
-  [data-skin="book"] nav.side { position: relative; top: 0; height: calc((100vh - 38px) / var(--az, 1)); height: calc((100dvh - 38px) / var(--az, 1)); }
+  [data-skin="book"] nav.side { position: relative; top: 0; height: calc((100vh - 38px) / var(--az, 1)); height: calc((100dvh - 38px) / var(--az, 1)); overflow-y: auto; scrollbar-width: none; }
+  [data-skin="book"] nav.side::-webkit-scrollbar { display: none; }
   [data-skin="book"] main { padding-top: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   [data-skin="book"] main > div { padding-top: 34px; }
   [data-skin="book"] .sticky { background: var(--noise), var(--paper); }
@@ -507,7 +508,13 @@ details.tbl { margin-top: 6px; font-size: 13px; } details.tbl summary { cursor: 
 
 /* 试验性功能 */
 nav.side a .nm { white-space: nowrap; }
-[data-skin="book"] nav.side a sup.beta { margin-left: 3px; padding: 1px 4px 2px; }
+/* 书本目录：beta 角标像上标一样挂在名字右上角，不挤占虚线和页码的位置，页码保持对齐 */
+[data-skin="book"] nav.side a .nm { position: relative; flex: none; }
+[data-skin="book"] nav.side a sup.beta { position: absolute; left: calc(100% - 12px); top: -9px; margin: 0; padding: 1px 4px 2px; font-size: 9px; box-shadow: 0 0 0 1.5px var(--paper); }
+[data-skin="book"] nav.side a.has-beta .ld { margin-left: 14px; min-width: 4px; }
+[data-skin="book"] nav.side a { padding-right: 30px; }
+[data-skin="book"] nav.side a .pn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 22px; min-width: 22px; }
+[data-skin="book"] nav.side a .ld { min-width: 0; }
 sup.beta { font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: lowercase; color: #fff; background: var(--accent); border-radius: 6px; padding: 1px 5px 2px; margin-left: 5px; vertical-align: 5px; line-height: 1; font-family: var(--f-body, inherit); }
 sup.beta.lg { font-size: 12px; vertical-align: 12px; padding: 2px 7px 3px; }
 nav.side a[aria-current="page"] sup.beta { background: var(--accent-2); }
