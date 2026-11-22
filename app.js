@@ -16,6 +16,7 @@ const LVL = ['未练', '不会', '模糊', '掌握'];
 
 const SV = (d, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  labs: '<path d="M9.5 3.5h5M10.5 3.5v5.2L5.4 17.6A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-2.9L13.5 8.7V3.5"/><path d="M7.6 14h8.8"/><circle cx="10.5" cy="17" r=".9" fill="currentColor" stroke="none"/><circle cx="13.8" cy="16.2" r=".7" fill="currentColor" stroke="none"/>',
   dlApple: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
   dlAndroid: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
   dl: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
@@ -244,8 +245,8 @@ function qcard(q, o = {}) {
   else if (q.t === '判断') body = `<div class="row"><button class="opt" data-o="√">√ 对</button><button class="opt" data-o="×">× 错</button></div>`;
   else body = `<textarea placeholder="${q.t === '名解' ? '先写出定义的关键词，再对答案' : OBJ.includes(q.t) ? '填写答案' : '先列出答题要点（可以只写关键词），再对答案'}" aria-label="作答"></textarea>`;
   el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}</div><div class="qtext">${esc(q.q)}</div>${body}
-    ${s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
-    <div class="row"><button class="btn pri" data-a="show">对答案</button>${answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
+    ${S.settings.labPoints && s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
+    <div class="row"><button class="btn pri" data-a="show">对答案</button>${S.settings.labRecite && answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
     <div class="recite" hidden></div>
     <div class="ans" hidden><div class="h">参考答案 ${q.src === '汇编' ? '· 来自你的答案汇编' : q.src === '补充' ? '· Claude 按教材补写，建议对照课本' : '· Claude 整理，建议核对'}${q.doubt ? '<span class="chip doubt">存疑</span>' : ''}</div>${q.a || '<p>暂无参考答案。</p>'}</div>
     <div class="ptc" hidden></div>
@@ -256,7 +257,7 @@ function qcard(q, o = {}) {
   const reveal = () => { $('.ans', el).hidden = false; $('.rt', el).hidden = false; showCheck(); $('[data-a=show]', el).textContent = '隐藏答案'; if (!shown) { shown = true; o.onReveal && o.onReveal(); } };
   /* 按要点自评：对照答案勾选答出的要点，按比例给出掌握程度 */
   function showCheck() {
-    const pc = $('.ptc', el); if (PTS.length < 2 || !pc.hidden) return;
+    const pc = $('.ptc', el); if (!S.settings.labPoints || PTS.length < 2 || !pc.hidden) return;
     pc.hidden = false;
     pc.innerHTML = `<div class="ph"><b>按要点自评</b><span class="note">对照答案，勾上你答出来的要点</span><span class="sp"></span><button class="btn sm ghost" data-pall>全选</button></div>
       <div class="pchips">${PTS.map((p, i) => `<button class="pchip" data-pi="${i}" aria-pressed="false"><span class="rn">${i + 1}</span>${esc(p.label || p.hint)}</button>`).join('')}</div>
@@ -339,6 +340,9 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '1.5.1', d: '2026-11-22', t: '试验性功能', items: [
+    '侧栏新增「试验性功能」（beta），大题背诵模式和按要点自评移到这里，各有一个开关',
+    '两个功能默认关闭，刷题界面保持原样；在「试验性功能」里打开后，对应按钮才会出现'] },
   { v: '1.5', d: '2026-11-22', t: '背诵模式、按要点自评、图表、朗读和每日提醒', items: [
     '大题背诵模式：简答、论述、情境、名解的题卡上新增「背诵」。「要点提示」只显示每个要点的标题，回忆完再点开；「首字提示」每句只露出开头两个字，点一下显示整句',
     '按要点自评：对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」；漏掉的要点会记下来，下次做这题时在题目下方提醒',
@@ -456,13 +460,13 @@ function openDiagram(id) { const d = document.createElement('div'); DG.mount(d, 
 function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
 
 /* ---------- 导航 ---------- */
-const PAGES = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['settings', '设置', '设']];
+const PAGES = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
   const cur = location.hash.slice(1) || 'today';
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="toc" aria-hidden="true">目　录</div>` +
-    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}<span class="nm">${n}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
-  $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}</a>`).join('')}</nav>`;
+    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
+  $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
@@ -474,7 +478,7 @@ function render() {
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
-  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, settings: pSettings }[p] || pToday;
+  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings }[p] || pToday;
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
@@ -859,7 +863,7 @@ function pMock(m) {
   const groups = []; M.ids.forEach(id => { const t = BY[id].t; const k = t; let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, ids: [] }); g.ids.push(id); });
   const CN = ['一', '二', '三', '四', '五', '六', '七'];
   m.innerHTML = `<div class="sticky"><div class="row"><b>${esc(M.title)}</b><span class="note">满分 ${total}</span><span class="sp"></span><span class="timer" id="mt"></span>${M.sub ? `<b id="msc"></b>` : '<button class="btn pri" id="sub">交卷</button>'}<button class="btn sm ghost" id="quit">${M.sub ? '返回' : '放弃'}</button></div></div>
-  ${groups.map((g, gi) => `<h2>${CN[gi]}、${TLABEL[g.k]}${/[释析]$/.test(TLABEL[g.k]) ? '' : '题'}（${g.ids.length} 题，每题 ${PTS[BY[g.ids[0]].t]} 分，共 ${g.ids.length * PTS[BY[g.ids[0]].t]} 分）</h2><div class="list">${g.ids.map((id, i) => { const q = BY[id]; const full = PTS[q.t]; return `<div class="card q" data-id="${id}"><div class="qtext">${i + 1}. ${esc(q.q)}</div>${mockKey(q) ? mockOpts(q, M) : `${q.opts ? `<div class="note">${q.opts.map(([a, t]) => esc(a + '. ' + t)).join('　')}</div>` : ''}<textarea aria-label="作答" ${M.sub ? 'readonly' : ''}>${esc((M.ans || {})[id] || '')}</textarea>`}${M.sub ? `<div class="ans"><div class="h">参考答案</div>${q.a || ''}</div><div class="row"><span class="note">本题得分</span><input type="number" min="0" max="${full}" step="${full > 3 ? 1 : 0.5}" value="${M.sc[id] != null ? M.sc[id] : ''}" data-sc="${id}" aria-label="得分" style="width:80px"><span class="note">/ ${full}</span><button class="btn sm" data-full="${id}">满分</button><button class="btn sm" data-zero="${id}">0 分</button>${answerPoints(q).length > 1 ? `<button class="btn sm" data-mpt="${id}">按要点给分</button>` : ''}</div><div class="ptc" data-mpc="${id}" hidden><div class="ph"><b>按要点给分</b><span class="note">勾上你答出来的要点，分数按比例自动填好</span></div><div class="pchips">${answerPoints(q).map((p, j) => `<button class="pchip" data-mpi="${j}" aria-pressed="false"><span class="rn">${j + 1}</span>${esc(p.label || p.hint)}</button>`).join('')}</div></div>` : ''}</div>`; }).join('')}</div>`).join('')}`;
+  ${groups.map((g, gi) => `<h2>${CN[gi]}、${TLABEL[g.k]}${/[释析]$/.test(TLABEL[g.k]) ? '' : '题'}（${g.ids.length} 题，每题 ${PTS[BY[g.ids[0]].t]} 分，共 ${g.ids.length * PTS[BY[g.ids[0]].t]} 分）</h2><div class="list">${g.ids.map((id, i) => { const q = BY[id]; const full = PTS[q.t]; return `<div class="card q" data-id="${id}"><div class="qtext">${i + 1}. ${esc(q.q)}</div>${mockKey(q) ? mockOpts(q, M) : `${q.opts ? `<div class="note">${q.opts.map(([a, t]) => esc(a + '. ' + t)).join('　')}</div>` : ''}<textarea aria-label="作答" ${M.sub ? 'readonly' : ''}>${esc((M.ans || {})[id] || '')}</textarea>`}${M.sub ? `<div class="ans"><div class="h">参考答案</div>${q.a || ''}</div><div class="row"><span class="note">本题得分</span><input type="number" min="0" max="${full}" step="${full > 3 ? 1 : 0.5}" value="${M.sc[id] != null ? M.sc[id] : ''}" data-sc="${id}" aria-label="得分" style="width:80px"><span class="note">/ ${full}</span><button class="btn sm" data-full="${id}">满分</button><button class="btn sm" data-zero="${id}">0 分</button>${S.settings.labPoints && answerPoints(q).length > 1 ? `<button class="btn sm" data-mpt="${id}">按要点给分</button>` : ''}</div><div class="ptc" data-mpc="${id}" hidden><div class="ph"><b>按要点给分</b><span class="note">勾上你答出来的要点，分数按比例自动填好</span></div><div class="pchips">${answerPoints(q).map((p, j) => `<button class="pchip" data-mpi="${j}" aria-pressed="false"><span class="rn">${j + 1}</span>${esc(p.label || p.hint)}</button>`).join('')}</div></div>` : ''}</div>`; }).join('')}</div>`).join('')}`;
   const tick = () => { const t = $('#mt'); if (!t) return clearInterval(M.tk); const used = Math.floor(((M.end || Date.now()) - M.start) / 60000); t.textContent = M.sub ? `用时 ${used} 分钟` : `剩余 ${Math.max(0, 180 - used)} 分钟`; };
   clearInterval(M.tk); M.tk = setInterval(tick, 20000); tick();
   m.addEventListener('input', e => { if (e.target.tagName === 'TEXTAREA' && !M.sub) { const id = e.target.closest('[data-id]').dataset.id; M.ans = M.ans || {}; M.ans[id] = e.target.value; } });
@@ -983,6 +987,21 @@ function chartHover(m) {
   m.addEventListener('pointerleave', hide);
   m.addEventListener('click', e => { const t = e.target.closest('[data-tip]'); if (t) show(t, e); });
   window.addEventListener('hashchange', () => { if (tip) tip.remove(); tip = null; }, { once: true });
+}
+
+/* ---------- 试验性功能：默认关闭，打开后才在刷题界面出现 ---------- */
+const LABS = [
+  { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>首字提示</b>：每句只露出开头两个字，其余换成横线，点一下显示整句', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
+  { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' }
+];
+function pLabs(m) {
+  const st = S.settings;
+  m.innerHTML = `<div class="kick">LABS · 试验性功能</div><h1>试验性功能 <sup class="beta lg">beta</sup></h1><p class="lead">这里放的是还在打磨的新功能，默认都是关闭的。打开后，对应的按钮才会出现在刷题界面里；觉得用不惯，随时关掉，学习记录不受影响。</p>
+  <div class="labs">${LABS.map(f => `<div class="card lab${st[f.k] ? ' on' : ''}" data-lab="${f.k}"><div class="lab-h"><div><b>${esc(f.t)}</b><span class="note">出现在：${esc(f.where)}</span></div><button class="switch" role="switch" aria-checked="${!!st[f.k]}" aria-label="${esc(f.t)}" data-sw="${f.k}"><i></i></button></div>
+    <p>${esc(f.d)}</p><ul class="chg">${f.how.map(x => `<li>${x}</li>`).join('')}</ul><div class="lab-st note">${st[f.k] ? '已开启 · 去刷题界面试试吧' : '未开启'}</div></div>`).join('')}</div>
+  <p class="note">遇到拆得不对的要点或其他问题，截图告诉 Claude，修好后会把这些功能转成正式功能。</p>`;
+  m.addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (!b) return; const k = b.dataset.sw; st[k] = !st[k]; save();
+    b.setAttribute('aria-checked', !!st[k]); const c = b.closest('.lab'); c.classList.toggle('on', !!st[k]); $('.lab-st', c).textContent = st[k] ? '已开启 · 去刷题界面试试吧' : '未开启'; });
 }
 
 /* ---------- 设置 ---------- */

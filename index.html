@@ -504,6 +504,29 @@ details.tbl { margin-top: 6px; font-size: 13px; } details.tbl summary { cursor: 
 
 .toast { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 80; background: var(--ink); color: var(--surface); padding: 9px 16px; border-radius: 10px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); max-width: calc(100% - 32px); }
 .toast[hidden] { display: none; }
+
+/* 试验性功能 */
+nav.side a .nm { white-space: nowrap; }
+[data-skin="book"] nav.side a sup.beta { margin-left: 3px; padding: 1px 4px 2px; }
+sup.beta { font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: lowercase; color: #fff; background: var(--accent); border-radius: 6px; padding: 1px 5px 2px; margin-left: 5px; vertical-align: 5px; line-height: 1; font-family: var(--f-body, inherit); }
+sup.beta.lg { font-size: 12px; vertical-align: 12px; padding: 2px 7px 3px; }
+nav.side a[aria-current="page"] sup.beta { background: var(--accent-2); }
+.top nav a[aria-current="page"] sup.beta { background: #fff; color: var(--accent); }
+.labs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 8px; }
+.lab { display: grid; gap: 8px; align-content: start; transition: border-color .2s, box-shadow .2s; }
+.lab.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lab-h { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.lab-h b { display: block; font-size: 17px; margin-bottom: 2px; }
+.lab p { margin: 0; line-height: 1.7; }
+.lab-st { margin-top: 2px; }
+.lab.on .lab-st { color: var(--accent); font-weight: 600; }
+.switch { flex: none; width: 50px; height: 30px; border-radius: 15px; border: 0; background: var(--line); position: relative; cursor: pointer; transition: background .2s; padding: 0; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"] i { transform: translateX(20px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-skin="book"] .lab { border-radius: 4px; }
+[data-skin="book"] sup.beta { border-radius: 2px; }
 </style>
 </head>
 <body>
