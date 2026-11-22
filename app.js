@@ -107,11 +107,13 @@ function merge(R) {
   o.log = Object.assign({}, R.log || {}); for (const [k, v] of Object.entries(S.log || {})) { const r = o.log[k] || { min: 0, done: 0 }; o.log[k] = { min: Math.max(r.min || 0, v.min || 0), done: Math.max(r.done || 0, v.done || 0) }; }
   o.path = Object.assign({}, R.path || {}, S.path || {});
   if (R.planPath && (!S.planPath || (R.planPath.t || 0) > (S.planPath.t || 0))) o.planPath = R.planPath;
-  if ((R.updated || 0) > (S.updated || 0)) o.settings = Object.assign({}, S.settings, R.settings);
+  /* 设置按项合并：两边都有的项以较新的一边为准，只有一边有的项（例如名字）总是保留 */
+  o.settings = (R.updated || 0) > (S.updated || 0) ? Object.assign({}, S.settings, R.settings) : Object.assign({}, R.settings || {}, S.settings);
   o.updated = Math.max(S.updated || 0, R.updated || 0);
   return o;
 }
-(async () => {
+/* 账号同步：先把云端进度合并进来，再显示页面（最多等 4 秒），避免开机时的默认设置把云端的个人设置盖掉 */
+const syncReady = (async () => {
   try {
     if (!window.claude || !window.claude.use) return;
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
@@ -155,6 +157,85 @@ function chipsFor(q, extra = '') {
   const src = q.src === '汇编' ? '<span class="chip src1">汇编答案</span>' : q.src === '补充' ? '<span class="chip src2">补充答案</span>' : '<span class="chip src3">整理答案</span>';
   return `<span class="chip y">${q.y ? q.y : '原创情境'}</span><span class="chip">${TLABEL[q.t]}</span>${c ? `<span class="chip">${esc(MODN[c.m])} · ${esc(c.n)}</span>` : ''}${hotSet.has(q.c) ? '<span class="chip hot">高频考点</span>' : ''}${q.doubt ? '<span class="chip doubt">答案存疑</span>' : ''}<span class="lv l${s.l}"><i></i>${LVL[s.l]}</span>${extra}`;
 }
+/* ---------- 参考答案拆要点：背诵模式和按要点自评共用 ---------- */
+const PTS_CACHE = new Map();
+const RECITE_T = ['简答', '论述', '分析', '名解'];
+function txt(html) { const d = document.createElement('div'); d.innerHTML = html; return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+function answerPoints(q) {
+  if (!q || !q.a || !RECITE_T.includes(q.t)) return [];
+  if (PTS_CACHE.has(q.id)) return PTS_CACHE.get(q.id);
+  const box = document.createElement('div'); box.innerHTML = q.a;
+  const pieces = [];
+  const walk = node => [...node.childNodes].forEach(n => {
+    if (n.nodeType === 3) { if (n.textContent.trim()) pieces.push(esc(n.textContent.trim())); return; }
+    if (n.nodeType !== 1) return;
+    const tag = n.tagName;
+    if (tag === 'P') { n.innerHTML.split(/<br\s*\/?>/i).forEach(h => { if (txt(h)) pieces.push(h.trim()); }); }
+    else if (tag === 'UL' || tag === 'OL') [...n.children].forEach(li => { if (txt(li.innerHTML)) pieces.push(li.innerHTML); });
+    else if (tag === 'TABLE') pieces.push(n.outerHTML);
+    else if (tag === 'DIV') walk(n);
+    else if (txt(n.outerHTML)) pieces.push(n.outerHTML);
+  });
+  walk(box);
+  const pts = []; let head = '';
+  pieces.forEach(h => {
+    const t = txt(h); if (!t) return;
+    if (/^<table/i.test(h)) { pts.push({ head, label: '表格', hint: '表格', html: h, text: t }); return; }
+    const lead = /^\s*<b>([\s\S]*?)<\/b>/i.exec(h);
+    const boldOnly = lead && txt(lead[1]) === t;
+    if (boldOnly && /[：:]$/.test(t) && t.length <= 24) { head = t.replace(/[：:]$/, ''); return; }   // 小标题
+    let label = '', body = t;
+    if (lead && !boldOnly) { const lb = txt(lead[1]); if (lb.length <= 20) { label = lb.replace(/[：:]\s*$/, ''); body = txt(h.slice(lead[0].length)); } }
+    if (!label) { const m = /^([^，。；：:,;]{2,14})[：:]\s*(.+)$/.exec(t); if (m) { label = m[1]; body = m[2]; } }
+    const first = t.split(/[，。；;,]|——/)[0].trim(); const hint = label || (first.length > 18 ? first.slice(0, 18) + '…' : first + (first.length < t.length ? '…' : ''));
+    pts.push({ head, label, hint, html: h, text: t, body });
+  });
+  PTS_CACHE.set(q.id, pts); return pts;
+}
+/* 首字提示：每个小句只露出开头两个字，其余换成横线，点一下显示整句 */
+function firstChars(text) {
+  return text.split(/(?<=[，。；：、,;:！？])/).map(seg => {
+    const core = seg.replace(/[，。；：、,;:！？]$/, ''), p = seg.slice(core.length);
+    if (core.length <= 3) return esc(seg);
+    return `<span class="fc" tabindex="0" role="button" title="点一下显示"><b>${esc(core.slice(0, 2))}</b><span class="fcb">${'＿'.repeat(Math.min(core.length - 2, 12))}</span><span class="fct" hidden>${esc(core.slice(2))}</span></span>${esc(p)}`;
+  }).join('');
+}
+function reciteHTML(pts, mode) {
+  let lastHead = null;
+  const items = pts.map((p, i) => {
+    const h = p.head && p.head !== lastHead ? `<div class="rh">${esc(p.head)}</div>` : ''; lastHead = p.head;
+    if (mode === 'full') return h + `<div class="rp open">${p.html}</div>`;
+    if (mode === 'first') return h + `<div class="rp"><span class="rn">${i + 1}</span>${p.label ? `<b>${esc(p.label)}：</b>` : ''}${/^<table/i.test(p.html) ? p.html : firstChars(p.label ? p.body : p.text)}</div>`;
+    return h + `<div class="rp rk" data-rp="${i}" role="button" tabindex="0"><span class="rn">${i + 1}</span><span class="rt1">${esc(p.label || p.hint)}</span><span class="rtap">点一下揭开</span><div class="rc1" hidden>${p.html}</div></div>`;
+  }).join('');
+  return items;
+}
+/* ---------- 安卓每日提醒 ---------- */
+const HAS_REM = !!(window.AndroidApp && window.AndroidApp.setReminder);
+let REM = {}; try { if (HAS_REM) REM = JSON.parse(window.AndroidApp.getReminder() || '{}'); } catch (e) { }
+/* ---------- 朗读：网页/iPad 用系统语音，安卓 App 用原生朗读 ---------- */
+const TTS = { on: false, btn: null };
+function ttsAvail() { return !!((window.AndroidApp && window.AndroidApp.speak) || window.speechSynthesis); }
+function ttsChunks(t) { const out = []; let cur = ''; t.split(/(?<=[。；！？\n])/).forEach(x => { if ((cur + x).length > 180) { if (cur) out.push(cur); cur = x; } else cur += x; }); if (cur.trim()) out.push(cur); return out; }
+function ttsStop() {
+  try { if (window.AndroidApp && window.AndroidApp.stopSpeak) window.AndroidApp.stopSpeak(); else if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { }
+  TTS.on = false; if (TTS.btn) TTS.btn.textContent = TTS.btn.dataset.lb || '朗读'; TTS.btn = null;
+}
+window.onTtsDone = () => { TTS.on = false; if (TTS.btn) TTS.btn.textContent = TTS.btn.dataset.lb || '朗读'; TTS.btn = null; };
+window.onTtsError = msg => { window.onTtsDone(); toast(msg); };
+function toast(msg) { let t = document.getElementById('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toast.tm); toast.tm = setTimeout(() => t.hidden = true, 5000); }
+function ttsSpeak(text, btn) {
+  ttsStop(); const rate = S.settings.ttsRate || 1; const parts = ttsChunks(text);
+  if (!parts.length) return;
+  TTS.on = true; TTS.btn = btn; if (btn) { btn.dataset.lb = btn.dataset.lb || btn.textContent; btn.textContent = '停止'; }
+  if (window.AndroidApp && window.AndroidApp.speak) { window.AndroidApp.speak(JSON.stringify(parts), rate); return; }
+  if (!window.speechSynthesis) { window.onTtsError('这个浏览器不支持朗读'); return; }
+  const vs = speechSynthesis.getVoices(), v = vs.find(x => /zh[-_]CN/i.test(x.lang)) || vs.find(x => /^zh/i.test(x.lang));
+  parts.forEach((p, i) => { const u = new SpeechSynthesisUtterance(p); u.lang = 'zh-CN'; if (v) u.voice = v; u.rate = rate; if (i === parts.length - 1) u.onend = () => { if (TTS.btn === btn) window.onTtsDone(); }; speechSynthesis.speak(u); });
+}
+function speakText(q) { return `${q.q}。参考答案：` + txt((q.a || '').replace(/<\/(p|li|tr|div)>/gi, '。</$1>')).replace(/。\s*。/g, '。'); }
+window.addEventListener('hashchange', ttsStop);
+
 function qcard(q, o = {}) {
   const el = document.createElement('div'); el.className = 'card q'; el.dataset.id = q.id;
   const s = qs(q.id); const kl = keyLetter(q), tf = keyTF(q);
@@ -163,17 +244,36 @@ function qcard(q, o = {}) {
   else if (q.t === '判断') body = `<div class="row"><button class="opt" data-o="√">√ 对</button><button class="opt" data-o="×">× 错</button></div>`;
   else body = `<textarea placeholder="${q.t === '名解' ? '先写出定义的关键词，再对答案' : OBJ.includes(q.t) ? '填写答案' : '先列出答题要点（可以只写关键词），再对答案'}" aria-label="作答"></textarea>`;
   el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}</div><div class="qtext">${esc(q.q)}</div>${body}
-    <div class="row"><button class="btn pri" data-a="show">对答案</button><button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
+    ${s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
+    <div class="row"><button class="btn pri" data-a="show">对答案</button>${answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
+    <div class="recite" hidden></div>
     <div class="ans" hidden><div class="h">参考答案 ${q.src === '汇编' ? '· 来自你的答案汇编' : q.src === '补充' ? '· Claude 按教材补写，建议对照课本' : '· Claude 整理，建议核对'}${q.doubt ? '<span class="chip doubt">存疑</span>' : ''}</div>${q.a || '<p>暂无参考答案。</p>'}</div>
+    <div class="ptc" hidden></div>
     <div class="row rt" hidden><span class="note">这题你答得怎样？</span><button class="btn r1" data-r="1">不会</button><button class="btn r2" data-r="2">模糊</button><button class="btn r3" data-r="3">掌握</button></div>
     <div class="nt" hidden><textarea placeholder="写下易错点、记忆口诀……（自动保存）" aria-label="笔记">${esc(s.note || '')}</textarea></div>`;
   let shown = false;
-  const reveal = () => { $('.ans', el).hidden = false; $('.rt', el).hidden = false; $('[data-a=show]', el).textContent = '隐藏答案'; if (!shown) { shown = true; o.onReveal && o.onReveal(); } };
+  const PTS = answerPoints(q);
+  const reveal = () => { $('.ans', el).hidden = false; $('.rt', el).hidden = false; showCheck(); $('[data-a=show]', el).textContent = '隐藏答案'; if (!shown) { shown = true; o.onReveal && o.onReveal(); } };
+  /* 按要点自评：对照答案勾选答出的要点，按比例给出掌握程度 */
+  function showCheck() {
+    const pc = $('.ptc', el); if (PTS.length < 2 || !pc.hidden) return;
+    pc.hidden = false;
+    pc.innerHTML = `<div class="ph"><b>按要点自评</b><span class="note">对照答案，勾上你答出来的要点</span><span class="sp"></span><button class="btn sm ghost" data-pall>全选</button></div>
+      <div class="pchips">${PTS.map((p, i) => `<button class="pchip" data-pi="${i}" aria-pressed="false"><span class="rn">${i + 1}</span>${esc(p.label || p.hint)}</button>`).join('')}</div>
+      <div class="row" style="margin-top:8px"><span class="note" data-psum>还没勾选</span><span class="sp"></span><button class="btn sm pri" data-pok disabled>按要点打分</button></div>`;
+  }
+  function checkState() {
+    const on = $$('.pchip', el).filter(x => x.getAttribute('aria-pressed') === 'true').length, r = on / PTS.length, l = r >= 0.8 ? 3 : r >= 0.4 ? 2 : 1;
+    $('[data-psum]', el).textContent = `答出 ${on}/${PTS.length} 个要点（${Math.round(r * 100)}%）→ ${LVL[l]}`;
+    const ok = $('[data-pok]', el); ok.disabled = false; ok.textContent = `按要点打分：${LVL[l]}`; ok.dataset.l = l;
+  }
   const conceal = () => { $('.ans', el).hidden = true; $('[data-a=show]', el).textContent = '再看答案'; };
   /* o.keep：保存作答状态（输入的文字、选的选项、答案是否展开、自评），切换页面回来时恢复 */
   const K = o.keep; const keepSave = () => { if (K) { K.t = Date.now(); o.onKeep && o.onKeep(); } };
   const markOpt = sel => { const right = kl || tf; $$('.opt', el).forEach(x => { x.classList.toggle('sel', x.dataset.o === sel); if (right && x.dataset.o === right) x.classList.add('right'); if (right && x.dataset.o === sel && sel !== right) x.classList.add('wrong'); }); };
   el.addEventListener('click', e => {
+    const rp = e.target.closest('[data-rp]'); if (rp) { const open = rp.classList.toggle('open'); $('.rc1', rp).hidden = !open; $('.rtap', rp).hidden = open; return; }
+    const fc = e.target.closest('.fc'); if (fc) { const open = fc.classList.toggle('open'); $('.fct', fc).hidden = !open; $('.fcb', fc).hidden = open; return; }
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.o) {
       if (shown) return;
@@ -184,6 +284,26 @@ function qcard(q, o = {}) {
       return;
     }
     if (b.dataset.a === 'show') { if ($('.ans', el).hidden) reveal(); else conceal(); if (K) { K.open = !$('.ans', el).hidden; keepSave(); } }
+    if (b.dataset.a === 'recite') {
+      const rc = $('.recite', el);
+      if (!rc.hidden) { rc.hidden = true; b.textContent = '背诵'; return; }
+      conceal(); rc.hidden = false; b.textContent = '收起背诵'; $('.rt', el).hidden = false; showCheck();
+      const mode0 = PTS.length > 1 ? (S.settings.reciteMode || 'key') : 'first';
+      rc.innerHTML = `<div class="row rhd"><b>背诵</b><div class="seg sm" data-rm>${PTS.length > 1 ? `<button data-m="key">要点提示</button>` : ''}<button data-m="first">首字提示</button><button data-m="full">全文</button></div><span class="sp"></span><button class="btn sm ghost" data-rall>全部揭开</button></div><div class="rbody"></div>`;
+      const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m); rc.dataset.m = m; };
+      draw(mode0); if (!shown) { shown = true; o.onReveal && o.onReveal(); }
+      return;
+    }
+    if (b.closest('[data-rm]') && b.dataset.m) { const rc = $('.recite', el); if (PTS.length > 1) { S.settings.reciteMode = b.dataset.m === 'full' ? S.settings.reciteMode : b.dataset.m; save(); } $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x === b)); $('.rbody', rc).innerHTML = reciteHTML(PTS, b.dataset.m); return; }
+    if (b.dataset.rall !== undefined) { $$('.recite .rk', el).forEach(x => { x.classList.add('open'); $('.rc1', x).hidden = false; $('.rtap', x).hidden = true; }); $$('.recite .fc', el).forEach(x => { $('.fct', x).hidden = false; $('.fcb', x).hidden = true; x.classList.add('open'); }); return; }
+    if (b.dataset.pi !== undefined) { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); checkState(); return; }
+    if (b.dataset.pall !== undefined) { const all = $$('.pchip', el).every(x => x.getAttribute('aria-pressed') === 'true'); $$('.pchip', el).forEach(x => x.setAttribute('aria-pressed', !all)); checkState(); return; }
+    if (b.dataset.pok !== undefined) {
+      const miss = PTS.filter((p, i) => $(`.pchip[data-pi="${i}"]`, el).getAttribute('aria-pressed') !== 'true').map(p => p.label || p.hint).slice(0, 8);
+      doRate(+b.dataset.l); const st = S.q[q.id]; st.miss = miss; st.pr = Math.round((PTS.length - miss.length) / PTS.length * 100); save();
+      $('[data-psum]', el).textContent += miss.length ? ` · 已记下漏掉的要点，下次做这题时会提醒` : ' · 全部答出，太棒了'; return;
+    }
+    if (b.dataset.a === 'tts') { if (TTS.on && TTS.btn === b) ttsStop(); else ttsSpeak(speakText(q), b); return; }
     if (b.dataset.a === 'star') { const st = Object.assign({ l: 0, n: 0, c: 0 }, S.q[q.id]); st.w = st.w ? 0 : 1; st.t = Date.now(); S.q[q.id] = st; save(); b.textContent = st.w ? '已在错题本' : '加入错题本'; }
     if (b.dataset.a === 'note') { const n = $('.nt', el); n.hidden = !n.hidden; if (!n.hidden) $('textarea', n).focus(); }
     if (b.dataset.r) doRate(+b.dataset.r);
@@ -219,6 +339,13 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '1.5', d: '2026-11-22', t: '背诵模式、按要点自评、图表、朗读和每日提醒', items: [
+    '大题背诵模式：简答、论述、情境、名解的题卡上新增「背诵」。「要点提示」只显示每个要点的标题，回忆完再点开；「首字提示」每句只露出开头两个字，点一下显示整句',
+    '按要点自评：对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」；漏掉的要点会记下来，下次做这题时在题目下方提醒',
+    '模拟卷交卷后，大题可以「按要点给分」，勾选答出的要点，分数按比例自动填好',
+    '进度页新增「模块掌握雷达」和「最需要补的 3 个模块」，以及模拟卷得分率变化曲线；图上的点可以悬停或点按看详细数字',
+    '题卡上新增「朗读」：读出题目和参考答案，可以在「设置」里调语速；安卓 App 用手机自带的朗读引擎',
+    '安卓 App 新增「每日学习提醒」：在「设置」里打开并选好时间，每天到点发一条通知；当天已经打开过 App 就不再提醒'] },
   { v: '1.4.1', d: '2026-11-22', t: '今日计划与复习路径修复', items: [
     '今日计划里的复习路径：三步都完成之前固定是同一个考点，退出再进来不会换；按钮会显示「继续（第 X 步）」，直接回到没做完的那一步',
     '三步都完成后显示「今日已完成」，可以点「加练一个新路径」再换一个；第二天会自动换新的考点',
@@ -430,6 +557,7 @@ function pToday(m) {
   <h2>高频考点（按出现年数和近年热度排序）</h2>
   <div class="list" id="hot"></div>`;
   $('#hot').innerHTML = Object.entries(CS).sort((a, b) => b[1].prio - a[1].prio).slice(0, 8).map(([id, s]) => clusterRow(id)).join('');
+  if (HAS_REM) try { window.AndroidApp.setReminderText(PL.done ? `今天的复习路径已完成，还有 ${due} 题到期复习` : `今天的复习路径：「${rc.n}」（已完成 ${pStep}/3 步）· ${due} 题到期复习`); } catch (e) { }
   const mp = $('#morePath'); if (mp) mp.onclick = () => { S.planPath = { c: recommendCluster(S.planPath.c), t: Date.now() }; save(); render(); };
   $('#dur').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { S.settings.dur = +b.dataset.d; save(); render(); } };
   $('#tbtn').onclick = () => { flushTime(); S.settings.autoTime = S.settings.autoTime === false; save(); render(); };
@@ -731,7 +859,7 @@ function pMock(m) {
   const groups = []; M.ids.forEach(id => { const t = BY[id].t; const k = t; let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, ids: [] }); g.ids.push(id); });
   const CN = ['一', '二', '三', '四', '五', '六', '七'];
   m.innerHTML = `<div class="sticky"><div class="row"><b>${esc(M.title)}</b><span class="note">满分 ${total}</span><span class="sp"></span><span class="timer" id="mt"></span>${M.sub ? `<b id="msc"></b>` : '<button class="btn pri" id="sub">交卷</button>'}<button class="btn sm ghost" id="quit">${M.sub ? '返回' : '放弃'}</button></div></div>
-  ${groups.map((g, gi) => `<h2>${CN[gi]}、${TLABEL[g.k]}${/[释析]$/.test(TLABEL[g.k]) ? '' : '题'}（${g.ids.length} 题，每题 ${PTS[BY[g.ids[0]].t]} 分，共 ${g.ids.length * PTS[BY[g.ids[0]].t]} 分）</h2><div class="list">${g.ids.map((id, i) => { const q = BY[id]; const full = PTS[q.t]; return `<div class="card q" data-id="${id}"><div class="qtext">${i + 1}. ${esc(q.q)}</div>${mockKey(q) ? mockOpts(q, M) : `${q.opts ? `<div class="note">${q.opts.map(([a, t]) => esc(a + '. ' + t)).join('　')}</div>` : ''}<textarea aria-label="作答" ${M.sub ? 'readonly' : ''}>${esc((M.ans || {})[id] || '')}</textarea>`}${M.sub ? `<div class="ans"><div class="h">参考答案</div>${q.a || ''}</div><div class="row"><span class="note">本题得分</span><input type="number" min="0" max="${full}" step="${full > 3 ? 1 : 0.5}" value="${M.sc[id] != null ? M.sc[id] : ''}" data-sc="${id}" aria-label="得分" style="width:80px"><span class="note">/ ${full}</span><button class="btn sm" data-full="${id}">满分</button><button class="btn sm" data-zero="${id}">0 分</button></div>` : ''}</div>`; }).join('')}</div>`).join('')}`;
+  ${groups.map((g, gi) => `<h2>${CN[gi]}、${TLABEL[g.k]}${/[释析]$/.test(TLABEL[g.k]) ? '' : '题'}（${g.ids.length} 题，每题 ${PTS[BY[g.ids[0]].t]} 分，共 ${g.ids.length * PTS[BY[g.ids[0]].t]} 分）</h2><div class="list">${g.ids.map((id, i) => { const q = BY[id]; const full = PTS[q.t]; return `<div class="card q" data-id="${id}"><div class="qtext">${i + 1}. ${esc(q.q)}</div>${mockKey(q) ? mockOpts(q, M) : `${q.opts ? `<div class="note">${q.opts.map(([a, t]) => esc(a + '. ' + t)).join('　')}</div>` : ''}<textarea aria-label="作答" ${M.sub ? 'readonly' : ''}>${esc((M.ans || {})[id] || '')}</textarea>`}${M.sub ? `<div class="ans"><div class="h">参考答案</div>${q.a || ''}</div><div class="row"><span class="note">本题得分</span><input type="number" min="0" max="${full}" step="${full > 3 ? 1 : 0.5}" value="${M.sc[id] != null ? M.sc[id] : ''}" data-sc="${id}" aria-label="得分" style="width:80px"><span class="note">/ ${full}</span><button class="btn sm" data-full="${id}">满分</button><button class="btn sm" data-zero="${id}">0 分</button>${answerPoints(q).length > 1 ? `<button class="btn sm" data-mpt="${id}">按要点给分</button>` : ''}</div><div class="ptc" data-mpc="${id}" hidden><div class="ph"><b>按要点给分</b><span class="note">勾上你答出来的要点，分数按比例自动填好</span></div><div class="pchips">${answerPoints(q).map((p, j) => `<button class="pchip" data-mpi="${j}" aria-pressed="false"><span class="rn">${j + 1}</span>${esc(p.label || p.hint)}</button>`).join('')}</div></div>` : ''}</div>`; }).join('')}</div>`).join('')}`;
   const tick = () => { const t = $('#mt'); if (!t) return clearInterval(M.tk); const used = Math.floor(((M.end || Date.now()) - M.start) / 60000); t.textContent = M.sub ? `用时 ${used} 分钟` : `剩余 ${Math.max(0, 180 - used)} 分钟`; };
   clearInterval(M.tk); M.tk = setInterval(tick, 20000); tick();
   m.addEventListener('input', e => { if (e.target.tagName === 'TEXTAREA' && !M.sub) { const id = e.target.closest('[data-id]').dataset.id; M.ans = M.ans || {}; M.ans[id] = e.target.value; } });
@@ -739,7 +867,17 @@ function pMock(m) {
   if (M.sub) {
     upd();
     m.addEventListener('change', e => { const id = e.target.dataset.sc; if (!id) return; const full = PTS[BY[id].t]; M.sc[id] = Math.max(0, Math.min(full, +e.target.value || 0)); e.target.value = M.sc[id]; const sc = upd(); saveMock(sc, total); const r = M.sc[id] / full; rate(id, r >= 0.8 ? 3 : r >= 0.4 ? 2 : 1); });
-    m.addEventListener('click', e => { const id = e.target.dataset.full || e.target.dataset.zero; if (!id) return; const inp = $(`[data-sc="${id}"]`, m); inp.value = e.target.dataset.full ? PTS[BY[id].t] : 0; inp.dispatchEvent(new Event('change', { bubbles: true })); });
+    m.addEventListener('click', e => {
+      const t = e.target.closest('[data-mpt]'); if (t) { const pc = $(`[data-mpc="${t.dataset.mpt}"]`, m); pc.hidden = !pc.hidden; return; }
+      const c = e.target.closest('[data-mpi]'); if (c) {
+        c.setAttribute('aria-pressed', c.getAttribute('aria-pressed') !== 'true');
+        const pc = c.closest('[data-mpc]'), id = pc.dataset.mpc, q = BY[id], full = PTS[q.t], all = $$('.pchip', pc), on = all.filter(x => x.getAttribute('aria-pressed') === 'true');
+        const step = full > 3 ? 1 : 0.5, v = Math.round(full * on.length / all.length / step) * step;
+        const inp = $(`[data-sc="${id}"]`, m); inp.value = v; inp.dispatchEvent(new Event('change', { bubbles: true }));
+        const pts = answerPoints(q), st = S.q[id]; if (st) { st.miss = pts.filter((p, j) => all[j].getAttribute('aria-pressed') !== 'true').map(p => p.label || p.hint).slice(0, 8); save(); }
+        return;
+      }
+      const id = e.target.dataset.full || e.target.dataset.zero; if (!id) return; const inp = $(`[data-sc="${id}"]`, m); inp.value = e.target.dataset.full ? PTS[BY[id].t] : 0; inp.dispatchEvent(new Event('change', { bubbles: true })); });
   }
   if (!M.sub) m.addEventListener('click', e => { const b = e.target.closest('[data-mo]'); if (!b) return; const id = b.closest('[data-id]').dataset.id; M.ans = M.ans || {}; M.ans[id] = b.dataset.mo; $$('[data-mo]', b.parentNode).forEach(x => x.classList.toggle('sel', x === b)); });
   if (!M.sub) $('#sub').onclick = () => {
@@ -787,9 +925,64 @@ function pStats(m) {
   const mx = Math.max(30, ...days.map(d => d[1].done));
   m.innerHTML = `<div class="kick">PROGRESS</div><h1>进度</h1><p class="lead">已练 ${att.length} / ${all.length} 道真题。绿色=掌握，黄色=模糊，红色=不会。</p>
   <div class="grid g4"><div class="card tile"><b>${cnt(3)}</b><span>掌握</span></div><div class="card tile"><b>${cnt(2)}</b><span>模糊</span></div><div class="card tile"><b>${cnt(1)}</b><span>不会</span></div><div class="card tile"><b>${streak} 天</b><span>连续学习 · 累计 ${Math.round(totMin)} 分钟</span></div></div>
+  <h2>模块掌握雷达</h2><div class="card radar-wrap">${radarSVG(all)}<div class="weak"><b>最需要补的 3 个模块</b>${weakMods(all)}</div></div>
+  <h2>模拟卷分数变化</h2><div class="card">${mockTrendSVG()}</div>
   <h2>近 14 天做题量</h2><div class="card"><svg viewBox="0 0 700 170" class="dg" role="img" aria-label="近14天做题量">${[0, .5, 1].map(f => `<line x1="30" x2="690" y1="${140 - f * 120}" y2="${140 - f * 120}" stroke="var(--line)"/><text x="24" y="${144 - f * 120}" text-anchor="end" class="dgl">${Math.round(mx * f)}</text>`).join('')}${days.map(([d, L], i) => `<rect x="${42 + i * 46}" y="${140 - L.done / mx * 120}" width="30" height="${Math.max(1, L.done / mx * 120)}" rx="3" fill="${i === 13 ? 'var(--accent)' : 'var(--c-blue-b)'}"/><text x="${57 + i * 46}" y="160" text-anchor="middle" class="dgl">${d}</text>${L.done ? `<text x="${57 + i * 46}" y="${134 - L.done / mx * 120}" text-anchor="middle" class="dgl">${L.done}</text>` : ''}`).join('')}</svg></div>
   <h2>各模块掌握情况</h2><div class="card grid" style="gap:8px">${MODS.map(mo => { const ids = new Set(mo.items.flatMap(i => i.cs)); return barRow(mo.id + ' ' + mo.name, all.filter(q => ids.has(q.c))); }).join('')}</div>
   <h2>各题型掌握情况</h2><div class="card grid" style="gap:8px">${['名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => barRow(TLABEL[t], all.filter(q => q.t === t))).join('')}</div>`;
+  chartHover(m);
+  m.addEventListener('click', e => { const b = e.target.closest('[data-wm]'); if (!b) return; NAV.learnMod = +b.dataset.wm; NAV.learnOpen = null; go('learn'); });
+}
+/* ---------- 进度页图表：模块掌握雷达（已练覆盖 + 掌握两层，同一色相深浅区分）和模拟卷分数折线 ---------- */
+function modStats(all) {
+  return MODS.map(mo => { const ids = new Set(mo.items.flatMap(i => i.cs)); const q = all.filter(x => ids.has(x.c)); const t = q.length || 1;
+    const m3 = q.filter(x => qs(x.id).l === 3).length, at = q.filter(x => qs(x.id).l).length; return { mo, tot: q.length, m3, at, pm: m3 / t, pa: at / t }; });
+}
+function radarSVG(all) {
+  const st = modStats(all), n = st.length, cx = 210, cy = 190, R = 130;
+  const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * R * r, cy + Math.sin(a) * R * r]; };
+  const poly = key => st.map((d, i) => pt(i, Math.max(d[key], 0.02)).map(v => v.toFixed(1)).join(',')).join(' ');
+  const rings = [0.25, 0.5, 0.75, 1].map(f => `<polygon points="${st.map((d, i) => pt(i, f).join(',')).join(' ')}" fill="none" stroke="var(--line)" stroke-width="1"/>`).join('');
+  const spokes = st.map((d, i) => { const [x, y] = pt(i, 1); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`; }).join('');
+  const labels = st.map((d, i) => { const [x, y] = pt(i, 1.17); const anc = Math.abs(x - cx) < 8 ? 'middle' : x > cx ? 'start' : 'end'; return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${anc}" class="rl">${d.mo.id} ${esc(d.mo.name)}</text>`; }).join('');
+  const dots = st.map((d, i) => { const [x, y] = pt(i, Math.max(d.pm, 0.02)); const [hx, hy] = pt(i, 1); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><line x1="${cx}" y1="${cy}" x2="${hx}" y2="${hy}" stroke="transparent" stroke-width="22" data-tip="${esc(d.mo.id + ' ' + d.mo.name)}|掌握 ${d.m3}/${d.tot}（${Math.round(d.pm * 100)}%）|已练 ${d.at}/${d.tot}（${Math.round(d.pa * 100)}%）"/>`; }).join('');
+  return `<div class="chart"><div class="legend"><span><i class="sw sw-a"></i>已练覆盖</span><span><i class="sw sw-m"></i>掌握</span></div>
+    <svg viewBox="0 0 420 380" class="radar" role="img" aria-label="11 个模块的掌握率和已练覆盖率">${rings}${spokes}
+    <polygon points="${poly('pa')}" fill="var(--accent-soft)" fill-opacity=".75" stroke="var(--accent)" stroke-opacity=".45" stroke-width="2" stroke-dasharray="5 4"/>
+    <polygon points="${poly('pm')}" fill="var(--accent)" fill-opacity=".22" stroke="var(--accent)" stroke-width="2"/>
+    ${[0.5, 1].map(f => `<text x="${cx + 4}" y="${cy - R * f + 12}" class="rg">${f * 100}%</text>`).join('')}${labels}${dots}</svg>
+    <details class="tbl"><summary>查看表格</summary><table class="t"><tr><th>模块</th><th>掌握</th><th>已练</th></tr>${st.map(d => `<tr><td>${d.mo.id} ${esc(d.mo.name)}</td><td>${d.m3}/${d.tot}（${Math.round(d.pm * 100)}%）</td><td>${d.at}/${d.tot}（${Math.round(d.pa * 100)}%）</td></tr>`).join('')}</table></details></div>`;
+}
+function weakMods(all) {
+  return modStats(all).filter(d => d.tot).sort((a, b) => a.pm - b.pm || b.tot - a.tot).slice(0, 3).map(d => `<button class="wm" data-wm="${d.mo.id}"><span>${d.mo.id} ${esc(d.mo.name)}</span><small>掌握 ${Math.round(d.pm * 100)}% · 已练 ${Math.round(d.pa * 100)}%</small><span class="go">去看知识点 →</span></button>`).join('') + '<p class="note" style="margin:6px 0 0">按掌握率从低到高排；点一下进入这个模块的知识点。</p>';
+}
+function mockTrendSVG() {
+  const ms = (S.mocks || []).filter(x => x.total > 0).slice(-20);
+  if (ms.length < 2) return `<p class="note" style="margin:0">做完${ms.length ? '再做 1' : ' 2'} 套模拟卷（交卷并打完分）后，这里会出现分数变化曲线。${ms.length ? `目前 1 套：${esc(ms[0].title)} ${ms[0].score}/${ms[0].total}。` : ''}</p>`;
+  const W = 700, H = 230, L = 44, Rr = 16, T = 16, B = 40, w = W - L - Rr, h = H - T - B;
+  const x = i => L + (ms.length === 1 ? w / 2 : i * w / (ms.length - 1)), y = v => T + h - v * h;
+  const pts = ms.map((d, i) => [x(i), y(d.score / d.total)]);
+  const grid = [0, 0.25, 0.5, 0.75, 1].map(f => `<line x1="${L}" x2="${W - Rr}" y1="${y(f)}" y2="${y(f)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 8}" y="${y(f) + 4}" text-anchor="end" class="dgl">${f * 100}%</text>`).join('');
+  const lab = ms.map((d, i) => (ms.length <= 8 || i % Math.ceil(ms.length / 8) === 0 || i === ms.length - 1) ? `<text x="${x(i)}" y="${H - 14}" text-anchor="middle" class="dgl">${dkey(d.ts).slice(5)}</text>` : '').join('');
+  const last = ms[ms.length - 1], best = Math.max(...ms.map(d => d.score / d.total));
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" class="dg trend" role="img" aria-label="模拟卷得分率变化">${grid}
+    <polyline points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(([px, py], i) => { const d = ms[i]; return `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="16" fill="transparent" data-tip="${esc(d.title)}|${d.score}/${d.total} 分（${Math.round(d.score / d.total * 100)}%）|${dkey(d.ts)} · 用时 ${d.min} 分钟"/>`; }).join('')}
+    <text x="${pts[pts.length - 1][0] - 8}" y="${pts[pts.length - 1][1] - 12}" text-anchor="end" class="dgv">${Math.round(last.score / last.total * 100)}%</text>${lab}</svg>
+    <p class="note" style="margin:4px 0 0">共 ${ms.length} 套，最近一次 ${last.score}/${last.total}，最好 ${Math.round(best * 100)}%。纵轴是得分率，不同满分的试卷可以放在一起比。</p></div>`;
+}
+/* 图表悬停/点按提示 */
+function chartHover(m) {
+  let tip = null;
+  const show = (el, ev) => { if (!tip) { tip = document.createElement('div'); tip.className = 'ctip'; document.body.appendChild(tip); }
+    const [a, ...rest] = el.dataset.tip.split('|'); tip.innerHTML = `<b>${a}</b>${rest.map(r => `<span>${r}</span>`).join('')}`; tip.hidden = false;
+    const r = el.getBoundingClientRect(), px = ev && ev.clientX ? ev.clientX : r.left + r.width / 2, py = ev && ev.clientY ? ev.clientY : r.top;
+    tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, Math.max(8, px + 12)) + 'px'; tip.style.top = Math.max(8, py - tip.offsetHeight - 12) + 'px'; };
+  const hide = () => { if (tip) tip.hidden = true; };
+  m.addEventListener('pointermove', e => { const t = e.target.closest('[data-tip]'); if (t) show(t, e); else hide(); });
+  m.addEventListener('pointerleave', hide);
+  m.addEventListener('click', e => { const t = e.target.closest('[data-tip]'); if (t) show(t, e); });
+  window.addEventListener('hashchange', () => { if (tip) tip.remove(); tip = null; }, { once: true });
 }
 
 /* ---------- 设置 ---------- */
@@ -807,6 +1000,7 @@ function pSettings(m) {
     <div class="row"><label for="ex">考试日期</label><input type="date" id="ex" value="${esc(st.exam || '')}"><span class="note">设置后首页显示倒计时</span></div>
     <div class="row"><span class="lab">每日计划时长</span>${seg('sdur', [[60, '60 分钟'], [90, '90 分钟'], [120, '120 分钟']], st.dur || 90)}</div>
     <div class="row"><span class="lab">每日自测题量</span>${seg('sdn', [[8, '轻量 8 题'], [12, '标准 12 题'], [16, '加量 16 题']], st.dailyN || 12)}<span class="note">从明天的自测（或点「换一套」）开始生效</span></div>
+    ${ttsAvail() ? `<div class="row"><span class="lab">朗读语速</span>${seg('ttr', [[0.8, '慢'], [1, '正常'], [1.25, '快']], st.ttsRate || 1)}<button class="btn sm" id="ttsTry">试听</button><span class="note">题卡上点「朗读」会读题目和参考答案</span></div>` : ''}
     <div class="row"><span class="lab">自动记录学习时间</span>${seg('sat', [['on', '开启'], ['off', '暂停']], st.autoTime === false ? 'off' : 'on')}</div>
   </div>
   <h2>外观</h2><div class="card form">
@@ -818,6 +1012,7 @@ function pSettings(m) {
     <div class="row"><span class="lab">字号</span>${seg('zm', [[1, '标准'], [1.1, '大'], [1.2, '特大']], st.zoom || 1)}</div>
   </div>
   ${downloadSection()}
+  ${HAS_REM ? `<h2>每日学习提醒</h2><div class="card form"><div class="row"><span class="lab">提醒</span>${seg('rem', [['on', '开启'], ['off', '关闭']], REM.on ? 'on' : 'off')}<label for="remt" class="lab" style="min-width:0">时间</label><input type="time" id="remt" value="${esc(REM.time || '20:00')}"></div><p class="note" style="margin:0">每天到点会收到一条通知，写着今天的复习路径和到期题数。当天已经打开过 App 就不再打扰你。第一次开启时，手机会询问是否允许通知，请选「允许」。</p></div>` : ''}
   ${HAS_UPD ? `<h2>App 更新</h2><div class="card"><div class="row"><span>当前 App 版本 <b>v${esc(window.AndroidApp.version ? window.AndroidApp.version() : '')}</b></span><span class="sp"></span><button class="btn" id="chk">检查更新</button></div><p class="note" id="ust" style="margin-bottom:0">联网时打开 App 会自动检查一次；有新版本会在底部提示，可以直接下载安装，进度不会丢失。</p></div>` : ''}
   <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。每次更新后第一次打开会弹出说明，之后都可以在这里查看。</p>
     ${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b>v${esc(c.v)}</b> · ${esc(c.t)}<span class="sp"></span><span class="note">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>
@@ -831,6 +1026,10 @@ function pSettings(m) {
   $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });
   $('#ex').onchange = e => { st.exam = e.target.value; save(); };
   const pick = (id, fn) => $('#' + id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; fn(b.dataset.v); save(); applyLook(); render(); };
+  if (HAS_REM) { const setR = () => { try { window.AndroidApp.setReminder($('#rem [aria-pressed="true"]').dataset.v === 'on', $('#remt').value || '20:00'); toast($('#rem [aria-pressed="true"]').dataset.v === 'on' ? `已设置：每天 ${$('#remt').value} 提醒` : '已关闭每日提醒'); } catch (e) { } };
+    $('#rem').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; $$('#rem button').forEach(x => x.setAttribute('aria-pressed', x === b)); setR(); };
+    $('#remt').onchange = setR; }
+  if ($('#ttr')) { pick('ttr', v => st.ttsRate = +v); $('#ttsTry').onclick = e => { if (TTS.on) ttsStop(); else ttsSpeak('美拉德反应是羰基化合物与氨基化合物之间发生的非酶褐变反应。', e.target); }; }
   pick('sdur', v => st.dur = +v); pick('sdn', v => st.dailyN = +v); pick('sat', v => { flushTime(); st.autoTime = v === 'on'; });
   pick('sk', v => st.skin = v); pick('th', v => st.theme = v); pick('zm', v => st.zoom = +v);
   $('#exp').onclick = () => { $('#bk').value = JSON.stringify(S); $('#cp').hidden = false; $('#bkm').textContent = '备份已生成。'; };
@@ -842,6 +1041,7 @@ function pSettings(m) {
   $('#rst').onclick = () => { const b = $('#rst'); if (b.dataset.c) { const keep = S.settings; S = blank(); S.settings = keep; save(); render(); } else { b.dataset.c = 1; b.textContent = '再点一次确认清空（个人设置会保留）'; b.classList.add('r1'); } };
 }
 
+await Promise.race([syncReady, new Promise(r => setTimeout(r, 4000))]);
 render();
-setTimeout(showUpdate, 400);
+syncReady.finally(() => setTimeout(showUpdate, 400));   // 同步完再判断要不要弹更新说明（看过的版本记在账号里）
 })();

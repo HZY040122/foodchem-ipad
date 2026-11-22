@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.6",
-  "apk": "FoodChemReview-v1.0.6.apk",
-  "notes": "今日计划的复习路径完成前不再变化；打分后列表状态实时更新。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 7,
+  "versionName": "1.0.7",
+  "apk": "FoodChemReview-v1.0.7.apk",
+  "notes": "新增背诵模式、按要点自评、进度图表、朗读和每日学习提醒。新版本可以直接覆盖安装，学习进度会保留。"
 }
