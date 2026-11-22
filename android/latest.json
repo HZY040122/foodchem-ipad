@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "2.0.11",
-  "apk": "FoodChemReview-v2.0.11.apk",
-  "notes": "复习站 2.0：新增 Material 3 风格（安卓 12 及以上可跟随壁纸取色）和底部导航栏。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 12,
+  "versionName": "2.0.12",
+  "apk": "FoodChemReview-v2.0.12.apk",
+  "notes": "2.0.1：修复 Material 3 风格下设置页标签错位等显示问题。新版本可以直接覆盖安装，学习进度会保留。"
 }

@@ -180,7 +180,7 @@ async function cloudSync(opts = {}) {
     const changedLocal = JSON.stringify(S) !== before;
     if (!R || JSON.stringify(S) !== JSON.stringify(R)) await cloudPut(S);
     CLOUD.lastOk = Date.now(); CLOUD.err = '';
-    setSync(`已同步到 ${CLOUD.user.email} · ${agoText(CLOUD.lastOk)}`);
+    setSync(`${agoText(CLOUD.lastOk)} 已同步 · ${CLOUD.user.email}`);
     if (changedLocal && !opts.noRender) { const a = document.activeElement; if (!(a && /TEXTAREA|INPUT/.test(a.tagName))) render(); }
   } catch (e) { CLOUD.err = cloudMsg(e); setSync(CLOUD.err); }
   finally { CLOUD.busy = false; }
@@ -195,7 +195,7 @@ if (CLOUD.on) {
     else if (Date.now() - CLOUD.lastPull > 60000) cloudSync({ quiet: true });
   });
   window.addEventListener('online', () => { if (CLOUD.user) cloudSync({ quiet: true }); });
-  setInterval(() => { if (CLOUD.user && !CLOUD.err && CLOUD.lastOk) setSync(`已同步到 ${CLOUD.user.email} · ${agoText(CLOUD.lastOk)}`); }, 60000);
+  setInterval(() => { if (CLOUD.user && !CLOUD.err && CLOUD.lastOk) setSync(`${agoText(CLOUD.lastOk)} 已同步 · ${CLOUD.user.email}`); }, 60000);
 }
 const syncReady = (async () => {
   try {
@@ -424,6 +424,11 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.1', d: '2026-11-22', t: '修复新风格的显示错位', items: [
+    '修复液态玻璃和 Material 3 风格下，设置页左侧的标签多出一块底色、与右侧按钮上下错位的问题',
+    '修复「自动记录学习时间」等较长的标签被挤压、文字压到按钮上的问题',
+    '风格卡片的名称和说明改为顶端对齐，几张卡片不再高低不齐',
+    '侧边栏的同步状态改为「刚刚 已同步 · 邮箱」，邮箱过长时换行更整齐'] },
   { v: '2.0', d: '2026-11-22', t: '复习站 2.0：Material 3 与液态玻璃', items: [
     '安卓 App 新增「Material 3」风格（设置 → 外观 → 风格）：Material You 色调、圆润的容器和药丸按钮、按下时变形的弹性按钮、底部导航栏；安卓 12 以上可以跟随手机壁纸取色',
     'iPad 新增「液态玻璃」风格：参照 iPadOS 27 的 Liquid Glass 设计，半透明玻璃卡片、通栏侧边栏、iOS 风格的分段控件和开关；竖屏时使用浮动的玻璃标签栏，并可以在设置里调节玻璃从清透到磨砂',
