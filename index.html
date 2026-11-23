@@ -779,6 +779,28 @@ body:has(.sheet-wrap) .bnav { visibility: hidden; }
 .pv-gl b { position: absolute; left: 42px; right: 8px; border-radius: 9px; background: rgba(255,255,255,.6); box-shadow: 0 0 0 .5px rgba(255,255,255,.8) inset, 0 3px 8px rgba(0,0,0,.06); }
 .pv-gl b:nth-of-type(1) { top: 8px; height: 24px; } .pv-gl b:nth-of-type(2) { top: 37px; height: 15px; }
 .pv-gl em { position: absolute; left: 50%; bottom: 5px; width: 44px; height: 10px; transform: translateX(-30%); border-radius: 6px; background: rgba(255,255,255,.7); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+
+/* 2.0.2：窄屏排版修复 */
+details.chlog summary { align-items: baseline; gap: 8px; }
+details.chlog summary::before { align-self: center; flex: none; }
+details.chlog summary .cv { flex: none; white-space: nowrap; }
+details.chlog summary .ct { flex: 1; min-width: 0; line-height: 1.5; }
+details.chlog summary .cd { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) {
+  details.chlog summary { flex-wrap: wrap; row-gap: 0; }
+  details.chlog summary .ct { flex-basis: calc(100% - 90px); }
+  details.chlog summary .cd { flex-basis: 100%; padding-left: 18px; font-size: 12px; }
+}
+.pdone { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.pdone .chip { white-space: nowrap; }
+.pdone .btn { white-space: nowrap; }
+@media (max-width: 860px) {
+  .plan .pi .pdone { grid-column: 2; justify-content: flex-start; }
+  .plan .pi .pdone .btn { grid-column: auto; }
+  .top .bar1 { min-width: 0; }
+  .top .bar1 b { white-space: nowrap; flex: none; }
+  .top .bar1 .sync { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; text-align: right; }
+}
 </style>
 </head>
 <body>

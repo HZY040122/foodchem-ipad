@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "2.0.12",
-  "apk": "FoodChemReview-v2.0.12.apk",
-  "notes": "2.0.1：修复 Material 3 风格下设置页标签错位等显示问题。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 13,
+  "versionName": "2.0.13",
+  "apk": "FoodChemReview-v2.0.13.apk",
+  "notes": "2.0.2：修复手机上今日计划按钮、顶栏和更新日志的排版。新版本可以直接覆盖安装，学习进度会保留。"
 }
