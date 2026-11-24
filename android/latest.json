@@ -1,6 +1,6 @@
 {
-  "versionCode": 14,
-  "versionName": "2.0.14",
-  "apk": "FoodChemReview-v2.0.14.apk",
-  "notes": "2.0.3：修复复习路径完成进度不能在设备之间同步的问题。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 15,
+  "versionName": "2.0.15",
+  "apk": "FoodChemReview-v2.0.15.apk",
+  "notes": "2.0.4：小幅调整，并包含复习路径进度同步修复。新版本可以直接覆盖安装，学习进度会保留。"
 }

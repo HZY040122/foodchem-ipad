@@ -74,6 +74,8 @@ const blank = () => ({ q: {}, k: {}, daily: {}, mocks: [], log: {}, path: {}, se
 let S = blank();
 try { const r = localStorage.getItem(LS); if (r) S = Object.assign(blank(), JSON.parse(r)); } catch (e) { }
 const PLATFORM = window.AndroidApp ? 'android' : (window.__PWA || (/iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document))) ? 'apple' : 'web';
+/* 主屏幕版（iPad / iPhone）：给页面顶部留出系统模糊带的空间 */
+if (PLATFORM === 'apple' && (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))) document.documentElement.classList.add('ios-app');
 const SKINS = [['', '现代', '简洁卡片，适合快速刷题', 'm'], ['book', '书本', '纸张质感、目录侧栏、翻页动效', 'b']]
   .concat(PLATFORM !== 'apple' ? [['md3', 'Material 3', '安卓 Material You：色调、圆润形状、弹性动效、底部导航', 'md']] : [])
   .concat(PLATFORM !== 'android' ? [['glass', '液态玻璃', 'iPadOS 27 风格：Liquid Glass、通栏侧边栏、浮动标签栏', 'gl']] : []);
@@ -430,6 +432,8 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.4', d: '2026-11-24', t: '主屏幕版顶部留白', items: [
+    '状态栏下方那层模糊是 iPadOS 系统给主屏幕网页 App 加的效果，网页没法关掉；现在主屏幕版会在页面顶部留出一段空白，打开时模糊只落在背景上，不再糊住卡片和文字'] },
   { v: '2.0.3', d: '2026-11-24', t: '同步与顶部显示修复', items: [
     '修复复习路径的完成进度不能在设备之间同步的问题：在任何一台设备上完成的步骤，其他设备都会显示已完成，首页今日计划也会跟着更新',
     '尝试修复 iPad / iPhone 主屏幕版顶部状态栏下方出现一层模糊的问题'] },

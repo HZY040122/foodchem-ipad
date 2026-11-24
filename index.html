@@ -802,11 +802,13 @@ details.chlog summary .cd { flex: none; white-space: nowrap; font-variant-numeri
   .top .bar1 .sync { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; text-align: right; }
 }
 
-/* 2.0.3：iPadOS / iOS 26 起，系统会在主屏幕网页 App 的顶端加一层"滚动边缘"模糊。
-   页面顶端贴一条固定的纯色细条后，系统会改用这条的颜色做实色边缘，不再把下面的内容糊掉 */
-.edge-top { display: none; }
-@media (display-mode: standalone) {
-  .edge-top { display: block; position: fixed; top: 0; left: 0; right: 0; height: max(1px, env(safe-area-inset-top)); background: var(--bg); z-index: 70; pointer-events: none; }
+/* 2.0.4：iPadOS / iOS 26 起，系统会在主屏幕网页 App 顶端加一层"滚动边缘"模糊，网页无法关掉。
+   在主屏幕版里把页面顶部留出一段空白，静止时模糊只落在背景上，不再糊住卡片和文字 */
+@media (min-width: 861px) {
+  html.ios-app main { padding-top: 58px; }
+  html.ios-app[data-skin="book"] main { padding-top: 64px; }
+  html.ios-app nav.side { padding-top: 46px; }
+  html.ios-app[data-skin="book"] nav.side { padding-top: 52px; }
 }
 </style>
 </head>
@@ -816,7 +818,6 @@ details.chlog summary .cd { flex: none; white-space: nowrap; font-variant-numeri
   <nav class="side" id="sidenav" aria-label="主导航"></nav>
   <main id="main" tabindex="-1"><p class="empty">正在载入题库……</p></main>
 </div>
-<div class="edge-top" aria-hidden="true"></div>
 <nav class="bnav" id="bnav" aria-label="底部导航"></nav>
 <div id="modal"></div>
 <script src="data/bank.js"></script>
