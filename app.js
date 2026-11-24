@@ -82,6 +82,23 @@ snapSettings();
 const PLATFORM = window.AndroidApp ? 'android' : (window.__PWA || (/iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document))) ? 'apple' : 'web';
 /* 主屏幕版（iPad / iPhone）：给页面顶部留出系统模糊带的空间 */
 if (PLATFORM === 'apple' && (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))) document.documentElement.classList.add('ios-app');
+/* 主屏幕版更像原生 App：整页不再被双击放大、双指缩放；输入框获得焦点时也不会自动放大。
+   知识结构图和机理图解（.zoomable）单独支持双指缩放、双击放大/还原，方便看清小字 */
+if (document.documentElement.classList.contains('ios-app')) {
+  const vp = document.querySelector('meta[name=viewport]'); if (vp) vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+  const zoomBox = t => t && t.closest ? t.closest('.zoomable') : null;
+  const setZoom = (z, s) => { s = Math.min(4, Math.max(1, s)); z.dataset.zs = s; z.classList.toggle('zoomed', s > 1.01); for (const v of z.querySelectorAll('svg:not(svg svg)')) { v.style.width = (s * 100) + '%'; v.style.maxWidth = 'none'; v.style.height = 'auto'; } };
+  let zs = null, lastTap = 0, lastBox = null;
+  document.addEventListener('gesturestart', e => { e.preventDefault(); const z = zoomBox(e.target); zs = z ? { z, s: +z.dataset.zs || 1 } : null; }, { passive: false });
+  document.addEventListener('gesturechange', e => { e.preventDefault(); if (zs) setZoom(zs.z, zs.s * e.scale); }, { passive: false });
+  document.addEventListener('gestureend', e => { e.preventDefault(); zs = null; }, { passive: false });
+  document.addEventListener('touchend', e => {
+    if (e.touches.length || e.changedTouches.length !== 1) return;
+    const z = zoomBox(e.target); const now = Date.now();
+    if (z && z === lastBox && now - lastTap < 300 && !e.target.closest('button, a, input, select, textarea, [data-dg]')) { e.preventDefault(); setZoom(z, (+z.dataset.zs || 1) > 1.01 ? 1 : 2); lastTap = 0; return; }
+    lastTap = now; lastBox = z;
+  }, { passive: false });
+}
 const SKINS = [['', '现代', '简洁卡片，适合快速刷题', 'm'], ['book', '书本', '纸张质感、目录侧栏、翻页动效', 'b']]
   .concat(PLATFORM !== 'apple' ? [['md3', 'Material 3', '安卓 Material You：色调、圆润形状、弹性动效、底部导航', 'md']] : [])
   .concat(PLATFORM !== 'android' ? [['glass', '液态玻璃', 'iPadOS 27 风格：Liquid Glass、通栏侧边栏、浮动标签栏', 'gl']] : []);
@@ -475,6 +492,11 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.6', d: '2026-11-24', t: '主屏幕版更像原生 App', items: [
+    'iPad / iPhone 主屏幕版里，整页不会再被双击放大、双指缩放，点输入框时也不会自动放大',
+    '知识结构图和机理图解保留缩放：双指捏合放大/缩小，双击放大到 2 倍或还原，放大后可以拖动查看',
+    '按钮、导航栏长按不再弹出系统的选中和拷贝菜单；题目和答案的文字仍然可以长按选中复制',
+    '想整体放大文字，可以用 设置 → 外观 → 字号'] },
   { v: '2.0.5', d: '2026-11-24', t: '全面自检：同步与排版修复', items: [
     '学习时长改为每台设备分别记、同步时相加：之前取两台设备中较大的一个，同一天在 iPad 和手机上都学了会少算',
     '设置的每一项单独记修改时间：另一台设备上更晚的刷题记录，不会再把你刚改好的设置（名字、考试日期、每日题量等）改回去',
@@ -624,7 +646,11 @@ function downloadSection() {
   return `<h2 id="download">下载 App</h2><div class="dl-grid">${appleCard}${andCard}</div>
     <p class="note" id="dlm">App 里的进度和网页版是分开保存的。想把进度带过去：在这里「备份与恢复 → 生成备份 → 复制」，再到 App 的「设置」里粘贴并「导入」。</p>`;
 }
-function openDiagram(id) { const d = document.createElement('div'); DG.mount(d, id); openModal(d, DG.title(id)); }
+function openDiagram(id) {
+  const d = document.createElement('div'); d.className = 'zoomable'; DG.mount(d, id); openModal(d, DG.title(id));
+  /* 机理图点「下一步」会重画；已经放大的话，新画出来的图保持同样的放大倍数 */
+  new MutationObserver(() => { const s = +d.dataset.zs || 1; if (s > 1.01) for (const v of d.querySelectorAll('svg:not(svg svg)')) if (v.style.width !== (s * 100) + '%') { v.style.width = (s * 100) + '%'; v.style.maxWidth = 'none'; v.style.height = 'auto'; } }).observe(d, { childList: true, subtree: true });
+}
 function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
 
 /* ---------- 导航 ---------- */
@@ -793,7 +819,7 @@ function pMap(m) {
   const modStat = mo => { const ids = new Set(mo.items.flatMap(i => i.cs)); const q = BANK.filter(x => ids.has(x.c)); const m3 = q.filter(x => qs(x.id).l === 3).length, m2 = q.filter(x => qs(x.id).l === 2).length, m1 = q.filter(x => qs(x.id).l === 1).length; return { tot: q.length, m3, m2, m1 }; };
   m.innerHTML = `<div class="kick">STRUCTURE · 知识结构</div><h1>知识结构</h1><p class="lead">11 个考纲模块，每个模块下是考纲条目和对应的真题考点。考点颜色表示你的掌握程度，数字是出现的年数。点考点进入复习路径。</p>
   <div class="mods" id="mods">${MODS.map(mo => { const s = modStat(mo); const w = n => (n / s.tot * 100).toFixed(1); return `<button class="card mod" data-m="${mo.id}" aria-pressed="${NAV.mapMod === mo.id}">${icon('m' + mo.id, 'mi')}<div class="no">第 ${mo.id} 章</div><div class="nm">${esc(mo.name)}</div><div class="note">${mo.items.length} 个考纲条目 · ${s.tot} 道题</div><div class="bar" style="margin-top:6px"><i style="width:${w(s.m3)}%;background:var(--ok)"></i><i style="width:${w(s.m2)}%;background:var(--mid)"></i><i style="width:${w(s.m1)}%;background:var(--bad)"></i></div></button>`; }).join('')}</div>
-  <div id="tree"></div><h2>机理图解</h2><p class="lead">复杂机理按步骤拆开，点开后用"下一步"逐步看；两张水分活度图可以拖动查看。</p><div class="mods" id="dgs">${DG.list().map(d => `<button class="card mod" data-dg="${d.id}"><div class="nm" style="font-size:15px">${esc(d.title)}</div><div class="note">点开看图解</div></button>`).join('')}</div>`;
+  <div id="tree" class="zoomable"></div><h2>机理图解</h2><p class="lead">复杂机理按步骤拆开，点开后用"下一步"逐步看；两张水分活度图可以拖动查看。</p><div class="mods" id="dgs">${DG.list().map(d => `<button class="card mod" data-dg="${d.id}"><div class="nm" style="font-size:15px">${esc(d.title)}</div><div class="note">点开看图解</div></button>`).join('')}</div>`;
   const drawTree = () => {
     const mo = MODS.find(x => x.id === NAV.mapMod); const t = $('#tree'); if (!mo) { t.innerHTML = ''; return; }
     const rows = []; mo.items.forEach(it => it.cs.forEach((c, j) => rows.push({ it, c, first: j === 0 })));

@@ -1,6 +1,6 @@
 {
-  "versionCode": 16,
-  "versionName": "2.0.16",
-  "apk": "FoodChemReview-v2.0.16.apk",
-  "notes": "2.0.5：多设备同步修复（学习时长相加、设置不再被覆盖、风格各设备独立、每日自测与清空进度同步），以及大字号排版修复。直接覆盖安装，进度会保留。"
+  "versionCode": 17,
+  "versionName": "2.0.17",
+  "apk": "FoodChemReview-v2.0.17.apk",
+  "notes": "2.0.6：知识结构图和机理图解可以放大查看等小改进。直接覆盖安装，进度会保留。"
 }
