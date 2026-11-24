@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "2.0.13",
-  "apk": "FoodChemReview-v2.0.13.apk",
-  "notes": "2.0.2：修复手机上今日计划按钮、顶栏和更新日志的排版。新版本可以直接覆盖安装，学习进度会保留。"
+  "versionCode": 14,
+  "versionName": "2.0.14",
+  "apk": "FoodChemReview-v2.0.14.apk",
+  "notes": "2.0.3：修复复习路径完成进度不能在设备之间同步的问题。新版本可以直接覆盖安装，学习进度会保留。"
 }

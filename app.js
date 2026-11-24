@@ -124,7 +124,13 @@ function merge(R) {
   o.daily = Object.assign({}, R.daily || {}, S.daily); for (const [k, v] of Object.entries(R.daily || {})) { if (S.daily[k]) { const a = S.daily[k], inp = Object.assign({}, v.inp || {}); for (const [i, x] of Object.entries(a.inp || {})) if (!inp[i] || (x.t || 0) >= (inp[i].t || 0)) inp[i] = x; o.daily[k] = { ids: a.ids, res: Object.assign({}, v.res, a.res), inp }; } }
   const ms = new Map(); (R.mocks || []).concat(S.mocks || []).forEach(m => ms.set(m.ts, m)); o.mocks = [...ms.values()].sort((a, b) => a.ts - b.ts).slice(-40);
   o.log = Object.assign({}, R.log || {}); for (const [k, v] of Object.entries(S.log || {})) { const r = o.log[k] || { min: 0, done: 0 }; o.log[k] = { min: Math.max(r.min || 0, v.min || 0), done: Math.max(r.done || 0, v.done || 0) }; }
-  o.path = Object.assign({}, R.path || {}, S.path || {});
+  /* 复习路径按每一步合并：任何一台设备完成的步骤都算完成（之前整条覆盖，另一台设备上空的记录会把已完成的盖掉） */
+  o.path = {};
+  for (const id of new Set([...Object.keys(R.path || {}), ...Object.keys(S.path || {})])) {
+    const a = (R.path || {})[id] || {}, b = (S.path || {})[id] || {}, x = Object.assign({}, a, b);
+    for (const k of Object.keys(a)) if (a[k] && !b[k]) x[k] = a[k];
+    o.path[id] = x;
+  }
   if (R.planPath && (!S.planPath || (R.planPath.t || 0) > (S.planPath.t || 0))) o.planPath = R.planPath;
   /* 设置按项合并：两边都有的项以较新的一边为准，只有一边有的项（例如名字）总是保留 */
   o.settings = (R.updated || 0) > (S.updated || 0) ? Object.assign({}, S.settings, R.settings) : Object.assign({}, R.settings || {}, S.settings);
@@ -424,6 +430,9 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.3', d: '2026-11-24', t: '同步与顶部显示修复', items: [
+    '修复复习路径的完成进度不能在设备之间同步的问题：在任何一台设备上完成的步骤，其他设备都会显示已完成，首页今日计划也会跟着更新',
+    '尝试修复 iPad / iPhone 主屏幕版顶部状态栏下方出现一层模糊的问题'] },
   { v: '2.0.2', d: '2026-11-23', t: '手机上的排版修复', items: [
     '修复今日计划里复习路径完成后，「今日已完成」和「加练一个新路径」被挤成竖排的问题',
     '手机顶栏的标题不再折成两行，同步状态过长时自动省略',
