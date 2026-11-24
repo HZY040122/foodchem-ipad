@@ -810,6 +810,14 @@ details.chlog summary .cd { flex: none; white-space: nowrap; font-variant-numeri
   html.ios-app nav.side { padding-top: 46px; }
   html.ios-app[data-skin="book"] nav.side { padding-top: 52px; }
 }
+
+/* 2.0.5：自检修复 —— 卡片在网格里允许收窄（特大字号时每日自测不再撑出屏幕）；Material 3 分段按钮不折行，放不下时可横向滑动 */
+.card, #dl > *, .grid > * { min-width: 0; }
+[data-skin="md3"] .seg { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+[data-skin="md3"] .seg::-webkit-scrollbar { display: none; }
+[data-skin="md3"] .seg button { white-space: nowrap; flex: none; }
+.qmeta { flex-wrap: wrap; }
+.qmeta .chip, .qmeta span { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>

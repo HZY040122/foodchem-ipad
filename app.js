@@ -73,6 +73,12 @@ const LS = 'fcsite.v1';
 const blank = () => ({ q: {}, k: {}, daily: {}, mocks: [], log: {}, path: {}, settings: { newPer: 8, exam: '', theme: '' }, updated: 0 });
 let S = blank();
 try { const r = localStorage.getItem(LS); if (r) S = Object.assign(blank(), JSON.parse(r)); } catch (e) { }
+/* 同步用：本机编号（学习时长按设备分别记，合并时相加）；只属于本机的设置（风格、字号等不同设备各自独立） */
+let DEV = ''; try { DEV = localStorage.getItem('fcsite.dev') || ''; if (!DEV) { DEV = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem('fcsite.dev', DEV); } } catch (e) { DEV = 'd0'; }
+const LOCAL_SET = ['skin', 'glassA', 'md3Dyn', 'zoom', 'theme', 'seenVer', 'autoTime'];
+let SET_SNAP = {};
+function snapSettings() { SET_SNAP = {}; for (const [k, v] of Object.entries(S.settings || {})) if (k !== '_t') SET_SNAP[k] = JSON.stringify(v); }
+snapSettings();
 const PLATFORM = window.AndroidApp ? 'android' : (window.__PWA || (/iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document))) ? 'apple' : 'web';
 /* 主屏幕版（iPad / iPhone）：给页面顶部留出系统模糊带的空间 */
 if (PLATFORM === 'apple' && (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))) document.documentElement.classList.add('ios-app');
@@ -99,6 +105,8 @@ let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setT
 let dbRef = null, syncOK = false, saveT = null, chain = Promise.resolve(), syncMsg = window.AndroidApp ? '进度保存在本机，离线可用' : window.__PWA ? (navigator.serviceWorker && navigator.serviceWorker.controller ? '已可离线使用 · 进度保存在本机' : '正在准备离线内容，请保持联网……') : '进度保存在本浏览器';
 function save() {
   S.updated = Date.now();
+  { const st = S.settings || (S.settings = {}); const T = st._t = Object.assign({}, st._t || {}); const keys = new Set([...Object.keys(st), ...Object.keys(SET_SNAP)]);
+    for (const k of keys) if (k !== '_t' && JSON.stringify(st[k]) !== SET_SNAP[k]) T[k] = S.updated; snapSettings(); }
   try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { }
   if (typeof CLOUD !== 'undefined' && CLOUD.user) cloudSchedule();
   if (!dbRef || !syncOK) return;
@@ -120,22 +128,57 @@ function setSync(t) { syncMsg = t; $$('.sync').forEach(e => e.textContent = t); 
 if (window.__PWA && navigator.serviceWorker) navigator.serviceWorker.ready.then(() => setSync('已可离线使用 · 进度保存在本机')).catch(() => { });
 function merge(R) {
   R = JSON.parse(JSON.stringify(R || {})); /* 同步回来的数据可能是只读对象，先深拷贝，避免之后写入时报错 */
-  const o = Object.assign(blank(), S);
-  o.q = Object.assign({}, S.q); for (const [k, v] of Object.entries(R.q || {})) if (!o.q[k] || (v.t || 0) > (o.q[k].t || 0)) o.q[k] = v;
-  o.k = Object.assign({}, S.k); for (const [k, v] of Object.entries(R.k || {})) if (!o.k[k] || (v.t || 0) > (o.k[k].t || 0)) o.k[k] = v;
-  o.daily = Object.assign({}, R.daily || {}, S.daily); for (const [k, v] of Object.entries(R.daily || {})) { if (S.daily[k]) { const a = S.daily[k], inp = Object.assign({}, v.inp || {}); for (const [i, x] of Object.entries(a.inp || {})) if (!inp[i] || (x.t || 0) >= (inp[i].t || 0)) inp[i] = x; o.daily[k] = { ids: a.ids, res: Object.assign({}, v.res, a.res), inp }; } }
-  const ms = new Map(); (R.mocks || []).concat(S.mocks || []).forEach(m => ms.set(m.ts, m)); o.mocks = [...ms.values()].sort((a, b) => a.ts - b.ts).slice(-40);
-  o.log = Object.assign({}, R.log || {}); for (const [k, v] of Object.entries(S.log || {})) { const r = o.log[k] || { min: 0, done: 0 }; o.log[k] = { min: Math.max(r.min || 0, v.min || 0), done: Math.max(r.done || 0, v.done || 0) }; }
-  /* 复习路径按每一步合并：任何一台设备完成的步骤都算完成（之前整条覆盖，另一台设备上空的记录会把已完成的盖掉） */
+  let L0 = S;
+  /* 「清空进度」：较新的一次清空为准，清空之前的学习记录不再被另一台设备带回来 */
+  if ((R.resetAt || 0) > (S.resetAt || 0)) L0 = Object.assign(blank(), { settings: S.settings, updated: S.updated, resetAt: R.resetAt });
+  else if ((S.resetAt || 0) > (R.resetAt || 0)) R = { settings: R.settings, updated: R.updated, resetAt: R.resetAt };
+  const o = Object.assign(blank(), L0); o.resetAt = Math.max(S.resetAt || 0, R.resetAt || 0) || undefined;
+  o.q = Object.assign({}, L0.q); for (const [k, v] of Object.entries(R.q || {})) if (!o.q[k] || (v.t || 0) > (o.q[k].t || 0)) o.q[k] = v;
+  o.k = Object.assign({}, L0.k); for (const [k, v] of Object.entries(R.k || {})) if (!o.k[k] || (v.t || 0) > (o.k[k].t || 0)) o.k[k] = v;
+  /* 每日自测：同一天两边题目相同就合并作答；题目不同（各自生成或点了「换一套」）就取最后有操作的那一套，两台设备结果一致 */
+  const dScore = D => D.u || (Object.keys(D.res || {}).length || Object.keys(D.inp || {}).length ? 1 : 0);
+  o.daily = Object.assign({}, R.daily || {}, L0.daily);
+  for (const [k, v] of Object.entries(R.daily || {})) {
+    const a = (L0.daily || {})[k]; if (!a) continue;
+    if (JSON.stringify(a.ids) === JSON.stringify(v.ids)) {
+      const inp = Object.assign({}, v.inp || {}); for (const [i, x] of Object.entries(a.inp || {})) if (!inp[i] || (x.t || 0) >= (inp[i].t || 0)) inp[i] = x;
+      o.daily[k] = { ids: a.ids, res: Object.assign({}, v.res, a.res), inp, u: Math.max(a.u || 0, v.u || 0) || undefined };
+    } else {
+      const sa = dScore(a), sv = dScore(v);
+      o.daily[k] = sa > sv ? a : sv > sa ? v : (String(a.ids) <= String(v.ids) ? a : v);
+    }
+  }
+  const ms = new Map(); (R.mocks || []).concat(L0.mocks || []).forEach(m => ms.set(m.ts, m)); o.mocks = [...ms.values()].sort((a, b) => a.ts - b.ts).slice(-40);
+  /* 学习记录：各设备分开记，同一设备取较大值，最后相加 */
+  o.log = {};
+  const asBy = L => L.by ? L.by : ((L.min || L.done) ? { _legacy: { min: L.min || 0, done: L.done || 0 } } : {});
+  for (const k of new Set([...Object.keys(R.log || {}), ...Object.keys(L0.log || {})])) {
+    const a = asBy((L0.log || {})[k] || {}), b = asBy((R.log || {})[k] || {}), by = {};
+    for (const d of new Set([...Object.keys(a), ...Object.keys(b)])) { const x = a[d] || {}, y = b[d] || {}; by[d] = { min: Math.max(x.min || 0, y.min || 0), done: Math.max(x.done || 0, y.done || 0) }; }
+    o.log[k] = logSum({ by });
+  }
+  /* 复习路径按每一步合并：任何一台设备完成的步骤都算完成 */
   o.path = {};
-  for (const id of new Set([...Object.keys(R.path || {}), ...Object.keys(S.path || {})])) {
-    const a = (R.path || {})[id] || {}, b = (S.path || {})[id] || {}, x = Object.assign({}, a, b);
+  for (const id of new Set([...Object.keys(R.path || {}), ...Object.keys(L0.path || {})])) {
+    const a = (R.path || {})[id] || {}, b = (L0.path || {})[id] || {}, x = Object.assign({}, a, b);
     for (const k of Object.keys(a)) if (a[k] && !b[k]) x[k] = a[k];
     o.path[id] = x;
   }
-  if (R.planPath && (!S.planPath || (R.planPath.t || 0) > (S.planPath.t || 0))) o.planPath = R.planPath;
-  /* 设置按项合并：两边都有的项以较新的一边为准，只有一边有的项（例如名字）总是保留 */
-  o.settings = (R.updated || 0) > (S.updated || 0) ? Object.assign({}, S.settings, R.settings) : Object.assign({}, R.settings || {}, S.settings);
+  o.planPath = L0.planPath; if (R.planPath && (!L0.planPath || (R.planPath.t || 0) > (L0.planPath.t || 0))) o.planPath = R.planPath;
+  /* 设置按项合并：每一项记着自己的修改时间，较新的一边为准；风格、字号、颜色等只属于本机，不跟其他设备同步 */
+  const sa = S.settings || {}, sb = R.settings || {}, ta = sa._t || {}, tb = sb._t || {}, newerR = (R.updated || 0) > (S.updated || 0);
+  const st = {}, tt = {};
+  for (const k of new Set([...Object.keys(sa), ...Object.keys(sb)])) {
+    if (k === '_t') continue;
+    if (LOCAL_SET.includes(k)) { if (k in sa) st[k] = sa[k]; if (ta[k]) tt[k] = ta[k]; continue; }
+    const inA = k in sa, inB = k in sb;
+    let useB;
+    if (!inA) useB = true; else if (!inB) useB = false;
+    else if (ta[k] || tb[k]) useB = (tb[k] || 0) > (ta[k] || 0);
+    else useB = newerR;
+    st[k] = useB ? sb[k] : sa[k]; const t = Math.max(ta[k] || 0, tb[k] || 0); if (t) tt[k] = t;
+  }
+  st._t = tt; o.settings = st;
   o.updated = Math.max(S.updated || 0, R.updated || 0);
   return o;
 }
@@ -184,7 +227,7 @@ async function cloudSync(opts = {}) {
   try {
     const R = await cloudGet(); CLOUD.lastPull = Date.now();
     const before = JSON.stringify(S);
-    if (R) { S = merge(R); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } }
+    if (R) { S = merge(R); snapSettings(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } }
     const changedLocal = JSON.stringify(S) !== before;
     if (!R || JSON.stringify(S) !== JSON.stringify(R)) await cloudPut(S);
     CLOUD.lastOk = Date.now(); CLOUD.err = '';
@@ -216,14 +259,14 @@ const syncReady = (async () => {
     setSync('正在连接账号同步……');
     const tm = setTimeout(() => setSync('同步暂时连不上，进度先保存在本浏览器'), 10000);
     const snap = await dbRef.get(); clearTimeout(tm); syncOK = true;
-    if (snap.exists) { const R = snap.data() || {}; const before = JSON.stringify(S); S = merge(R); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } if (JSON.stringify(S) !== JSON.stringify(R)) save(); if (JSON.stringify(S) !== before) render(); }
+    if (snap.exists) { const R = snap.data() || {}; const before = JSON.stringify(S); S = merge(R); snapSettings(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } if (JSON.stringify(S) !== JSON.stringify(R)) save(); if (JSON.stringify(S) !== before) render(); }
     else if (S.updated) save();
     setSync('进度已同步到你的账号');
   } catch (e) { syncOK = false; setSync('进度保存在本浏览器'); }
 })();
 
 const qs = id => S.q[id] || { l: 0, n: 0, c: 0, w: 0, t: 0, d: 0 };
-function logDone() { const k = dkey(); const L = S.log[k] || { min: 0, done: 0 }; L.done++; S.log[k] = L; }
+function logDone() { const k = dkey(); const L = logMine(k); L.by[DEV].done = (L.by[DEV].done || 0) + 1; logSum(L); S.log[k] = L; }
 function rate(id, l) {
   const s = Object.assign({ l: 0, n: 0, c: 0, w: 0 }, S.q[id]); const now = Date.now();
   s.n++; s.l = l; s.t = now;
@@ -432,6 +475,14 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.5', d: '2026-11-24', t: '全面自检：同步与排版修复', items: [
+    '学习时长改为每台设备分别记、同步时相加：之前取两台设备中较大的一个，同一天在 iPad 和手机上都学了会少算',
+    '设置的每一项单独记修改时间：另一台设备上更晚的刷题记录，不会再把你刚改好的设置（名字、考试日期、每日题量等）改回去',
+    '风格、字号、颜色、玻璃效果、自动记录学习时间改为每台设备各自独立：安卓用 Material 3、iPad 用液态玻璃，不会互相覆盖',
+    '每日自测：两台设备当天题目不同时，以最后有作答的那一套为准；在一台设备上「换一套」会同步到另一台；修复今日已答数可能多算的问题',
+    '「清空进度」会同步到所有设备，不会被另一台设备上的旧记录带回来；之后从备份导入仍然有效',
+    '特大字号下，每日自测题卡撑出屏幕、长考点标签溢出的问题',
+    'Material 3 风格的分段按钮在窄屏放不下时改为左右滑动，不再折行'] },
   { v: '2.0.4', d: '2026-11-24', t: '主屏幕版顶部留白', items: [
     '状态栏下方那层模糊是 iPadOS 系统给主屏幕网页 App 加的效果，网页没法关掉；现在主屏幕版会在页面顶部留出一段空白，打开时模糊只落在背景上，不再糊住卡片和文字'] },
   { v: '2.0.3', d: '2026-11-24', t: '同步与顶部显示修复', items: [
@@ -647,7 +698,10 @@ let lastAct = Date.now(), pend = 0;
 ['click', 'keydown', 'input', 'scroll', 'touchstart', 'pointermove'].forEach(ev => window.addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') lastAct = Date.now(); else flushTime(); });
 function studying() { return S.settings.autoTime !== false && document.visibilityState === 'visible' && Date.now() - lastAct < 5 * 60e3; }
-function flushTime() { if (pend <= 0) return; const k = dkey(); const L = S.log[k] || { min: 0, done: 0 }; L.min = Math.round(((L.min || 0) + pend) * 100) / 100; S.log[k] = L; pend = 0; save(); }
+/* 学习记录按设备分开记：by[设备] = {min, done}，总数 = 各设备相加（旧记录先算作 _legacy 一份） */
+function logMine(k) { const L = S.log[k] || { min: 0, done: 0 }; if (!L.by) L.by = (L.min || L.done) ? { _legacy: { min: L.min || 0, done: L.done || 0 } } : {}; L.by[DEV] = L.by[DEV] || { min: 0, done: 0 }; return L; }
+function logSum(L) { let m = 0, d = 0; for (const v of Object.values(L.by || {})) { m += v.min || 0; d += v.done || 0; } L.min = Math.round(m * 100) / 100; L.done = d; return L; }
+function flushTime() { if (pend <= 0) return; const k = dkey(); const L = logMine(k); L.by[DEV].min = Math.round(((L.by[DEV].min || 0) + pend) * 100) / 100; logSum(L); S.log[k] = L; pend = 0; save(); }
 setInterval(() => {
   if (!studying()) return;
   pend += 0.25;
@@ -928,12 +982,12 @@ function pDaily(m) {
   const dl = $('#dl');
   D.ids.forEach((id, i) => {
     const q = BY[id];
-    try { if (!q) throw new Error('题库里找不到 ' + id); D.inp = D.inp || {}; const keep = D.inp[id] = D.inp[id] || {}; const c = qcard(q, { keep, onKeep: () => { S.daily[key] = D; save(); }, extraChip: `<span class="chip">第 ${i + 1} 题</span>${D.res[id] ? `<span class="chip src1">今天已答</span>` : ''}`, onRated: l => { D.res[id] = l; S.daily[key] = D; save(); head(); } }); dl.append(c); }
+    try { if (!q) throw new Error('题库里找不到 ' + id); D.inp = D.inp || {}; const keep = D.inp[id] = D.inp[id] || {}; const c = qcard(q, { keep, onKeep: () => { D.u = Date.now(); S.daily[key] = D; save(); }, extraChip: `<span class="chip">第 ${i + 1} 题</span>${D.res[id] ? `<span class="chip src1">今天已答</span>` : ''}`, onRated: l => { D.res[id] = l; D.u = Date.now(); S.daily[key] = D; save(); head(); } }); dl.append(c); }
     catch (e) { console.error(e); const c = document.createElement('div'); c.className = 'card'; c.innerHTML = `<p class="note">第 ${i + 1} 题没有载入成功（${esc(e && e.message)}），可以点「换一组」或刷新页面。</p>`; dl.append(c); }
   });
   /* 万一题目没有显示出来（例如同步数据刚好在渲染时到达），自动重画一次 */
   setTimeout(() => { const d = document.getElementById('dl'); if (location.hash.slice(1) === 'daily' && (!d || !d.children.length) && !pDaily.retried) { pDaily.retried = 1; render(); setTimeout(() => pDaily.retried = 0, 3000); } }, 300);
-  $('#rd').onclick = () => { const k2 = key + ':' + Math.random(); const nd = makeDaily(k2); S.daily[key] = { ids: nd.ids, res: {} }; save(); render(); };
+  $('#rd').onclick = () => { const k2 = key + ':' + Math.random(); const nd = makeDaily(k2); S.daily[key] = { ids: nd.ids, res: {}, u: Date.now() }; save(); render(); };
 }
 
 /* ---------- 错题本 ---------- */
@@ -985,7 +1039,7 @@ function pMock(m) {
     m.innerHTML = `<div class="kick">MOCK EXAM · 150 分</div><h1>模拟卷</h1><p class="lead">按现行卷型组卷：填空题 10 题（每题 3 分）、名词解释 10 题（每题 3 分）、简答题 6 题（每题 10 分）、论述题 2 题（每题 15 分），满分 150 分，限时 180 分钟。也可以按年份做整套真题。交卷后对照参考答案给自己打分。</p>
     <div class="grid g2"><div class="card"><h3>按现行卷型组卷</h3><p class="note">优先抽薄弱和高频考点的题，每次组卷都不同。</p><button class="btn pri" id="mk1">开始一套模拟卷</button></div>
     <div class="card"><h3>按年份做真题</h3><div class="row"><select id="my" aria-label="年份">${YEARS.map(y => `<option>${y}</option>`).join('')}</select><button class="btn" id="mk2">开始</button></div><p class="note">2025 年为回忆版，题目不全。旧年份的题型和分值跟现在不完全一样，满分按现行分值估算，仅供参考。</p></div></div>
-    <h2>历史成绩</h2>${S.mocks.length ? `<div class="tw"><table class="t"><tr><th>时间</th><th>试卷</th><th>得分</th><th>用时</th></tr>${S.mocks.slice().reverse().map(x => `<tr><td>${new Date(x.ts).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.title)}</td><td><b>${x.score}</b> / ${x.total}</td><td>${x.min} 分钟</td></tr>`).join('')}</table></div>` : '<p class="empty">还没有做过模拟卷。</p>'}`;
+    <h2>历史成绩</h2>${S.mocks.length ? `<div class="tw"><table class="t"><tr><th>时间</th><th>试卷</th><th>得分</th><th>用时</th></tr>${S.mocks.slice().reverse().map(x => `<tr><td>${new Date(x.ts).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td><td>${esc(x.title)}</td><td><b>${x.score}</b> / ${x.total}</td><td>${x.min != null ? x.min + " 分钟" : "—"}</td></tr>`).join('')}</table></div>` : '<p class="empty">还没有做过模拟卷。</p>'}`;
     $('#mk1').onclick = () => { NAV.mock = { title: '现行卷型模拟卷', ids: makeMock('mix'), start: Date.now(), sub: false, sc: {}, mix: true }; render(); };
     $('#mk2').onclick = () => { const y = +$('#my').value; NAV.mock = { title: y + ' 年真题', ids: makeMock('year', y), start: Date.now(), sub: false, sc: {} }; render(); };
     return;
@@ -1226,8 +1280,8 @@ function pSettings(m) {
     sh.onclick = () => { try { window.AndroidApp.share($('#bk').value); } catch (e) { } };
     $('#exp').addEventListener('click', () => { sh.hidden = false; }); }
   $('#cp').onclick = async () => { try { if (window.AndroidApp) window.AndroidApp.copy($('#bk').value); else await navigator.clipboard.writeText($('#bk').value); $('#bkm').textContent = '已复制到剪贴板。'; } catch (e) { $('#bk').select(); $('#bkm').textContent = '无法自动复制，请手动全选复制。'; } };
-  $('#imp').onclick = () => { try { const R = JSON.parse($('#bk').value); if (!R || typeof R.q !== 'object') throw 0; S = merge(R); save(); applyLook(); $('#bkm').textContent = '导入成功，已和现有进度合并。'; } catch (e) { $('#bkm').textContent = '导入失败：文本不是有效的备份。'; } };
-  $('#rst').onclick = () => { const b = $('#rst'); if (b.dataset.c) { const keep = S.settings; S = blank(); S.settings = keep; save(); render(); } else { b.dataset.c = 1; b.textContent = '再点一次确认清空（个人设置会保留）'; b.classList.add('r1'); } };
+  $('#imp').onclick = () => { try { const R = JSON.parse($('#bk').value); if (!R || typeof R.q !== 'object') throw 0; R.resetAt = S.resetAt; /* 导入的备份是你主动要恢复的数据，不受之前「清空进度」的影响 */ S = merge(R); snapSettings(); save(); applyLook(); $('#bkm').textContent = '导入成功，已和现有进度合并。'; } catch (e) { $('#bkm').textContent = '导入失败：文本不是有效的备份。'; } };
+  $('#rst').onclick = () => { const b = $('#rst'); if (b.dataset.c) { const keep = S.settings; S = blank(); S.settings = keep; S.resetAt = Date.now(); save(); render(); } else { b.dataset.c = 1; b.textContent = '再点一次确认清空（个人设置会保留）'; b.classList.add('r1'); } };
 }
 
 await Promise.race([syncReady, new Promise(r => setTimeout(r, 4000))]);
