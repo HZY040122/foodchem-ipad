@@ -584,6 +584,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.5', d: '2026-11-25', t: '复习站 2.5：设置改成 iPad 设置的样式', items: [
+    '设置窗口改成单栏的分组列表：最上面是头像和账号，下面是「学习」「应用程序」两组，点进去是二级页面，左上角返回',
+    '外观直接放在设置首页：风格四宫格，颜色模式改成浅色、深色、系统三张预览图，字号在最后一行',
+    '右上角 ⓘ 显示版本号，还能打开更新日志、下载其他平台的 App',
+    '登录后，「退出登录」放在设置列表的最下面'] },
   { v: '2.4', d: '2026-11-25', t: '复习站 2.4：全新的设置窗口', items: [
     '设置改成居中显示的大窗口：左边是分组（账号、个人资料、学习安排、外观、下载 App、备份与恢复、更新日志等），右边是对应的内容，点哪组看哪组',
     '点侧边栏左下角的头像（手机上是顶栏右侧的头像）打开设置窗口；侧边栏不再单独放「设置」',
@@ -855,7 +860,7 @@ function render() {
     const back = render.last && render.last !== 'settings' ? render.last : 'today';
     history.replaceState(null, '', '#' + back);
     const j = pSettings.jump; pSettings.jump = null;
-    openSettings(j === 'download' ? 'download' : (isPhone() ? null : SET.sec));
+    openSettings(j === 'download' ? 'download' : null);
     if (render.last) { navHTML(); return; }
   }
   navHTML();
@@ -1839,7 +1844,7 @@ function meOpen(btn) {
   ov.addEventListener('click', e => { if (e.target === ov) meClose(); });
 }
 function meClose() { const o = document.getElementById('meOv'); if (o) o.remove(); ME.open = false; }
-document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) { e.preventDefault(); openSettings('acct'); } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) { e.preventDefault(); openSettings(); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ME.open) meClose(); });
 /* 侧边栏放不下全部功能时，自动收紧行距，尽量不用滚动 */
 function fitSide() {
@@ -1848,77 +1853,125 @@ function fitSide() {
   for (const c of ['fit1', 'fit2', 'fit3']) { if (sl.scrollHeight - sl.clientHeight <= 2) break; nv.classList.add(c); }
 }
 window.addEventListener('resize', () => fitSide());
-/* ========== 设置窗口（2.4）：像 Claude 在 iPad 上的设置那样——居中的大浮窗，左边分组，右边内容；手机上全屏，先列表后详情 ========== */
+/* ========== 设置窗口（2.5 预览）：仿 Claude iPad 版设置——居中的单栏浮窗，分组列表，点进二级页面 ========== */
 const SET_SECS = [
   ['acct', '账号', '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'],
-  ['profile', '个人资料', '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 16c.5-1.5 1.4-2.2 2.5-2.2s2 .7 2.5 2.2M14 10h4M14 13.5h3"/>'],
-  ['study', '学习安排', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M8 13h3M8 16.5h6"/>'],
-  ['look', '外观', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>'],
+  ['profile', '个人资料', '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/>'],
+  ['study', '学习安排', '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'],
   ['remind', '每日学习提醒', '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'],
-  ['update', 'App 更新', '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/>'],
+  ['look', '外观', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>'],
   ['download', '下载 App', '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>'],
+  ['update', 'App 更新', '<circle cx="12" cy="12" r="8.5"/><path d="M12 16V8.5M8.8 11.5 12 8.3l3.2 3.2"/>'],
   ['backup', '备份与恢复', '<path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'],
   ['log', '更新日志', '<path d="M7 4h10a1 1 0 0 1 1 1v15l-3-2-3 2-3-2-3 2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 12.5h6"/>']
 ];
 const SET_H2 = { '个人资料': 'profile', '学习安排': 'study', '外观': 'look', '每日学习提醒': 'remind', 'App 更新': 'update', '下载 App': 'download', '更新日志': 'log', '备份与恢复': 'backup' };
-const SET = { open: false, sec: 'acct', view: 'list', has: new Set() };
+const SET = { open: false, sec: 'root', from: null, has: new Set(), rootTop: 0 };
 const isPhone = () => innerWidth <= 860;
+const SVG_X = '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>', SVG_BACK = '<path d="M14.5 5.5 8 12l6.5 6.5"/>', SVG_I = '<path d="M12 10.5V17"/><circle cx="12" cy="7.2" r=".6" fill="currentColor"/>';
+const SVG_CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg>';
 function openSettings(sec) {
-  if (sec) SET.sec = sec;
-  SET.view = sec ? 'sec' : (isPhone() ? 'list' : 'sec');
+  SET.sec = sec && sec !== 'acct-root' ? sec : 'root';
   if (!SET.open) {
     SET.open = true;
     const ov = document.createElement('div'); ov.className = 'set-ov'; ov.id = 'setOv';
-    ov.innerHTML = `<div class="set-win" role="dialog" aria-modal="true" aria-label="设置"><aside class="set-nav"><div class="set-top"><b>设置</b><button class="btn sm ghost set-x" data-setx aria-label="关闭">✕</button></div><div class="set-me" id="setMe"></div><nav class="set-list" id="setList"></nav></aside>
-      <section class="set-pane"><header class="set-hd"><button class="btn sm ghost set-back" data-setback>‹ 设置</button><h2 id="setTitle"></h2><span class="sp"></span><button class="btn sm ghost set-x" data-setx aria-label="关闭">✕</button></header><div class="set-body" id="setBody"></div></section></div>`;
+    ov.innerHTML = `<div class="set-win" role="dialog" aria-modal="true" aria-label="设置">
+      <header class="set-hd"><button class="ios-cb" data-setl aria-label="关闭"></button><h2 id="setTitle">设置</h2><button class="ios-cb" data-seti aria-label="关于与更新日志">${SV(SVG_I)}</button></header>
+      <div class="set-body" id="setBody"></div></div>`;
     document.body.append(ov);
     ov.addEventListener('click', e => {
-      if (e.target === ov || e.target.closest('[data-setx]')) return closeSettings();
-      if (e.target.closest('[data-setback]')) { SET.view = 'list'; setView(); return; }
-      const it = e.target.closest('[data-sec]'); if (it) { SET.sec = it.dataset.sec; SET.view = 'sec'; setView(); $('#setBody').scrollTop = 0; return; }
-      if (e.target.closest('[data-setme]')) { SET.sec = 'acct'; SET.view = 'sec'; setView(); }
+      if (e.target === ov) return closeSettings();
+      if (e.target.closest('[data-setl]')) return SET.sec === 'root' ? closeSettings() : setGo('root');
+      const pop = document.getElementById('setInfo');
+      if (e.target.closest('[data-seti]')) return pop ? setInfoClose() : setInfoOpen();
+      if (pop && !e.target.closest('#setInfo')) { setInfoClose(); return; }
+      const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') { updStatus && updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); toast('正在检查更新……'); } else setGo(ia.dataset.info); return; }
+      const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
     });
+    $('#setBody').addEventListener('scroll', e => $('.set-hd').classList.toggle('scrolled', e.target.scrollTop > 4), { passive: true });
   }
-  setFill();
+  setFill(); $('#setBody').scrollTop = 0;
 }
+function setInfoOpen() {
+  const win = document.querySelector('.set-win'); if (!win) return;
+  const plat = window.AndroidApp ? '安卓 App' + (window.AndroidApp.version ? ' v' + window.AndroidApp.version() : '') : window.__PWA ? '主屏幕 App' : '网页版';
+  const ext = '<path d="M13.5 4.5h6v6M19.5 4.5l-8 8"/><path d="M17.5 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5"/>';
+  const d = document.createElement('div'); d.id = 'setInfo'; d.className = 'set-info'; d.setAttribute('role', 'menu');
+  d.innerHTML = `<div class="si-v">食品化学复习站 v${esc(APP_VERSION)}<br><span>${esc(plat)}</span></div><hr>
+    <button data-info="log" role="menuitem">${SV('<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4"/>')}<span>更新日志</span></button>
+    ${HAS_UPD ? `<button data-info="chk" role="menuitem">${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span>检查更新</span></button>` : ''}
+    ${SET.has.has('download') ? `<hr><button data-info="download" role="menuitem">${SV(ext)}<span>下载其他平台的 App</span></button>` : ''}`;
+  win.append(d);
+}
+function setInfoClose() { const d = document.getElementById('setInfo'); if (d) d.remove(); }
 function closeSettings() { const o = document.getElementById('setOv'); if (o) o.remove(); SET.open = false; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && SET.open && !document.querySelector('#modal > *')) closeSettings(); });
-/* 把原来设置页的内容画进右边，按小标题拆成分组；账号分组放最前面 */
+function setGo(k) {
+  const body = $('#setBody'), back = k === 'root';
+  if (!back && SET.sec === 'root') SET.rootTop = body.scrollTop;
+  SET.sec = k; setView(back ? 'pop' : 'push');
+  body.scrollTop = back ? SET.rootTop : 0;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && SET.open && !document.querySelector('#modal > *')) { if (document.getElementById('setInfo')) setInfoClose(); else if (SET.sec !== 'root') setGo('root'); else closeSettings(); } });
+const fmtExam = d => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? `${+m[2]} 月 ${+m[3]} 日` : ''; };
+/* 把原来设置页的内容拆成分组放进二级页面；首页是分组列表，外观直接放在首页 */
 function setFill() {
   const body = document.getElementById('setBody'); if (!body) return;
-  const keep = body.scrollTop;
+  const keep = body.scrollTop, st = S.settings;
   pSettings(body);
   const groups = {}; let cur = null;
   for (const n of [...body.children]) {
     if (n.tagName === 'H2') { cur = SET_H2[n.textContent.trim()] || null; if (cur) groups[cur] = document.createElement('div'); n.remove(); continue; }
     if (cur) groups[cur].append(n); else n.remove();
   }
-  /* 更新日志在窗口里直接显示全部版本 */
-  if (groups.log) groups.log.innerHTML = `<div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}，共 ${CHANGELOG.length} 个版本。每次更新后第一次打开会弹出说明。</p>${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>`;
+  if (groups.log) groups.log.innerHTML = `<p class="ios-foot" style="margin-top:0">食品化学复习站 v${esc(APP_VERSION)} · 共 ${CHANGELOG.length} 个版本</p><div class="card">${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>`;
+  /* 账号页：头像 + 登录/同步 */
   const acct = document.createElement('div');
-  acct.innerHTML = `<div class="card"><div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true"${S.settings.avatar ? ' hidden' : ''}>${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
-    <div class="me-id"><b class="set-nm">${esc(meName())}</b><div class="note">${CLOUD.user ? esc(meSub()) : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</div></div></div>
-    <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}<span class="note">名字在「个人资料」里修改</span></div></div>
-    <h3 class="set-sub">账号与同步</h3>${accountSection(true).replace('class="me-sec', 'class="card me-sec')}`;
+  acct.innerHTML = `<div class="ios-grp ios-avatar"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden></label><b class="set-nm">${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</span>
+    <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}</div></div>
+    <p class="ios-lab">账号与同步</p>${accountSection(true).replace('class="me-sec', 'class="card me-sec')}`;
   groups.acct = acct;
+  /* 外观：风格四宫格 + 浅色/深色/系统三宫格 */
+  const look = groups.look; delete groups.look;
+  if (look) {
+    const th = $('#th', look);
+    if (th) { const v = st.theme || ''; th.className = 'th-tiles'; th.innerHTML = [['light', '浅色', 'l'], ['dark', '深色', 'd'], ['', '系统', 's']].map(([k, n, c]) => `<button data-v="${k}" aria-pressed="${v === k}"><span class="thpv ${c}" aria-hidden="true"><i></i><i></i><em></em></span><span>${n}</span></button>`).join(''); }
+    const zm = $('#zm', look); if (zm) zm.closest('.row').classList.add('ios-inline');
+    const ga = $('#glassA', look); if (ga) ga.closest('.row').classList.add('ios-inline');
+    const md = $('#md3d', look); if (md) md.closest('.row').classList.add('ios-inline');
+    $$('.lab', look).forEach(l => { if (l.textContent === '颜色') l.textContent = '颜色模式'; });
+  }
   body.innerHTML = '';
   SET.has = new Set();
-  for (const [k] of SET_SECS) if (groups[k]) { const sec = document.createElement('div'); sec.className = 'set-sec'; sec.dataset.s = k; sec.append(...groups[k].childNodes); body.append(sec); SET.has.add(k); }
-  if (!SET.has.has(SET.sec)) SET.sec = 'acct';
+  const pages = {};
+  for (const [k] of SET_SECS) if (groups[k]) { const pg = document.createElement('div'); pg.className = 'set-pg'; pg.dataset.p = k; pg.append(...groups[k].childNodes); pages[k] = pg; SET.has.add(k); }
+  /* 首页 */
+  const row = k => { const s = SET_SECS.find(x => x[0] === k); if (!s || !SET.has.has(k)) return '';
+    return `<button class="ios-row" data-go="${k}">${SV(s[2])}<span class="ios-n">${s[1]}</span>${SVG_CHEV}</button>`; };
+  const root = document.createElement('div'); root.className = 'set-pg'; root.dataset.p = 'root';
+  root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
+      ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
+    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('remind')}</div>
+    <p class="ios-lab">应用程序</p><div class="ios-grp">${row('download')}${row('update')}${row('backup')}${row('log')}</div>
+    ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
+    ${CLOUD.user ? `<div class="ios-grp" style="margin-top:22px"><button class="ios-row red" data-rout>${SV('<path d="M10 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h4M14.5 8l4 4-4 4M9.5 12h9"/>')}<span class="ios-n">退出登录</span></button></div>` : ''}`;
+  if (look) { const c = look.querySelector(':scope > .card'); $('.set-look', root).append(...(c ? c.childNodes : look.childNodes)); }
+  body.append(root, ...Object.values(pages));
   bindAccount(body);
   $('#avIn', body).onchange = e => { const f = e.target.files && e.target.files[0]; if (f) setAvatar(f); };
   const rm = $('[data-avrm]', body); if (rm) rm.onclick = () => { delete S.settings.avatar; save(); navHTML(); setFill(); };
-  $('#setMe').innerHTML = `<button class="set-mebtn" data-setme><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="me-s">${esc(meSub())}</span></span></button>`;
-  $('#setList').innerHTML = SET_SECS.filter(([k]) => SET.has.has(k)).map(([k, n, ic]) => `<button class="set-it" data-sec="${k}">${SV(ic)}<span>${n}</span><span class="chev" aria-hidden="true">›</span></button>`).join('');
+  const rs = $('[data-rsync]', body); if (rs) rs.onclick = async () => { $('#rsyncSt').textContent = '正在同步…'; await cloudSync(); const e = $('#rsyncSt'); if (e) { e.textContent = CLOUD.err ? '同步失败' : '已同步'; setTimeout(() => { if (e.isConnected) e.textContent = ''; }, 2500); } };
+  const ro = $('[data-rout]', body); if (ro) ro.onclick = () => { if (!ro.dataset.c) { ro.dataset.c = 1; $('.ios-n', ro).textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); meFill(); toast('已退出登录，这台设备上的进度还保留着'); }); };
+  if (SET.sec !== 'root' && !SET.has.has(SET.sec)) SET.sec = 'root';
   setView();
   body.scrollTop = keep;
 }
-function setView() {
+function setView(anim) {
   const win = document.querySelector('.set-win'); if (!win) return;
-  win.classList.toggle('v-list', SET.view === 'list'); win.classList.toggle('v-sec', SET.view !== 'list');
-  $$('.set-it', win).forEach(b => b.setAttribute('aria-current', b.dataset.sec === SET.sec ? 'true' : 'false'));
-  $$('.set-sec', win).forEach(s => s.hidden = s.dataset.s !== SET.sec);
-  const t = SET_SECS.find(x => x[0] === SET.sec); $('#setTitle').textContent = t ? t[1] : '设置';
+  const root = SET.sec === 'root';
+  $$('.set-pg', win).forEach(p => { p.hidden = p.dataset.p !== SET.sec; p.classList.remove('push', 'pop'); if (!p.hidden && anim) { void p.offsetWidth; p.classList.add(anim); } });
+  const t = SET_SECS.find(x => x[0] === SET.sec); $('#setTitle').textContent = root ? '设置' : t ? t[1] : '设置';
+  const l = $('[data-setl]'); l.innerHTML = SV(root ? SVG_X : SVG_BACK); l.setAttribute('aria-label', root ? '关闭' : '返回');
+  $('[data-seti]').classList.toggle('off', !root);
 }
 /* 账号相关的刷新（登录、退出、上传头像后）统一走这里 */
 function meFill() { if (SET.open) setFill(); }
