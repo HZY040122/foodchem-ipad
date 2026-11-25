@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "2.0.20",
-  "apk": "FoodChemReview-v2.0.20.apk",
-  "notes": "2.0.9：背诵模式改为整词挖空，「全部揭开」后可以「全部收起」。直接覆盖安装，进度会保留。"
+  "versionCode": 21,
+  "versionName": "2.0.21",
+  "apk": "FoodChemReview-v2.0.21.apk",
+  "notes": "2.0.10：答案文本全面校对——找回被合并的换行、小标题统一加粗、标点和错字修正。直接覆盖安装，进度会保留。"
 }
