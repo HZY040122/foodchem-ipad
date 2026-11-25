@@ -1,6 +1,6 @@
 {
-  "versionCode": 34,
-  "versionName": "2.4.34",
-  "apk": "FoodChemReview-v2.4.34.apk",
-  "notes": "2.4：设置改成居中的大窗口，点头像打开，账号、外观、备份等都在里面。直接覆盖安装，进度会保留。"
+  "versionCode": 35,
+  "versionName": "2.5.35",
+  "apk": "FoodChemReview-v2.5.35.apk",
+  "notes": "2.5：设置改成 iPad 设置的样式，分组列表加二级页面，外观直接放在设置首页。直接覆盖安装，进度会保留。"
 }
