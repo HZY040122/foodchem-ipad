@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "2.2.25",
-  "apk": "FoodChemReview-v2.2.25.apk",
-  "notes": "2.2.1：手机上改为悬浮搜索栏；搜索浮层居中对齐、不再和弹窗重叠。直接覆盖安装，进度会保留。"
+  "versionCode": 26,
+  "versionName": "2.2.26",
+  "apk": "FoodChemReview-v2.2.26.apk",
+  "notes": "2.2.2：从搜索结果打开的题卡可以一键返回搜索结果。直接覆盖安装，进度会保留。"
 }

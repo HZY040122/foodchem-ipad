@@ -560,17 +560,31 @@ function qcard(q, o = {}) {
   if (nta) nta.addEventListener('change', () => { const st = Object.assign({ l: 0, n: 0, c: 0, w: 0 }, S.q[q.id]); st.note = nta.value; st.t = Date.now(); if (nta.value) st.w = st.w || 0; S.q[q.id] = st; save(); });
   return el;
 }
-function openModal(node, title) {
+/* 浮层统一摆放：宽屏时在内容区居中（不算侧边栏），顶部和悬浮搜索框、搜索浮层对齐 */
+function placeOverlay(ov) {
+  if (innerWidth <= 860) return;
+  const main = document.getElementById('main'); if (!main) return;
+  const mr = main.getBoundingClientRect(); ov.style.paddingLeft = Math.max(12, mr.left) + 'px'; ov.style.paddingRight = Math.max(12, innerWidth - mr.right) + 'px';
+  const pill = document.getElementById('gsPill');
+  if (pill) { const t = parseFloat(getComputedStyle(pill).top) || 14; ov.style.paddingTop = t + 'px'; }
+}
+function openModal(node, title, opt = {}) {
   const m = $('#modal');
-  m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title || '')}"><div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">${esc(title || '')}</h3><span class="sp"></span><button class="btn sm" data-x>关闭</button></div><div class="mb"></div></div></div>`;
+  m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title || '')}"><div class="card"><div class="row mhd" style="margin-bottom:8px">${opt.back ? `<button class="btn sm ghost mback" data-back>‹ ${esc(opt.backLabel || '返回')}</button>` : ''}<h3 style="margin:0">${esc(title || '')}</h3><span class="sp"></span><button class="btn sm" data-x>关闭</button></div><div class="mb"></div></div></div>`;
   $('.mb', m).append(node);
-  const close = () => { m.innerHTML = ''; };
+  placeOverlay($('.modal', m));
+  const close = () => { m.innerHTML = ''; document.removeEventListener('keydown', k); };
+  function k(e) { if (e.key === 'Escape') close(); }
   $('[data-x]', m).onclick = close;
+  if (opt.back) $('[data-back]', m).onclick = () => { close(); opt.back(); };
   $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
-  document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
+  document.addEventListener('keydown', k);
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.2.2', d: '2026-11-25', t: '弹窗与搜索浮层对齐', items: [
+    '所有弹窗（题卡、机理图解等）在宽屏上改为在内容区居中，顶部和搜索浮层对齐，宽度也一致',
+    '从搜索结果打开的题卡左上角多了「‹ 返回搜索结果」，点一下回到刚才的结果列表，还停在原来的位置'] },
   { v: '2.2.1', d: '2026-11-25', t: '悬浮搜索框改进', items: [
     '搜索浮层改为和顶部搜索框对齐，居中在内容区上方（之前按整个屏幕居中，看起来偏左）',
     '弹出题卡时，顶部搜索框会退到遮罩下面，不再和弹窗重叠',
@@ -768,7 +782,7 @@ function openDiagram(id) {
   /* 机理图点「下一步」会重画；已经放大的话，新画出来的图保持同样的放大倍数 */
   new MutationObserver(() => { const s = +d.dataset.zs || 1; if (s > 1.01) for (const v of d.querySelectorAll('svg:not(svg svg)')) if (v.style.width !== (s * 100) + '%') { v.style.width = (s * 100) + '%'; v.style.maxWidth = 'none'; v.style.height = 'auto'; } }).observe(d, { childList: true, subtree: true });
 }
-function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
+function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`, opt); }
 
 /* ---------- 导航 ---------- */
 const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
@@ -1674,14 +1688,13 @@ function gsPlace() {
   const r = main.getBoundingClientRect(); pill.style.left = (r.left + r.width / 2) + 'px'; pill.style.width = Math.min(560, Math.max(260, r.width - 64)) + 'px';
 }
 window.addEventListener('resize', () => gsPlace());
-function gsOpen() {
-  if (GS.open) return; GS.open = true;
+function gsOpen(restore) {
+  if (GS.open) return; GS.open = true; if (restore !== true) GS.scroll = 0;
   const ov = document.createElement('div'); ov.className = 'gs-ov'; ov.id = 'gsOv';
   ov.innerHTML = `<div class="gs-box" role="dialog" aria-modal="true" aria-label="搜索"><div class="gs-in">${icon('search', 'gs-ic')}<input type="search" id="gsq" placeholder="搜索知识点、真题和答案，例如「亚硫酸」「0.33」「β′」" value="${esc(NAV.q || '')}" aria-label="搜索关键词" enterkeyhint="search"><button class="btn sm ghost" id="gsx">取消</button></div><div class="gs-res" id="gsr"><p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p></div></div>`;
   document.body.append(ov);
   /* 宽屏：浮层和顶部搜索框对齐，居中在内容区上方（不算侧边栏） */
-  const pill = document.getElementById('gsPill');
-  if (pill && getComputedStyle(pill).display !== 'none') { const mr = document.getElementById('main').getBoundingClientRect(), pr = pill.getBoundingClientRect(); ov.style.paddingLeft = Math.max(12, mr.left) + 'px'; ov.style.paddingRight = Math.max(12, innerWidth - mr.right) + 'px'; ov.style.paddingTop = pr.top + 'px'; }
+  placeOverlay(ov);
   const inp = $('#gsq'), res = $('#gsr'); let tm = null;
   const run = () => { const k = inp.value.trim(); NAV.q = k; res.innerHTML = k ? searchHTML(k) : '<p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p>'; };
   inp.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(run, 180); });
@@ -1690,11 +1703,12 @@ function gsOpen() {
   ov.addEventListener('click', e => {
     if (e.target === ov) return gsClose();
     const r = e.target.closest('[data-q],[data-it]'); if (!r) return;
-    gsClose();
-    if (r.dataset.q) openQ(r.dataset.q); else { NAV.learnMod = +r.dataset.it.split('-')[0]; NAV.learnOpen = r.dataset.it; go('learn'); }
+    GS.scroll = res.scrollTop; gsClose();
+    if (r.dataset.q) openQ(r.dataset.q, { back: () => gsOpen(true), backLabel: '返回搜索结果' }); else { NAV.learnMod = +r.dataset.it.split('-')[0]; NAV.learnOpen = r.dataset.it; go('learn'); }
   });
-  if (NAV.q) run();
-  setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  if (NAV.q) { run(); if (restore === true && GS.scroll) res.scrollTop = GS.scroll; }
+  /* 从题卡返回时不弹键盘，方便接着往下看结果 */
+  if (restore !== true) setTimeout(() => { inp.focus(); inp.select(); }, 30);
 }
 function gsClose() { const ov = document.getElementById('gsOv'); if (ov) ov.remove(); GS.open = false; }
 document.addEventListener('keydown', e => {
