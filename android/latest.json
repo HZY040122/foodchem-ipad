@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "2.2.26",
-  "apk": "FoodChemReview-v2.2.26.apk",
-  "notes": "2.2.2：从搜索结果打开的题卡可以一键返回搜索结果。直接覆盖安装，进度会保留。"
+  "versionCode": 27,
+  "versionName": "2.2.27",
+  "apk": "FoodChemReview-v2.2.27.apk",
+  "notes": "2.2.3：更新日志改为二级页面；名解闪卡、易混对比、答题框架在侧边栏排到每日自测下面。直接覆盖安装，进度会保留。"
 }

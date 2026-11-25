@@ -582,6 +582,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.2.3', d: '2026-11-25', t: '更新日志二级页面与侧边栏顺序', items: [
+    '设置里的更新日志只显示最新一次更新，全部版本放到「查看全部更新日志」二级页面里，设置页不再拉得很长',
+    '打开名解闪卡、易混对比、答题框架后，它们在侧边栏里排在「每日自测」下面，和刷题相关的功能放在一起',
+    '悬浮搜索框去掉了右侧的快捷键提示，搜索浮层的提示文字也精简了'] },
   { v: '2.2.2', d: '2026-11-25', t: '弹窗与搜索浮层对齐', items: [
     '所有弹窗（题卡、机理图解等）在宽屏上改为在内容区居中，顶部和搜索浮层对齐，宽度也一致',
     '从搜索结果打开的题卡左上角多了「‹ 返回搜索结果」，点一下回到刚才的结果列表，还停在原来的位置'] },
@@ -714,7 +718,7 @@ function showUpdate() {
     <div class="uh">${MARK}<div><div class="kick" style="margin:0">更新 · v${esc(c.v)} · ${esc(c.d)}</div><h3>${esc(c.t)}</h3></div></div>
     ${logItems(c)}
     <div class="row" style="margin-top:14px"><button class="btn" data-log>查看全部更新日志</button><span class="sp"></span><button class="btn pri" data-ok>开始复习</button></div></div></div>`;
-  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) { location.hash = 'settings'; setTimeout(() => { const t = document.getElementById('changelog'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 700); } };
+  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) location.hash = 'changelog'; };
   const k = e => { if (e.key === 'Escape') close(); };
   $('[data-ok]', m).onclick = () => close(); $('[data-log]', m).onclick = () => close(true);
   $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
@@ -788,11 +792,11 @@ function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y ||
 const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
 /* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
 let PAGES = PAGES_BASE.slice();
-function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); PAGES = PAGES_BASE.slice(0, -2).filter(x => !(S.settings.labSearch && x[0] === 'search')).concat(ex, PAGES_BASE.slice(-2)); }
+function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(S.settings.labSearch && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
   syncPages();
-  const cur = location.hash.slice(1) || 'today';
+  let cur = location.hash.slice(1) || 'today'; if (cur === 'changelog') cur = 'settings';
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="toc" aria-hidden="true">目　录</div>` +
     PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
   $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
@@ -822,7 +826,7 @@ function render() {
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
-  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings, flash: pFlash, compare: pCompare, frame: pFrame }[p] || pToday;
+  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings, flash: pFlash, compare: pCompare, frame: pFrame, changelog: pChangelog }[p] || pToday;
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
@@ -1674,8 +1678,7 @@ function gsMount() {
   if (!on) { if (pill) pill.remove(); const b = document.getElementById('gsBtn'); if (b) b.remove(); return; }
   if (!pill) {
     pill = document.createElement('button'); pill.id = 'gsPill'; pill.type = 'button'; pill.className = 'gs-pill';
-    const mac = /Mac|iPad|iPhone/.test(navigator.platform || navigator.userAgent);
-    pill.innerHTML = `${icon('search', 'gs-ic')}<span>搜索知识点、真题和答案</span><kbd>${mac ? '⌘' : 'Ctrl'} K</kbd>`;
+    pill.innerHTML = `${icon('search', 'gs-ic')}<span>搜索知识点、真题和答案</span>`;
     pill.onclick = gsOpen; document.body.append(pill);
   }
   /* 手机：顶栏里放一条整宽的搜索栏，跟着顶栏悬浮在页面上方 */
@@ -1691,12 +1694,12 @@ window.addEventListener('resize', () => gsPlace());
 function gsOpen(restore) {
   if (GS.open) return; GS.open = true; if (restore !== true) GS.scroll = 0;
   const ov = document.createElement('div'); ov.className = 'gs-ov'; ov.id = 'gsOv';
-  ov.innerHTML = `<div class="gs-box" role="dialog" aria-modal="true" aria-label="搜索"><div class="gs-in">${icon('search', 'gs-ic')}<input type="search" id="gsq" placeholder="搜索知识点、真题和答案，例如「亚硫酸」「0.33」「β′」" value="${esc(NAV.q || '')}" aria-label="搜索关键词" enterkeyhint="search"><button class="btn sm ghost" id="gsx">取消</button></div><div class="gs-res" id="gsr"><p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p></div></div>`;
+  ov.innerHTML = `<div class="gs-box" role="dialog" aria-modal="true" aria-label="搜索"><div class="gs-in">${icon('search', 'gs-ic')}<input type="search" id="gsq" placeholder="搜索知识点、真题和答案，例如「亚硫酸」「0.33」「β′」" value="${esc(NAV.q || '')}" aria-label="搜索关键词" enterkeyhint="search"><button class="btn sm ghost" id="gsx">取消</button></div><div class="gs-res" id="gsr"><p class="note gs-hint">输入关键词，结果会在下面实时显示。</p></div></div>`;
   document.body.append(ov);
   /* 宽屏：浮层和顶部搜索框对齐，居中在内容区上方（不算侧边栏） */
   placeOverlay(ov);
   const inp = $('#gsq'), res = $('#gsr'); let tm = null;
-  const run = () => { const k = inp.value.trim(); NAV.q = k; res.innerHTML = k ? searchHTML(k) : '<p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p>'; };
+  const run = () => { const k = inp.value.trim(); NAV.q = k; res.innerHTML = k ? searchHTML(k) : '<p class="note gs-hint">输入关键词，结果会在下面实时显示。</p>'; };
   inp.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(run, 180); });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(tm); run(); inp.blur(); } });
   $('#gsx').onclick = gsClose;
@@ -1779,6 +1782,11 @@ function bindAccount(m) {
 
 /* ---------- 设置 ---------- */
 function greet() { const h = new Date().getHours(); return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'; }
+/* ---------- 设置的二级页面：全部更新日志 ---------- */
+function pChangelog(m) {
+  m.innerHTML = `<a class="sub-back" href="#settings">‹ 设置</a><div class="kick">CHANGELOG · 更新日志</div><h1>更新日志</h1><p class="lead">当前版本 v${esc(APP_VERSION)}，共 ${CHANGELOG.length} 个版本。每次更新后第一次打开会弹出说明，以后都可以在这里翻看。</p>
+  <div class="card">${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>`;
+}
 function pSettings(m) {
   const st = S.settings;
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, n]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}">${n}</button>`).join('')}</div>`;
@@ -1808,8 +1816,9 @@ function pSettings(m) {
   ${downloadSection()}
   ${HAS_REM ? `<h2>每日学习提醒</h2><div class="card form"><div class="row"><span class="lab">提醒</span>${seg('rem', [['on', '开启'], ['off', '关闭']], REM.on ? 'on' : 'off')}<label for="remt" class="lab" style="min-width:0">时间</label><input type="time" id="remt" value="${esc(REM.time || '20:00')}"></div><p class="note" style="margin:0">每天到点会收到一条通知，写着今天的复习路径和到期题数。当天已经打开过 App 就不再打扰你。第一次开启时，手机会询问是否允许通知，请选「允许」。</p></div>` : ''}
   ${HAS_UPD ? `<h2>App 更新</h2><div class="card"><div class="row"><span>当前 App 版本 <b>v${esc(window.AndroidApp.version ? window.AndroidApp.version() : '')}</b></span><span class="sp"></span><button class="btn" id="chk">检查更新</button></div><p class="note" id="ust" style="margin-bottom:0">联网时打开 App 会自动检查一次；有新版本会在底部提示，可以直接下载安装，进度不会丢失。</p></div>` : ''}
-  <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。每次更新后第一次打开会弹出说明，之后都可以在这里查看。</p>
-    ${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>
+  <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。下面是最新一次更新，以前的版本点「查看全部更新日志」。</p>
+    ${CHANGELOG.slice(0, 1).map(c => `<details class="chlog" open><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}
+    <a class="chlog-all" href="#changelog"><span>查看全部更新日志</span><span class="note">共 ${CHANGELOG.length} 个版本</span><span class="chev" aria-hidden="true">›</span></a></div>
   <h2>备份与恢复</h2><div class="card"><p class="note">同步状态：<span class="sync">${esc(syncMsg)}</span></p>${window.AndroidApp ? '<p class="note">进度保存在这台手机里，不联网也能用。卸载 App 或清除应用数据会清空进度，建议隔一段时间点「生成备份 → 分享备份」，存一份到网盘或聊天记录里。</p>' : window.__PWA ? '<p class="note">进度保存在这台 iPad 里，不联网也能用。从主屏幕删除这个图标会清空进度，建议隔一段时间点「生成备份 → 复制」，把文字存到备忘录或发给自己。</p>' : ''}<p class="note">进度会自动保存。想手动备份时，点「生成备份」后复制文本保存；恢复时把文本粘贴进来点「导入」。</p><div class="row"><button class="btn" id="exp">生成备份</button><button class="btn" id="cp" hidden>复制</button><button class="btn" id="imp">导入</button><span class="sp"></span><button class="btn ghost" id="rst">清空全部进度</button></div><textarea id="bk" style="margin-top:8px" aria-label="备份文本" placeholder="备份文本"></textarea><p class="note" id="bkm"></p></div>`;
   m.addEventListener('click', async e => { const b = e.target.closest('[data-cp]'); if (!b) return; const t = b.dataset.cp;
     try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });

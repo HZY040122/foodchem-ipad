@@ -980,6 +980,12 @@ html.ios-app .gs-ov { padding-top: 40px; }
 /* 2.2：带 hidden 属性的元素一律隐藏（之前 .row、.btn 的 display 规则会把它们重新显示出来，例如对答案前就出现的打分行） */
 [hidden] { display: none !important; }
 .gs-in input[type="search"] { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; padding: 6px 0 !important; }
+
+/* 2.2.3：更新日志入口与二级页面 */
+.chlog-all { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 12px 4px 2px; border-top: 1px solid var(--line); color: var(--accent); text-decoration: none; font-weight: 600; }
+.chlog-all span:first-child { flex: 1; }
+.chlog-all .chev { font-size: 20px; line-height: 1; }
+.sub-back { display: inline-block; margin: 0 0 6px; color: var(--accent); text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
