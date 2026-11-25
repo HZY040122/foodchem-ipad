@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "2.3.32",
-  "apk": "FoodChemReview-v2.3.32.apk",
-  "notes": "2.3.1：同步状态改为简短显示；有头像时不再显示相机图标。直接覆盖安装，进度会保留。"
+  "versionCode": 34,
+  "versionName": "2.4.34",
+  "apk": "FoodChemReview-v2.4.34.apk",
+  "notes": "2.4：设置改成居中的大窗口，点头像打开，账号、外观、备份等都在里面。直接覆盖安装，进度会保留。"
 }
