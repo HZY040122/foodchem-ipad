@@ -1,6 +1,6 @@
 {
-  "versionCode": 31,
-  "versionName": "2.3.31",
-  "apk": "FoodChemReview-v2.3.31.apk",
-  "notes": "复习站 2.3：头像和账号浮窗——点顶栏右侧的头像登录、同步、退出，头像可以上传图片自定义。直接覆盖安装，进度会保留。"
+  "versionCode": 32,
+  "versionName": "2.3.32",
+  "apk": "FoodChemReview-v2.3.32.apk",
+  "notes": "2.3.1：同步状态改为简短显示；有头像时不再显示相机图标。直接覆盖安装，进度会保留。"
 }

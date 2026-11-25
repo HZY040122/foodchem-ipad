@@ -145,7 +145,7 @@ function save() {
     });
   }, 1500);
 }
-function setSync(t) { syncMsg = t; $$('.sync').forEach(e => e.textContent = t); }
+function setSync(t) { syncMsg = t; $$('.sync').forEach(e => e.textContent = t); $$('.me-s').forEach(e => e.textContent = meSub()); }
 /* iPad 主屏幕版：离线内容缓存好之后提示一下 */
 if (window.__PWA && navigator.serviceWorker) navigator.serviceWorker.ready.then(() => setSync('已可离线使用 · 进度保存在本机')).catch(() => { });
 function merge(R) {
@@ -256,7 +256,7 @@ async function cloudSync(opts = {}) {
     setSync(`${agoText(CLOUD.lastOk)} 已同步 · ${CLOUD.user.email}`);
     if (changedLocal && !opts.noRender) { const a = document.activeElement; if (!(a && /TEXTAREA|INPUT/.test(a.tagName))) render(); }
   } catch (e) { CLOUD.err = cloudMsg(e); setSync(CLOUD.err); }
-  finally { CLOUD.busy = false; }
+  finally { CLOUD.busy = false; $$('.me-s').forEach(e => e.textContent = meSub()); }
 }
 function cloudSchedule() { if (!CLOUD.on || !CLOUD.user) return; clearTimeout(CLOUD.t); CLOUD.t = setTimeout(() => cloudSync({ quiet: true }), 20000); }
 function cloudSignOut(expired) { CLOUD.user = null; clearTimeout(CLOUD.t); try { localStorage.removeItem(AUTH_LS); } catch (e) { } setSync(expired ? '登录已过期，请在「设置」里重新登录' : '进度保存在本机'); }
@@ -584,6 +584,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.3.1', d: '2026-11-25', t: '头像与同步状态细节', items: [
+    '上传头像后，头像右下角的相机小图标不再显示',
+    '侧边栏名字下面的同步状态改为简短显示：已同步、x 分钟前同步、正在同步、离线等，不再跟着显示邮箱'] },
   { v: '2.3', d: '2026-11-25', t: '复习站 2.3：头像与账号浮窗', items: [
     '侧边栏左下角改为显示头像和名字，点一下弹出账号浮窗：没登录时直接在浮窗里登录或注册，登录后显示账号信息、立即同步和退出登录',
     '头像可以上传图片自定义（自动裁成正方形），也可以在浮窗里直接改名字；头像和名字会跟着账号同步到其他设备',
@@ -1787,13 +1790,25 @@ function avatarHTML() {
   const n = (S.settings.name || (CLOUD.user && CLOUD.user.email) || '').trim();
   return `<span class="av-ini">${n ? esc([...n][0].toUpperCase()) : SV('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>')}</span>`;
 }
-function meSub() { if (!CLOUD.on) return syncMsg; return CLOUD.user ? syncMsg : '未登录 · 点击登录同步'; }
-function meBtnHTML() { return `<button type="button" class="me" data-me><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="${CLOUD.on && !CLOUD.user ? 'me-s' : 'sync me-s'}">${esc(meSub())}</span></span></button>`; }
+/* 侧边栏名字下面的一行：只显示简短的同步状态（已同步 / x 分钟前同步 / 离线……），不带账号 */
+function meSub() {
+  const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (!CLOUD.on) return syncOK ? '已同步' : /正在/.test(syncMsg) ? '正在同步…' : '仅保存在本机';
+  if (!CLOUD.user) return '未登录 · 点击登录同步';
+  if (CLOUD.busy) return '正在同步…';
+  if (off) return '离线 · 联网后自动同步';
+  if (CLOUD.err) return '同步出错，点开查看';
+  if (!CLOUD.lastOk) return '还没同步';
+  const a = agoText(CLOUD.lastOk); return a === '刚刚' ? '已同步' : `${a}同步`;
+}
+window.addEventListener('online', () => $$('.me-s').forEach(e => e.textContent = meSub()));
+window.addEventListener('offline', () => $$('.me-s').forEach(e => e.textContent = meSub()));
+function meBtnHTML() { return `<button type="button" class="me" data-me><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="me-s">${esc(meSub())}</span></span></button>`; }
 const ME = { open: false, user: null };
 function meFill() {
   const pop = document.getElementById('mePop'); if (!pop) return;
   ME.user = !!CLOUD.user;
-  pop.innerHTML = `<div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true">${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
+  pop.innerHTML = `<div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true"${S.settings.avatar ? ' hidden' : ''}>${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
     <div class="me-id"><input id="meName" value="${esc(S.settings.name || '')}" placeholder="你的名字" aria-label="名字" maxlength="20"><div class="note">${CLOUD.user ? esc(CLOUD.user.email || '') : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</div></div>
     <button class="btn sm ghost me-x" data-mex aria-label="关闭">✕</button></div>
     <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}</div>
