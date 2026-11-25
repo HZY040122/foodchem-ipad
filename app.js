@@ -568,6 +568,8 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.1.1', d: '2026-11-25', t: '冲刺计划排版', items: [
+    '首页的冲刺计划改成和「今日计划」一样的独立板块：有自己的标题，和上面的数字卡片之间留出间距，不再贴在一起'] },
   { v: '2.1', d: '2026-11-25', t: '复习站 2.1：六个新的试验性功能', items: [
     '关键词自动评分：写完答案点「对答案」，自动对照参考答案的关键词，告诉你写到了哪些、漏了哪些，并给出建议打分',
     '限时作答：名解 3 分钟、简答 8 分钟、论述和分析 15 分钟，开始写就计时，超时变红提醒，用时记在题目上',
@@ -1379,12 +1381,13 @@ function whyStats() {
 /* ---------- 冲刺计划：按考试日期倒推，把没过完的考点分到每一天，最后一周只做错题和模拟卷 ---------- */
 function clusterDone(id) { if (pathDone(id)) return true; const mm = clusterMastery(id); return mm.att >= Math.ceil(mm.tot / 2) && mm.avg >= 2.5; }
 function sprintHTML() {
-  if (!S.settings.exam) return `<div class="card sprint"><div class="sp-h"><b>冲刺计划</b><span class="chip">试验</span></div><p class="note" style="margin:6px 0 10px">先在设置里填好考试日期，冲刺计划会按剩下的天数，把所有考点分配到每一天。</p><button class="btn sm pri" data-go="settings">去设置考试日期</button></div>`;
+  const T = '<h2 class="sp-title">冲刺计划<span class="chip">试验</span></h2>';
+  if (!S.settings.exam) return `${T}<div class="card sprint"><p class="note" style="margin:0 0 10px">先在设置里填好考试日期，冲刺计划会按剩下的天数，把所有考点分配到每一天。</p><button class="btn sm pri" data-go="settings">去设置考试日期</button></div>`;
   const days = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY);
   if (days < 0) return '';
   const all = Object.keys(CS).sort((a, b) => CS[b].prio - CS[a].prio), left = all.filter(id => !clusterDone(id)), done = all.length - left.length;
   const pct = Math.round(done / all.length * 100);
-  const head = `<div class="sp-h"><b>冲刺计划</b><span class="chip">试验</span><span class="sp"></span><span class="note">离考试 ${days} 天 · 考点过完 ${done}/${all.length}</span></div><div class="kbar"><i class="l3" style="width:${Math.max(pct, 2)}%"></i></div>`;
+  const head = `<div class="sp-h"><span class="note">离考试 <b>${days}</b> 天</span><span class="sp"></span><span class="note">考点过完 <b>${done}</b>/${all.length}</span></div><div class="kbar"><i class="l3" style="width:${Math.max(pct, 2)}%"></i></div>`;
   const chip = id => `<button class="chip cl" data-cl="${id}">${esc(CL[id].n)}</button>`;
   let body = '';
   if (days === 0) body = `<p class="sp-ph">今天考试，加油！</p><p class="note">不再刷新题。早点出门，带好证件和文具，考前翻一下错题本里的笔记就好。</p>`;
@@ -1405,7 +1408,7 @@ function sprintHTML() {
         <p class="note" style="margin:8px 0 0">点考点进入复习路径，三步做完就算过完。已经掌握的考点会自动跳过，计划每天按你的进度重新分配。</p>`;
     }
   }
-  return `<div class="card sprint">${head}${body}</div>`;
+  return `${T}<div class="card sprint">${head}${body}</div>`;
 }
 
 /* ---------- 易混对比卡 ---------- */

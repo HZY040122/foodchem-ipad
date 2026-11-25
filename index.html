@@ -855,9 +855,11 @@ html.ios-app :is(button, .btn, nav, .bnav, .seg, .chip, summary, .sheet, .tile, 
 .bar-row .bt i { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
 .bar-row b { text-align: right; font-variant-numeric: tabular-nums; }
 /* 冲刺计划 */
-.card.sprint { margin-bottom: 18px; }
+.sp-title { display: flex; align-items: center; gap: 8px; }
+.sp-title .chip { font-size: 12px; font-weight: 500; }
 .sprint .sp-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.sprint .sp-h b { font-size: 16px; }
+.sprint .sp-h b { color: var(--ink); }
+.sprint .sp-ph:first-of-type { margin-top: 14px; }
 .sprint .sp-ph { font-weight: 600; margin: 12px 0 8px; }
 .sprint .sp-today, .sprint .sp-day { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .sprint .sp-day { margin-top: 6px; }

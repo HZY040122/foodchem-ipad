@@ -1,6 +1,6 @@
 {
-  "versionCode": 22,
-  "versionName": "2.1.22",
-  "apk": "FoodChemReview-v2.1.22.apk",
-  "notes": "复习站 2.1：新增六个试验性功能——关键词自动评分、限时作答、易混概念对比、名解闪卡、冲刺计划、错因标签。在「试验性功能」里打开。直接覆盖安装，进度会保留。"
+  "versionCode": 23,
+  "versionName": "2.1.23",
+  "apk": "FoodChemReview-v2.1.23.apk",
+  "notes": "2.1.1：首页冲刺计划改为独立板块，排版更整齐。直接覆盖安装，进度会保留。"
 }
