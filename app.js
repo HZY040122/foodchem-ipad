@@ -565,7 +565,7 @@ function qcard(q, o = {}) {
 }
 /* 浮层统一摆放：宽屏时在内容区居中（不算侧边栏），顶部和悬浮搜索框、搜索浮层对齐 */
 function placeOverlay(ov) {
-  if (innerWidth <= 860) return;
+  if (innerWidth <= 860 || (typeof SET !== 'undefined' && SET.open)) return;
   const main = document.getElementById('main'); if (!main) return;
   const mr = main.getBoundingClientRect(); ov.style.paddingLeft = Math.max(12, mr.left) + 'px'; ov.style.paddingRight = Math.max(12, innerWidth - mr.right) + 'px';
   const pill = document.getElementById('gsPill');
@@ -585,6 +585,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.7', d: '2026-11-25', t: '复习站 2.7：速查手册和周报放进设置，搜索栏转正', items: [
+    '考前速查手册和学习周报改为设置窗口里的二级页面，不再跳出设置',
+    '速查手册的 PDF 改为由复习站自己生成：点「生成 PDF」，完成后点「分享 / 保存 PDF」。iPad 和 iPhone 上可以存到「文件」或直接打印，安卓 App 打开系统打印界面，可另存为 PDF',
+    '大题背诵模式、冲刺计划、睡前五分钟回顾各有自己的二级页面，在里面开关并查看功能说明',
+    '悬浮搜索框转为正式功能：设置里新增「搜索栏」，可以选择悬浮搜索框或侧边栏「检索」'] },
   { v: '2.6', d: '2026-11-25', t: '复习站 2.6：速查手册、学习周报，三个功能转正', items: [
     '新增「考前速查手册」：按模块列出每个考点常考的名词解释和大题要点，可以只看高频或没掌握的考点，网页版和 iPad 版能打印或存为 PDF',
     '新增「学习周报」：一周的学习时长、每天的时长柱状图、做题和评分情况、薄弱模块和下周建议，可以翻看以前的周，一键复制周报文字',
@@ -832,7 +837,7 @@ function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y ||
 const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度']];
 /* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
 let PAGES = PAGES_BASE.slice();
-function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(S.settings.labSearch && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
+function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(featOn('labSearch') && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
   syncPages();
@@ -858,22 +863,23 @@ function openMoreSheet() {
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
-window.addEventListener('hashchange', () => { if (SET.open && !['#settings', '#labs'].includes(location.hash)) closeSettings(); render(); toTop(); });
+window.addEventListener('hashchange', () => { if (SET.open && !['#settings', '#labs', '#handbook', '#weekly'].includes(location.hash)) closeSettings(); render(); toTop(); });
 /* 侧栏「下载 App」：跳到设置页的下载区 */
 document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
   if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 function render() {
-  if (location.hash === '#settings' || location.hash === '#labs') {   /* 设置是浮窗：打开窗口，背后留在原来的页面 */
-    const back = render.last && !['settings', 'labs'].includes(render.last) ? render.last : 'today', lab = location.hash === '#labs';
+  const SROUTE = ['settings', 'labs', 'handbook', 'weekly'], sh = location.hash.slice(1);
+  if (SROUTE.includes(sh)) {   /* 设置是浮窗：打开窗口（或直接打开其中的二级页面），背后留在原来的页面 */
+    const back = render.last && !SROUTE.includes(render.last) ? render.last : 'today';
     history.replaceState(null, '', '#' + back);
     const j = pSettings.jump; pSettings.jump = null;
-    openSettings(lab ? 'labs' : j === 'download' ? 'download' : null);
+    openSettings(sh !== 'settings' ? sh : j === 'download' ? 'download' : null);
     if (render.last) { navHTML(); return; }
   }
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
-  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, settings: pSettings, handbook: pHandbook, weekly: pWeekly, flash: pFlash, compare: pCompare, frame: pFrame, changelog: pChangelog }[p] || pToday;
+  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, settings: pSettings, flash: pFlash, compare: pCompare, frame: pFrame, changelog: pChangelog }[p] || pToday;
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
@@ -1722,7 +1728,7 @@ function searchHTML(k) {
 const GS = { open: false };
 function gsMount() {
   let pill = document.getElementById('gsPill');
-  const on = !!S.settings.labSearch;
+  const on = featOn('labSearch');
   document.documentElement.classList.toggle('gs', on);
   if (!on) { if (pill) pill.remove(); const b = document.getElementById('gsBtn'); if (b) b.remove(); return; }
   if (!pill) {
@@ -1764,13 +1770,13 @@ function gsOpen(restore) {
 }
 function gsClose() { const ov = document.getElementById('gsOv'); if (ov) ov.remove(); GS.open = false; }
 document.addEventListener('keydown', e => {
-  if (!S.settings.labSearch) return;
+  if (!featOn('labSearch')) return;
   if (e.key === 'Escape' && GS.open) { gsClose(); return; }
   const tag = (e.target.tagName || '').toLowerCase(), typing = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
   if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); gsOpen(); }
 });
 
-const STABLE = new Set(['labRecite', 'labSprint', 'labNight']);
+const STABLE = new Set(['labRecite', 'labSprint', 'labNight', 'labSearch']);
 const LABS = [
   { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
   { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' },
@@ -1795,36 +1801,149 @@ function pLabs(m) {
     b.setAttribute('aria-checked', !!st[k]); const c = b.closest('.lab'); c.classList.toggle('on', !!st[k]); $('.lab-st', c).textContent = st[k] ? '已开启 · 去刷题界面试试吧' : '未开启'; });
 }
 
-/* ========== 考前速查手册：每个考点最常考的名词解释和大题要点，压成一页一页过 ========== */
-const HB = { mod: 0, f: 'all' };
+/* ========== 考前速查手册：每个考点最常考的名词解释和大题要点；屏幕上看和导出 PDF 用同一份数据 ========== */
+const HB = { mod: 0, f: 'all', pdf: null, busy: false };
 const hbCut = (s, n) => (s = String(s || '').trim()).length > n ? s.slice(0, n - 1) + '…' : s;
 function hbDef(q) { const t = txt(q.a || '').replace(/\s+/g, ' '); const s = (t.match(/^[\s\S]*?[。；]/) || [t])[0]; return hbCut(s.replace(/[；]$/, '。'), 96); }
 function hbLevel(id) { const mm = clusterMastery(id); if (!mm.att) return ['none', '未练']; if (mm.m3 / mm.tot >= .6) return ['ok', '已掌握']; return mm.avg >= 2 ? ['mid', '模糊'] : ['low', '没掌握']; }
-function hbCluster(id) {
+function hbClusterData(id) {
   const c = CL[id], s = CS[id];
-  const seen = new Set(), terms = s.qs.filter(q => q.t === '名解').sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.trim(); if (seen.has(k)) return false; seen.add(k); return true; });
-  const bs = new Set(), bigs = s.qs.filter(q => BIG.includes(q.t)).sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.replace(/\s/g, '').slice(0, 24); if (bs.has(k)) return false; bs.add(k); return true; }).slice(0, 2);
+  const seen = new Set(), terms = s.qs.filter(q => q.t === '名解').sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.trim(); if (seen.has(k)) return false; seen.add(k); return true; }).map(q => ({ id: q.id, t: q.q.trim(), d: hbDef(q) }));
+  const bs = new Set(), bigs = s.qs.filter(q => BIG.includes(q.t)).sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.replace(/\s/g, '').slice(0, 24); if (bs.has(k)) return false; bs.add(k); return true; }).slice(0, 2)
+    .map(q => { const pts = answerPoints(q); return { id: q.id, tag: `${q.y || '补充'} · ${TLABEL[q.t] || q.t}`, q: hbCut(q.q.replace(/\n/g, ' '), 90), pts: pts.slice(0, 8).map(p => ({ label: p.label, text: hbCut(String(p.label ? p.body : p.text).replace(/^[\s：:]+/, ''), 52) })), more: Math.max(0, pts.length - 8) }; });
   const [lc, ln] = hbLevel(id);
+  return { id, name: c.n, hot: hotSet.has(id), meta: `考过 ${s.n} 年${s.last ? ' · 最近 ' + s.last : ''}`, lc, ln, terms, bigs };
+}
+function hbMods() {
+  const keep = id => (HB.f === 'hot' ? hotSet.has(id) : HB.f === 'weak' ? hbLevel(id)[0] !== 'ok' : true);
+  return MODS.filter(mo => !HB.mod || mo.id === HB.mod).map(mo => [mo, [...new Set(mo.items.flatMap(i => i.cs))].filter(id => CS[id] && CL[id] && CL[id].m === mo.id && keep(id))]).filter(x => x[1].length);
+}
+function hbClusterHTML(d) {
   return `<section class="hb-c">
-    <header class="hb-h"><b>${esc(c.n)}</b>${hotSet.has(id) ? '<span class="chip hot">高频</span>' : ''}<span class="note">考过 ${s.n} 年${s.last ? ' · 最近 ' + s.last : ''}</span><span class="sp"></span><span class="hb-lv ${lc}">${ln}</span></header>
-    ${terms.length ? `<div class="hb-ts">${terms.map(q => `<button class="hb-term" data-q="${q.id}"><b>${esc(q.q)}</b><span>${esc(hbDef(q))}</span></button>`).join('')}</div>` : ''}
-    ${bigs.map(q => { const pts = answerPoints(q); return `<div class="hb-q"><button class="hb-qt" data-q="${q.id}"><span class="chip y">${q.y || '补充'} · ${esc(TLABEL[q.t] || q.t)}</span><span>${esc(hbCut(q.q.replace(/\n/g, ' '), 90))}</span></button>
-      ${pts.length ? `<ol>${pts.slice(0, 8).map(p => `<li>${p.label ? `<b>${esc(p.label)}</b>：` : ''}${esc(hbCut(p.label ? p.body : p.text, 52))}</li>`).join('')}${pts.length > 8 ? `<li class="note">还有 ${pts.length - 8} 条，点题目看完整答案</li>` : ''}</ol>` : ''}</div>`; }).join('')}
-    <div class="hb-go"><button class="btn sm ghost" data-hpath="${id}">走复习路径 ›</button></div></section>`;
+    <header class="hb-h"><b>${esc(d.name)}</b>${d.hot ? '<span class="chip hot">高频</span>' : ''}<span class="note">${esc(d.meta)}</span><span class="sp"></span><span class="hb-lv ${d.lc}">${d.ln}</span></header>
+    ${d.terms.length ? `<div class="hb-ts">${d.terms.map(t => `<button class="hb-term" data-q="${t.id}"><b>${esc(t.t)}</b><span>${esc(t.d)}</span></button>`).join('')}</div>` : ''}
+    ${d.bigs.map(b => `<div class="hb-q"><button class="hb-qt" data-q="${b.id}"><span class="chip y">${esc(b.tag)}</span><span>${esc(b.q)}</span></button>
+      ${b.pts.length ? `<ol>${b.pts.map(p => `<li>${p.label ? `<b>${esc(p.label)}</b>：` : ''}${esc(p.text)}</li>`).join('')}${b.more ? `<li class="note">还有 ${b.more} 条，点题目看完整答案</li>` : ''}</ol>` : ''}</div>`).join('')}
+    <div class="hb-go"><button class="btn sm ghost" data-hpath="${d.id}">走复习路径 ›</button></div></section>`;
 }
 function pHandbook(m) {
-  const keep = id => (HB.f === 'hot' ? hotSet.has(id) : HB.f === 'weak' ? hbLevel(id)[0] !== 'ok' : true);
-  const mods = MODS.filter(mo => !HB.mod || mo.id === HB.mod).map(mo => { const ids = [...new Set(mo.items.flatMap(i => i.cs))].filter(id => CS[id] && CL[id] && CL[id].m === mo.id && keep(id)); return [mo, ids]; }).filter(x => x[1].length);
-  const n = mods.reduce((a, x) => a + x[1].length, 0);
-  m.innerHTML = `<div class="kick">HANDBOOK · 考前速查</div><h1>考前速查手册</h1><p class="lead">每个考点最常考的名词解释和大题要点压缩在一起，考前快速过一遍。点名词或题目看完整答案。</p>
+  const mods = hbMods(), n = mods.reduce((a, x) => a + x[1].length, 0);
+  const pdfBtn = HB.busy ? `<button class="btn sm" disabled>${esc(HB.busy)}</button>` : HB.pdf ? `<button class="btn sm pri" id="hbS">分享 / 保存 PDF（${HB.pdf.pages} 页）</button>` : '<button class="btn sm" id="hbP">生成 PDF</button>';
+  m.innerHTML = `<p class="ios-note hb-lead">每个考点最常考的名词解释和大题要点压缩在一起，考前快速过一遍。点名词或题目看完整答案。</p>
   <div class="hb-bar"><div class="seg" id="hbF">${[['all', '全部'], ['hot', '只看高频'], ['weak', '只看没掌握']].map(([v, t]) => `<button data-v="${v}" aria-pressed="${HB.f === v}">${t}</button>`).join('')}</div>
     <select id="hbM" aria-label="模块"><option value="0">全部模块</option>${MODS.map(mo => `<option value="${mo.id}" ${HB.mod === mo.id ? 'selected' : ''}>${mo.id} ${esc(mo.name)}</option>`).join('')}</select>
-    <span class="note">${n} 个考点</span><span class="sp"></span>${window.AndroidApp ? '' : '<button class="btn sm" id="hbP">打印 / 存为 PDF</button>'}</div>
-  ${mods.length ? mods.map(([mo, ids]) => `<h2 class="hb-mh">${mo.id} ${esc(mo.name)}</h2>${ids.map(hbCluster).join('')}`).join('') : '<div class="card"><p class="note" style="margin:0">这个筛选下没有考点。</p></div>'}`;
-  $('#hbF', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; HB.f = b.dataset.v; pHandbook(m); };
-  $('#hbM', m).onchange = e => { HB.mod = +e.target.value; pHandbook(m); };
-  const pr = $('#hbP', m); if (pr) pr.onclick = () => window.print();
-  m.onclick = e => { const q = e.target.closest('[data-q]'); if (q) return openQ(q.dataset.q); const p = e.target.closest('[data-hpath]'); if (p) { NAV.pathC = p.dataset.hpath; NAV.pathStep = 1; go('path'); } };
+    <span class="note">${n} 个考点</span><span class="sp"></span><span id="hbPdf">${pdfBtn}</span></div>
+  ${mods.length ? mods.map(([mo, ids]) => `<h3 class="hb-mh">${mo.id} ${esc(mo.name)}</h3>${ids.map(id => hbClusterHTML(hbClusterData(id))).join('')}`).join('') : '<div class="card"><p class="note" style="margin:0">这个筛选下没有考点。</p></div>'}`;
+  $('#hbF', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; HB.f = b.dataset.v; HB.pdf = null; pHandbook(m); };
+  $('#hbM', m).onchange = e => { HB.mod = +e.target.value; HB.pdf = null; pHandbook(m); };
+  m.onclick = e => {
+    if (e.target.closest('#hbP')) return hbMakePdf(m);
+    if (e.target.closest('#hbS')) return hbSharePdf();
+    const q = e.target.closest('[data-q]'); if (q) return openQ(q.dataset.q);
+    const p = e.target.closest('[data-hpath]'); if (p) { NAV.pathC = p.dataset.hpath; NAV.pathStep = 1; go('path'); }
+  };
+}
+/* —— 导出 PDF：iPad 主屏幕 App 里不能直接打印，所以自己把手册排版画成 A4 页面，再打包成 PDF —— */
+async function hbMakePdf(m) {
+  const mods = hbMods(); if (!mods.length) return;
+  const setBusy = t => { HB.busy = t; const s = m.querySelector('#hbPdf'); if (s) s.innerHTML = t ? `<button class="btn sm" disabled>${esc(t)}</button>` : ''; };
+  setBusy('正在生成 PDF…');
+  try {
+    const title = '食品化学 · 考前速查手册', sub = `${HB.mod ? HB.mod + ' ' + MODN[HB.mod] : '全部模块'} · ${{ all: '全部考点', hot: '只看高频', weak: '只看没掌握' }[HB.f]} · ${dkey()} 生成`;
+    const jpgs = await hbRender(mods, title, sub, n => setBusy(`正在生成 PDF… 第 ${n} 页`));
+    HB.pdf = { blob: pdfFromJpegs(jpgs), pages: jpgs.length, name: `考前速查手册-${dkey()}.pdf` };
+  } catch (e) { toast('PDF 生成失败：' + (e.message || e)); }
+  HB.busy = false; if (m.isConnected) pHandbook(m);
+}
+async function hbSharePdf() {
+  const P = HB.pdf; if (!P) return;
+  if (window.AndroidApp && window.AndroidApp.printPdf) {   /* 安卓：系统打印界面，可以「另存为 PDF」或直接打印 */
+    const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(P.blob); });
+    try { window.AndroidApp.printPdf(b64, P.name); } catch (e) { toast('无法打开打印界面'); } return;
+  }
+  const file = new File([P.blob], P.name, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {   /* iPad / iPhone：系统分享面板，可以「存储到文件」或「打印」 */
+    try { await navigator.share({ files: [file], title: '考前速查手册' }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(P.blob), a = document.createElement('a'); a.href = url; a.download = P.name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000); toast('PDF 已下载');
+}
+async function hbRender(mods, title, sub, onPage) {
+  const SC = 1.6, W = Math.round(595.28 * SC * 1.25), H = Math.round(841.89 * SC * 1.25);   /* 约 150 dpi */
+  const u = W / 595.28, M = 44 * u, CW = W - 2 * M, BOT = H - 46 * u;
+  const FF = '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",sans-serif';
+  const C = { ink: '#1f1e1c', mut: '#7a756b', acc: '#b4532e', line: '#e4ded2', soft: '#f6efe6' };
+  const f = (sz, b) => `${b ? 600 : 400} ${sz * u}px ${FF}`;
+  const out = []; let cv, cx, y = 0, pg = 0;
+  const NOSTART = '，。、；：？！）」』》〉】,.;:?!)%';
+  const finish = async () => {
+    cx.font = f(8); cx.fillStyle = C.mut; cx.textAlign = 'left'; cx.fillText('食品化学复习站 · 考前速查手册', M, H - 22 * u);
+    cx.textAlign = 'right'; cx.fillText(`第 ${pg} 页 · Made with Claude`, W - M, H - 22 * u); cx.textAlign = 'left';
+    cx.strokeStyle = C.line; cx.lineWidth = u * .6; cx.beginPath(); cx.moveTo(M, H - 34 * u); cx.lineTo(W - M, H - 34 * u); cx.stroke();
+    const b = await new Promise(r => cv.toBlob(r, 'image/jpeg', .74)); out.push({ bytes: new Uint8Array(await b.arrayBuffer()), w: W, h: H });
+    onPage && onPage(pg); await new Promise(r => setTimeout(r, 0));
+  };
+  const newPage = async () => { if (cv) await finish(); cv = document.createElement('canvas'); cv.width = W; cv.height = H; cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H); cx.textBaseline = 'alphabetic'; pg++; y = M; };
+  const need = async h => { if (y + h > BOT) await newPage(); };
+  /* runs：[{t, font, color}]，按字折行；行首避开标点；indent 是第二行起的缩进 */
+  const flow = async (runs, x0, indent, lh) => {
+    let x = x0, line = [];
+    const flush = async () => { await need(lh); for (const s of line) { cx.font = s.font; cx.fillStyle = s.color; cx.fillText(s.t, s.x, y + lh * .78); } y += lh; line = []; x = x0 + indent; };
+    for (const r of runs) {
+      cx.font = r.font; let cur = { t: '', x, font: r.font, color: r.color };
+      for (const ch of r.t) {
+        const w = cx.measureText(ch).width;
+        if (x + w > M + CW && !NOSTART.includes(ch) && (cur.t || line.length)) { if (cur.t) line.push(cur); await flush(); cx.font = r.font; cur = { t: '', x, font: r.font, color: r.color }; }
+        cur.t += ch; x += w;
+      }
+      if (cur.t) line.push(cur);
+    }
+    if (line.length) await flush();
+  };
+  await newPage();
+  cx.font = f(20, 1); cx.fillStyle = C.ink; cx.fillText(title, M, y + 22 * u); y += 32 * u;
+  cx.font = f(9.5); cx.fillStyle = C.mut; cx.fillText(sub, M, y + 10 * u); y += 22 * u;
+  for (const [mo, ids] of mods) {
+    await need(60 * u); y += 8 * u;
+    cx.fillStyle = C.acc; cx.fillRect(M, y + 3 * u, 3 * u, 15 * u); cx.font = f(14, 1); cx.fillStyle = C.ink; cx.fillText(`${mo.id} ${mo.name}`, M + 10 * u, y + 16 * u); y += 26 * u;
+    for (const id of ids) {
+      const d = hbClusterData(id);
+      await need(56 * u); y += 4 * u;
+      cx.strokeStyle = C.line; cx.lineWidth = u * .6; cx.beginPath(); cx.moveTo(M, y); cx.lineTo(W - M, y); cx.stroke(); y += 6 * u;
+      await flow([{ t: d.name, font: f(11.5, 1), color: C.ink }, { t: `　${d.hot ? '高频 · ' : ''}${d.meta} · ${d.ln}`, font: f(8.5), color: d.hot ? C.acc : C.mut }], M, 0, 17 * u);
+      for (const t of d.terms) await flow([{ t: t.t + '　', font: f(9.5, 1), color: C.acc }, { t: t.d, font: f(9.5), color: C.ink }], M, 12 * u, 14.5 * u);
+      for (const b of d.bigs) {
+        y += 3 * u;
+        await flow([{ t: `［${b.tag}］`, font: f(8.5), color: C.mut }, { t: b.q, font: f(9.5, 1), color: C.ink }], M, 12 * u, 14.5 * u);
+        for (let i = 0; i < b.pts.length; i++) { const p = b.pts[i]; await flow([{ t: `${i + 1}. `, font: f(9), color: C.mut }, ...(p.label ? [{ t: p.label + '：', font: f(9, 1), color: C.ink }] : []), { t: p.text, font: f(9), color: C.ink }], M + 10 * u, 22 * u, 13.5 * u); }
+        if (b.more) await flow([{ t: `（还有 ${b.more} 条要点，见题库完整答案）`, font: f(8.5), color: C.mut }], M + 22 * u, 22 * u, 13 * u);
+      }
+      y += 4 * u;
+    }
+  }
+  await finish();
+  return out;
+}
+/* 把 JPEG 页面打包成 PDF（每页一张图，A4） */
+function pdfFromJpegs(pages) {
+  const enc = new TextEncoder(), parts = [], offs = []; let off = 0;
+  const put = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); off += b.length; };
+  const obj = (n, body) => { offs[n] = off; put(`${n} 0 obj\n`); (Array.isArray(body) ? body : [body]).forEach(put); put('\nendobj\n'); };
+  const N = pages.length, PW = 595.28, PH = 841.89;
+  put('%PDF-1.4\n%âãÏÓ\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, `<< /Type /Pages /Kids [${pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] /Count ${N} >>`);
+  pages.forEach((p, i) => {
+    const pn = 3 + i * 3, cn = pn + 1, im = pn + 2, cs = `q ${PW} 0 0 ${PH} 0 0 cm /Im0 Do Q`;
+    obj(pn, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${im} 0 R >> >> /Contents ${cn} 0 R >>`);
+    obj(cn, `<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`);
+    obj(im, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.bytes.length} >>\nstream\n`, p.bytes, '\nendstream']);
+  });
+  const total = 3 + N * 3, xref = off;
+  put(`xref\n0 ${total}\n0000000000 65535 f \n`);
+  for (let n = 1; n < total; n++) put(`${String(offs[n]).padStart(10, '0')} 00000 n \n`);
+  put(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts, { type: 'application/pdf' });
 }
 
 /* ========== 学习周报：一周的学习时长、做题、自测、模拟卷和薄弱模块，附下周建议 ========== */
@@ -1865,27 +1984,41 @@ function wkChart(W) {
 function pWeekly(m) {
   const W = weekData(WK.off), P = weekData(WK.off - 1), dm = W.min - P.min;
   const end = new Date(W.t1 - DAY).getTime(), name = WK.off === 0 ? '本周' : WK.off === -1 ? '上周' : '';
-  const tot = W.lv[1] + W.lv[2] + W.lv[3] || 1, bar = a => `<div class="bar"><i style="width:${a[3] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--ok)"></i><i style="width:${a[2] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--mid)"></i><i style="width:${a[1] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--bad)"></i></div>`;
+  const bar = a => { const t = a[1] + a[2] + a[3] || 1; return `<div class="bar"><i style="width:${a[3] / t * 100}%;background:var(--ok)"></i><i style="width:${a[2] / t * 100}%;background:var(--mid)"></i><i style="width:${a[1] / t * 100}%;background:var(--bad)"></i></div>`; };
   const mods = Object.entries(W.mod).sort((a, b) => (b[1][1] + b[1][2] + b[1][3]) - (a[1][1] + a[1][2] + a[1][3]));
   const adv = wkAdvice(W);
-  m.innerHTML = `<div class="kick">WEEKLY · 学习周报</div><h1>学习周报</h1>
-  <div class="wk-nav"><button class="btn sm ghost" data-wk="-1">‹ 上一周</button><b>${name ? name + ' · ' : ''}${fmtMD(W.t0)} – ${fmtMD(end)}</b>${WK.off < 0 ? '<button class="btn sm ghost" data-wk="1">下一周 ›</button>' : '<span></span>'}</div>
-  <div class="grid g4">
+  m.innerHTML = `<div class="wk-nav"><button class="btn sm ghost" data-wk="-1">‹ 上一周</button><b>${name ? name + ' · ' : ''}${fmtMD(W.t0)} – ${fmtMD(end)}</b>${WK.off < 0 ? '<button class="btn sm ghost" data-wk="1">下一周 ›</button>' : '<span class="wk-sp"></span>'}</div>
+  <div class="grid g4 wk-tiles">
     <div class="card tile"><b>${fmtMin(W.min)}</b><span>学习时长</span>${W.min || P.min ? `<span class="wk-dl ${dm >= 0 ? 'up' : 'dn'}">比上周${dm >= 0 ? '多' : '少'} ${fmtMin(Math.abs(dm))}</span>` : ''}</div>
     <div class="card tile"><b>${W.done} 题</b><span>评分次数 · 涉及 ${W.rated} 道题</span></div>
     <div class="card tile"><b>${W.act} / 7 天</b><span>有学习记录的天数</span></div>
     <div class="card tile"><b>${W.dDays} 天</b><span>完成每日自测</span></div></div>
-  <h2>每天学习时长（分钟）</h2><div class="card">${W.min ? wkChart(W) : '<p class="note" style="margin:0">这一周还没有学习时长记录。</p>'}</div>
-  <h2>本周做题情况</h2><div class="card">${W.rated ? `<div class="wk-lv">${bar(W.lv)}<div class="wk-lg"><span><i style="background:var(--ok)"></i>掌握 ${W.lv[3]}</span><span><i style="background:var(--mid)"></i>模糊 ${W.lv[2]}</span><span><i style="background:var(--bad)"></i>不会 ${W.lv[1]}</span><span class="note">按每道题本周最后一次评分统计</span></div></div>
+  <p class="ios-lab">每天学习时长（分钟）</p><div class="card">${W.min ? wkChart(W) : '<p class="note" style="margin:0">这一周还没有学习时长记录。</p>'}</div>
+  <p class="ios-lab">本周做题情况</p><div class="card">${W.rated ? `<div class="wk-lv">${bar(W.lv)}<div class="wk-lg"><span><i style="background:var(--ok)"></i>掌握 ${W.lv[3]}</span><span><i style="background:var(--mid)"></i>模糊 ${W.lv[2]}</span><span><i style="background:var(--bad)"></i>不会 ${W.lv[1]}</span></div><p class="note" style="margin:0">按每道题本周最后一次评分统计</p></div>
     <div class="wk-mods">${mods.map(([mo, a]) => `<div class="wk-mod"><span>${mo} ${esc(MODN[mo])}</span>${bar(a)}<span class="note">${a[3]}/${a[1] + a[2] + a[3]} 掌握</span></div>`).join('')}</div>` : '<p class="note" style="margin:0">这一周还没有评分记录。</p>'}</div>
-  ${W.mocks.length ? `<h2>模拟卷</h2><div class="card">${W.mocks.map(x => `<div class="row" style="margin:0 0 6px"><span>${esc(x.title || '模拟卷')}</span><span class="sp"></span><b>${x.score} / ${x.total}</b><span class="note">${x.min} 分钟</span></div>`).join('')}</div>` : ''}
-  ${WK.off === 0 || WK.off === -1 ? `<h2>下周建议</h2><div class="card"><ul class="chg" style="margin:0">${adv.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+  ${W.mocks.length ? `<p class="ios-lab">模拟卷</p><div class="card">${W.mocks.map(x => `<div class="row" style="margin:0 0 6px"><span>${esc(x.title || '模拟卷')}</span><span class="sp"></span><b>${x.score} / ${x.total}</b><span class="note">${x.min} 分钟</span></div>`).join('')}</div>` : ''}
+  ${WK.off === 0 || WK.off === -1 ? `<p class="ios-lab">下周建议</p><div class="card"><ul class="chg" style="margin:0">${adv.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
   <div class="row" style="margin-top:16px"><button class="btn" id="wkCp">复制周报文字</button><span class="note" id="wkMsg"></span></div>`;
   m.onclick = e => { const b = e.target.closest('[data-wk]'); if (b) { WK.off = Math.min(0, WK.off + +b.dataset.wk); pWeekly(m); } };
   $('#wkCp', m).onclick = async () => {
     const t = `食品化学复习周报（${fmtMD(W.t0)} – ${fmtMD(end)}）\n学习时长：${fmtMin(W.min)}（${W.act}/7 天有记录）\n评分：${W.done} 次，掌握 ${W.lv[3]} / 模糊 ${W.lv[2]} / 不会 ${W.lv[1]}\n每日自测：完成 ${W.dDays} 天${W.mocks.length ? `\n模拟卷：${W.mocks.map(x => x.score + '/' + x.total).join('、')}` : ''}${adv.length ? '\n下周建议：\n' + adv.map(x => '· ' + x).join('\n') : ''}`;
     try { if (window.AndroidApp && window.AndroidApp.copy) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); $('#wkMsg').textContent = '已复制'; } catch (err) { $('#wkMsg').textContent = '无法自动复制'; }
   };
+}
+/* —— 已转正功能的二级页面：开关 + 说明；搜索栏页面在悬浮搜索框和侧边栏「检索」之间切换 —— */
+const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight' };
+function featPageHTML(k) {
+  const f = LABS.find(x => x.k === k), sec = SET_SECS.find(x => FEAT_PG[x[0]] === k);
+  return `<div class="ios-grp"><div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(sec[2])}<span class="ios-n">${esc(sec[1])}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${esc(sec[1])}"><i></i></button></div></div>
+    <p class="ios-note">出现在：${esc(f.where)}</p>
+    <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>${esc(f.d)}</p><ul>${f.how.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
+}
+function searchPageHTML() {
+  const fl = featOn('labSearch'), ck = '<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  return `<div class="ios-grp" role="radiogroup" aria-label="搜索方式">
+      <button class="ios-row" data-srch="float" role="radio" aria-checked="${fl}">${SV('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7.5 9h9"/>')}<span class="ios-n">悬浮搜索框</span>${fl ? ck : ''}</button>
+      <button class="ios-row" data-srch="side" role="radio" aria-checked="${!fl}">${SV('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9 4.5v15"/>')}<span class="ios-n">侧边栏「检索」</span>${!fl ? ck : ''}</button></div>
+    <p class="ios-note">悬浮搜索框：页面顶部常驻一个搜索框，任何页面都能随手搜，点题目直接弹出题卡，手机上在顶栏右侧的放大镜。侧边栏「检索」：在侧边栏里单独放一个「检索」页面，搜索结果占满整页。</p>`;
 }
 
 /* ---------- 设置 · 账号与同步 ---------- */
@@ -1965,13 +2098,15 @@ const SET_SECS = [
   ['update', 'App 更新', '<circle cx="12" cy="12" r="8.5"/><path d="M12 16V8.5M8.8 11.5 12 8.3l3.2 3.2"/>'],
   ['backup', '备份与恢复', '<path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'],
   ['log', '更新日志', '<path d="M7 4h10a1 1 0 0 1 1 1v15l-3-2-3 2-3-2-3 2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 12.5h6"/>'],
+  ['recite', '大题背诵模式', '<path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8z"/><path d="M12 6.3v13"/>'],
+  ['sprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
+  ['night', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>'],
+  ['search', '搜索栏', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'],
+  ['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
+  ['weekly', '学习周报', '<path d="M4.5 20V4M4.5 20h15"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>'],
   ['labs', '试验性功能', '<path d="M9.5 3.5h5M10.5 3.5v5.2L5.3 18.2a1.5 1.5 0 0 0 1.3 2.3h10.8a1.5 1.5 0 0 0 1.3-2.3L13.5 8.7V3.5"/><path d="M7.4 15h9.2"/>']
 ];
-const SET_FEAT = [['labRecite', '大题背诵模式', '<path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8z"/><path d="M12 6.3v13"/>'],
-  ['labSprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
-  ['labNight', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>']];
-const SET_TOOL = [['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
-  ['weekly', '学习周报', '<path d="M4.5 20V4M4.5 20h15"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>']];
+
 const SET_H2 = { '个人资料': 'profile', '学习安排': 'study', '外观': 'look', '每日学习提醒': 'remind', 'App 更新': 'update', '下载 App': 'download', '更新日志': 'log', '备份与恢复': 'backup' };
 const SET = { open: false, sec: 'root', from: null, has: new Set(), rootTop: 0 };
 const isPhone = () => innerWidth <= 860;
@@ -1995,7 +2130,7 @@ function openSettings(sec) {
       const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') { updStatus && updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); toast('正在检查更新……'); } else setGo(ia.dataset.info); return; }
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
-      const nv = e.target.closest('[data-nav]'); if (nv) { location.hash = nv.dataset.nav; return; }
+      const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
     });
     $('#setBody').addEventListener('scroll', e => { const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
   }
@@ -2053,6 +2188,9 @@ function setFill() {
   body.innerHTML = '';
   SET.has = new Set();
   const pages = {};
+  for (const [k, f] of Object.entries(FEAT_PG)) { const d = document.createElement('div'); d.innerHTML = featPageHTML(f); groups[k] = d; }
+  { const d = document.createElement('div'); d.innerHTML = searchPageHTML(); groups.search = d; }
+  for (const k of ['handbook', 'weekly']) { const d = document.createElement('div'); d.innerHTML = '<div class="lz"></div>'; groups[k] = d; }
   { const lp = document.createElement('div'); pLabs(lp); $$('.kick, h1', lp).forEach(x => x.remove()); const ld = $('.lead', lp); if (ld) ld.className = 'ios-note';
     lp.addEventListener('click', e => { if (e.target.closest('[data-sw]')) navHTML(); }); groups.labs = { childNodes: [lp] }; }
   for (const [k] of SET_SECS) if (groups[k]) { const pg = document.createElement('div'); pg.className = 'set-pg'; pg.dataset.p = k; pg.append(...groups[k].childNodes); pages[k] = pg; SET.has.add(k); }
@@ -2063,9 +2201,8 @@ function setFill() {
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
     <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('remind')}</div>
-    <p class="ios-lab">学习功能</p><div class="ios-grp">${SET_FEAT.map(([k, n, ic]) => `<div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(ic)}<span class="ios-n">${n}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${n}"><i></i></button></div>`).join('')}</div>
-    <p class="ios-note">背诵模式：大题题卡上多一个「背诵」按钮，按要点、挖空或全文来背。冲刺计划：按考试日期倒推，首页显示每天该过的考点。睡前回顾：把今天没掌握的题集中到首页，睡前过一遍。</p>
-    <p class="ios-lab">复习工具</p><div class="ios-grp">${SET_TOOL.map(([k, n, ic]) => `<button class="ios-row" data-nav="${k}">${SV(ic)}<span class="ios-n">${n}</span>${SVG_CHEV}</button>`).join('')}</div>
+    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('search')}</div>
+    <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
     <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
     ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
     ${CLOUD.user ? `<div class="ios-grp" style="margin-top:22px"><button class="ios-row red" data-rout>${SV('<path d="M10 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h4M14.5 8l4 4-4 4M9.5 12h9"/>')}<span class="ios-n">退出登录</span></button></div>` : ''}`;
@@ -2083,6 +2220,7 @@ function setFill() {
 function setView(anim) {
   const win = document.querySelector('.set-win'); if (!win) return;
   const root = SET.sec === 'root';
+  const lz = { handbook: pHandbook, weekly: pWeekly }[SET.sec]; if (lz) { const w = win.querySelector(`.set-pg[data-p="${SET.sec}"] .lz`); if (w && !w.dataset.ok) { w.dataset.ok = 1; lz(w); } }
   $$('.set-pg', win).forEach(p => { p.hidden = p.dataset.p !== SET.sec; p.classList.remove('push', 'pop'); if (!p.hidden && anim) { void p.offsetWidth; p.classList.add(anim); } });
   const t = SET_SECS.find(x => x[0] === SET.sec); $('#setTitle').textContent = root ? '设置' : t ? t[1] : '设置';
   const l = $('[data-setl]'); l.innerHTML = SV(root ? SVG_X : SVG_BACK); l.setAttribute('aria-label', root ? '关闭' : '返回');

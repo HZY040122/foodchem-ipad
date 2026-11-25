@@ -1176,6 +1176,28 @@ nav.side.fit3 .brand { padding-bottom: 0; }
 .set-pg[data-p="labs"] .card.lab { background: var(--surface); border: 0; border-radius: 22px; box-shadow: none; }
 .set-look .skins.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .set-look .skins.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* 2.7：功能说明、单选、设置里的速查手册和周报 */
+body:has(.set-ov) .modal { z-index: 97; }
+.ios-txt { padding: 14px 18px; font-size: 14.5px; line-height: 1.65; }
+.ios-txt p { margin: 0 0 8px; }
+.ios-txt ul { margin: 0; padding-left: 20px; }
+.ios-txt li { margin: 3px 0; }
+.ios-row .ck { width: 20px; height: 20px; color: var(--accent); flex: none; margin-left: auto; }
+.set-pg .lz > .ios-note:first-child { margin: 0 6px 12px; }
+.set-pg .hb-bar { margin: 0 0 4px; }
+.set-pg .hb-mh { font-size: 13px; font-weight: 400; color: var(--muted); margin: 22px 0 8px 20px; }
+.set-pg .hb-c { border: 0; border-radius: 22px; padding: 14px 18px; }
+.set-win .set-pg .card { background: var(--surface); border: 0; border-radius: 22px; box-shadow: none; }
+.set-pg .wk-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.set-pg .wk-tiles .tile b { font-size: 21px; }
+.set-pg .wk-nav { margin: 0 0 12px; }
+.set-pg .wk-sp { width: 70px; }
+.set-win .wk-ch .ax, .set-win .wk-ch .vl { font-size: 17px; }
+.set-win .wk-ch.sm .ax, .set-win .wk-ch.sm .vl { font-size: 22px; }
+.set-pg .wk-mod { grid-template-columns: 110px 1fr 70px; }
+[data-skin="glass"] .set-pg .hb-c, [data-skin="glass"] .set-win .set-pg .card { background: rgba(var(--pane), calc(var(--glass-a) + .3)); box-shadow: 0 0 0 .5px var(--edge) inset; }
+[data-skin="book"] .set-pg .hb-c, [data-skin="book"] .set-win .set-pg .card { border-radius: 6px; background: color-mix(in srgb, var(--paper) 55%, #fff); box-shadow: 0 0 0 1px var(--rule); }
+[data-theme="dark"][data-skin="book"] .set-pg .hb-c, [data-theme="dark"][data-skin="book"] .set-win .set-pg .card { background: color-mix(in srgb, var(--paper) 85%, #fff); }
 /* 手机：全屏 */
 @media (max-width: 860px) {
   .set-ov { padding: 0; align-items: stretch; }
