@@ -825,6 +825,83 @@ html.ios-app body { -webkit-tap-highlight-color: transparent; }
 html.ios-app :is(button, .btn, nav, .bnav, .seg, .chip, summary, .sheet, .tile, .mods) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .zoomable { overflow: auto; -webkit-overflow-scrolling: touch; }
 .zoomable.zoomed { cursor: grab; }
+
+/* ===== 2.1 试验性功能 ===== */
+/* 限时作答 */
+.chip.tmr { font-variant-numeric: tabular-nums; }
+.chip.tmr.run { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.chip.tmr.over { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.chip.tmr.done { background: var(--surface2); color: var(--ink); }
+/* 关键词自动评分 */
+.ksc { margin-top: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+.ksc .ph { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.kbar { height: 8px; border-radius: 4px; background: var(--surface2); overflow: hidden; }
+.kbar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width .4s; }
+.kbar i.l1 { background: var(--bad); } .kbar i.l2 { background: var(--mid); } .kbar i.l3 { background: var(--ok); }
+.kpc { font-size: 15px; }
+.kpts { display: grid; gap: 6px; margin-top: 6px; }
+.kpt { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: start; font-size: 13.5px; }
+.kpt .km { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-size: 12px; font-weight: 700; margin-top: 1px; }
+.kpt.ok .km { background: var(--ok-soft); color: var(--ok); }
+.kmiss { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 3px; color: var(--muted); font-size: 12.5px; }
+.kmiss .chip { font-size: 12px; }
+/* 错因标签 */
+.row.why { gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.row.why[hidden], .ksc[hidden] { display: none; }
+.row.why .btn[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chip.why { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.bar-row { display: grid; grid-template-columns: 6.5em 1fr 2.5em; gap: 10px; align-items: center; font-size: 14px; }
+.bar-row .bt { height: 10px; border-radius: 5px; background: var(--surface2); overflow: hidden; }
+.bar-row .bt i { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
+.bar-row b { text-align: right; font-variant-numeric: tabular-nums; }
+/* 冲刺计划 */
+.card.sprint { margin-bottom: 18px; }
+.sprint .sp-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.sprint .sp-h b { font-size: 16px; }
+.sprint .sp-ph { font-weight: 600; margin: 12px 0 8px; }
+.sprint .sp-today, .sprint .sp-day { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sprint .sp-day { margin-top: 6px; }
+.sprint .sp-today .note, .sprint .sp-day .note { min-width: 3em; }
+.sprint .sp-next { margin-top: 8px; }
+.sprint .sp-next summary { cursor: pointer; color: var(--accent); font-size: 14px; }
+.chip.cl { font: inherit; font-size: 13px; cursor: pointer; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; }
+.chip.cl:hover { border-color: var(--accent); }
+.sprint .chg li { margin: 4px 0; }
+/* 易混对比 */
+.cmps { display: grid; gap: 16px; }
+.cmp-h { gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.cmp-h b { font-size: 16px; }
+table.cmpt { width: 100%; table-layout: fixed; }
+table.cmpt th:first-child { width: 6.5em; }
+table.cmpt td, table.cmpt th { vertical-align: top; line-height: 1.6; }
+table.cmpt tr:first-child th { text-align: left; color: var(--accent); }
+td.cz { cursor: pointer; }
+td.cz .czb { display: inline-block; color: var(--muted); font-size: 12.5px; border: 1px dashed var(--line); border-radius: 8px; padding: 2px 10px; }
+td.cz.open { background: var(--accent-soft); }
+/* 名解闪卡 */
+.fl-prog { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.fl-bar { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin-bottom: 16px; }
+.fl-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.fl-stage { display: flex; justify-content: center; padding: 6px 0 14px; touch-action: pan-y; }
+.fl-card { position: relative; width: 100%; max-width: 620px; min-height: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; -webkit-user-select: none; transition: transform .22s ease, opacity .22s ease; touch-action: pan-y; }
+.fl-front { text-align: center; display: grid; gap: 14px; }
+.fl-front[hidden], .fl-back[hidden], .czt[hidden], .czb[hidden] { display: none; }
+.fl-term { font-family: var(--f-disp); font-size: 28px; font-weight: 700; line-height: 1.35; }
+.fl-term.sm { font-size: 18px; margin-bottom: 10px; color: var(--accent); }
+.fl-def { font-size: 15.5px; line-height: 1.75; max-height: 52vh; overflow: auto; }
+.fl-def p { margin: 0 0 6px; }
+.fl-stamp { position: absolute; top: 16px; font-weight: 800; font-size: 15px; padding: 4px 12px; border-radius: 10px; border: 2px solid; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.fl-stamp.l { left: 16px; color: var(--bad); transform: rotate(-8deg); }
+.fl-stamp.r { right: 16px; color: var(--ok); transform: rotate(8deg); }
+.fl-card.to-l .fl-stamp.l, .fl-card.to-r .fl-stamp.r { opacity: 1; }
+.fl-card.out-r { transform: translateX(120%) rotate(14deg) !important; opacity: 0; }
+.fl-card.out-l { transform: translateX(-120%) rotate(-14deg) !important; opacity: 0; }
+.fl-card.out-d { transform: translateY(40px) !important; opacity: 0; }
+.fl-btns { justify-content: center; gap: 10px; }
+.fl-btns .btn { min-width: 6.5em; }
+.fl-end { text-align: center; padding: 26px; }
+.fl-end b.ok { color: var(--ok); } .fl-end b.mid { color: var(--mid); } .fl-end b.bad { color: var(--bad); }
+@media (max-width: 520px) { .fl-term { font-size: 24px; } .fl-card { min-height: 260px; padding: 22px 18px; } table.cmpt th:first-child { width: 4.6em; } }
 </style>
 </head>
 <body>

@@ -16,6 +16,8 @@ const LVL = ['未练', '不会', '模糊', '掌握'];
 
 const SV = (d, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  flash: '<rect x="3.5" y="6.5" width="13" height="14" rx="2"/><path d="M7.5 3.5h11a2 2 0 0 1 2 2v12"/><path d="M7 11.5h6M7 15h4"/>',
+  compare: '<rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.5"/><path d="M6 9h2M6 12.5h2M16 9h2M16 12.5h2"/>',
   labs: '<path d="M9.5 3.5h5M10.5 3.5v5.2L5.4 17.6A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-2.9L13.5 8.7V3.5"/><path d="M7.6 14h8.8"/><circle cx="10.5" cy="17" r=".9" fill="currentColor" stroke="none"/><circle cx="13.8" cy="16.2" r=".7" fill="currentColor" stroke="none"/>',
   dlApple: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
   dlAndroid: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M12 6.5v7M9 10.5l3 3 3-3"/>',
@@ -350,7 +352,7 @@ function answerPoints(q) {
    序号（1）、数字、字母（pH、VE）、标点和「且、受、较、使、等」这类虚词照常显示，句子骨架保留，读起来更顺 */
 const FC_STOP = new Set(('的 了 过 是 在 它 它们 它的 差 好 强 弱 快 慢 难 新 旧 少量 大量 部分 全部 较为 相对 和 与 及 或 而 且 并 对 受 使 被 由 于 中 等 较 更 最 很 不 也 都 还 又 可 能 会 易 为 以 其 之 从 到 向 把 将 如 即 则 因 此 所 有 无 多 少 大 小 高 低 一 个 种 各 每 该 这 那 时 后 前 上 下 内 外 间 来 得 地 就 才 再 均 仍 已 亦 若 但 越 愈 其他 ' +
   '具有 含有 可以 能够 使得 由于 因为 所以 因此 从而 因而 同时 此外 另外 例如 比如 以及 并且 而且 但是 或者 通过 进行 发生 产生 导致 引起 一般 通常 主要 其中 之间 之一 以上 以下 不同 一定 较大 较小 较高 较低 容易 可能 能 作为 成为 对于 关于 随着 以及 等等 方面 情况 过程 作用 时候 ' +
-  '形成 获得 发挥 显示 影响 直接 间接 重要 必须 逐渐 恢复 常用 称为 又称 叫做 包括 属于 存在 出现 增加 降低 提高 减少 加入 需要 保持 维持 达到 相互 分别 迅速 有关 相关 各种 某些 一些 大多 大多数 一种 这种 这些 正常 特定 充分 发生 进而 使用 利用 用于 用作 称作 也称 主要是 就是 不能 不会 没有 较多 较少 食品 本质 原因 特点 优点 缺点 非常 十分 比较 极易 难以').split(' '));
+  '形成 获得 发挥 显示 影响 直接 间接 重要 必须 逐渐 恢复 常用 称为 又称 叫做 包括 属于 存在 出现 增加 降低 提高 减少 加入 需要 保持 维持 达到 相互 分别 迅速 有关 相关 各种 某些 一些 大多 大多数 一种 这种 这些 正常 特定 充分 发生 进而 使用 利用 用于 用作 称作 也称 主要是 就是 不能 不会 没有 较多 较少 食品 本质 原因 特点 优点 缺点 非常 十分 比较 极易 难以 经过 甚至 会变 变得 现象 这种 以后 之后 然后 首先 其次 最后 主要有 可分为 分为 称之为 所谓 指的是 是指 一方面 另一方面').split(' '));
 const FC_SUF = new Set('粒 性 度 剂 素 化 物 类 质 率 值 力 法 型 酶 酸 盐 糖 体 基 量 点 色 味 感 键 链 团 液 胶 粉 油 脂'.split(' '));
 /* 分词用题库自带的词表（构建时从全部答案里提取），按「最长匹配」切词：
    各浏览器自带的中文分词不一定有词典，有的会切成单字，所以不用它，保证每台设备挖空一致 */
@@ -440,17 +442,36 @@ function qcard(q, o = {}) {
   if (q.opts && q.opts.length) body = `<div class="opts">${q.opts.map(([a, t]) => `<button class="opt" data-o="${esc(a)}">${esc(/^\d$/.test(a) ? '（' + a + '）' : a + '.')} ${esc(t)}</button>`).join('')}</div>`;
   else if (q.t === '判断') body = `<div class="row"><button class="opt" data-o="√">√ 对</button><button class="opt" data-o="×">× 错</button></div>`;
   else body = `<textarea placeholder="${q.t === '名解' ? '先写出定义的关键词，再对答案' : OBJ.includes(q.t) ? '填写答案' : '先列出答题要点（可以只写关键词），再对答案'}" aria-label="作答"></textarea>`;
-  el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}</div><div class="qtext">${esc(q.q)}</div>${body}
+  const TMR = S.settings.labTimer && TLIM[q.t] && !(q.opts && q.opts.length) && q.t !== '判断';
+  el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}${TMR ? `<span class="chip tmr" data-tmr>⏱ 建议 ${TLIM[q.t]} 分钟${s.tu ? ' · 上次用时 ' + mmss(s.tu) : ''}</span>` : ''}</div><div class="qtext">${esc(q.q)}</div>${body}
     ${S.settings.labPoints && s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
     <div class="row"><button class="btn pri" data-a="show">对答案</button>${S.settings.labRecite && answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
     <div class="recite" hidden></div>
     <div class="ans" hidden><div class="h">参考答案 ${q.src === '汇编' ? '· 来自你的答案汇编' : q.src === '补充' ? '· Claude 按教材补写，建议对照课本' : '· Claude 整理，建议核对'}${q.doubt ? '<span class="chip doubt">存疑</span>' : ''}</div>${q.a || '<p>暂无参考答案。</p>'}</div>
+    <div class="ksc" hidden></div>
     <div class="ptc" hidden></div>
     <div class="row rt" hidden><span class="note">这题你答得怎样？</span><button class="btn r1" data-r="1">不会</button><button class="btn r2" data-r="2">模糊</button><button class="btn r3" data-r="3">掌握</button></div>
+    <div class="row why" hidden></div>
     <div class="nt" hidden><textarea placeholder="写下易错点、记忆口诀……（自动保存）" aria-label="笔记">${esc(s.note || '')}</textarea></div>`;
   let shown = false;
   const PTS = answerPoints(q);
-  const reveal = () => { $('.ans', el).hidden = false; $('.rt', el).hidden = false; showCheck(); $('[data-a=show]', el).textContent = '隐藏答案'; if (!shown) { shown = true; o.onReveal && o.onReveal(); } };
+  /* 限时作答：点进输入框或开始打字时计时，对答案时停止并记下用时 */
+  const tch = TMR ? $('[data-tmr]', el) : null, lim = TMR ? TLIM[q.t] * 60 : 0; let T0 = 0, TI = null, TU = 0;
+  const tTick = () => { if (!el.isConnected) { clearInterval(TI); TI = null; return; } TU = (Date.now() - T0) / 1000; tch.classList.toggle('over', TU > lim); tch.textContent = TU > lim ? `⏱ 超时 ${mmss(TU - lim)}` : `⏱ ${mmss(TU)} / ${mmss(lim)}`; };
+  const tStart = () => { if (!tch || TI || T0) return; T0 = Date.now(); tch.classList.add('run'); TI = setInterval(tTick, 1000); tTick(); };
+  const tStop = () => { if (!TI) return; clearInterval(TI); TI = null; tTick(); tch.classList.remove('run'); tch.classList.add('done');
+    tch.textContent = `⏱ 用时 ${mmss(TU)}${TU > lim ? '（超时 ' + mmss(TU - lim) + '）' : '（建议 ' + TLIM[q.t] + ' 分钟）'}`;
+    const st = Object.assign({ l: 0, n: 0, c: 0, w: 0 }, S.q[q.id]); st.tu = Math.round(TU); st.t = Date.now(); S.q[q.id] = st; save(); };
+  if (tch) { const ta0 = el.querySelector(':scope > textarea'); if (ta0) { ta0.addEventListener('focus', tStart); ta0.addEventListener('input', tStart); } }
+  /* 关键词自动评分：对答案时，拿输入框里写的内容对照参考答案的关键词 */
+  function runScore() {
+    if (!S.settings.labScore || OBJ.includes(q.t)) return; const ta = el.querySelector(':scope > textarea'); if (!ta) return;
+    const ks = $('.ksc', el), v = ta.value.trim(); ks.hidden = false;
+    if (v.replace(/\s/g, '').length < 2) { ks.innerHTML = '<div class="ph"><b>关键词自动评分</b><span class="note">先在上面写下答案，再点「对答案」，就能自动对照关键词</span></div>'; return; }
+    const sc = autoScore(q, v, PTS); ks.innerHTML = scoreHTML(sc);
+    if (S.settings.labPoints && PTS.length > 1 && $('.pchip', el)) { sc.pts.forEach(p => { const c = $(`.pchip[data-pi="${p.i}"]`, el); if (c) c.setAttribute('aria-pressed', p.hit.length / p.terms.length >= 0.5); }); checkState(); }
+  }
+  const reveal = () => { tStop(); $('.ans', el).hidden = false; $('.rt', el).hidden = false; showCheck(); runScore(); $('[data-a=show]', el).textContent = '隐藏答案'; if (!shown) { shown = true; o.onReveal && o.onReveal(); } };
   /* 按要点自评：对照答案勾选答出的要点，按比例给出掌握程度 */
   function showCheck() {
     const pc = $('.ptc', el); if (!S.settings.labPoints || PTS.length < 2 || !pc.hidden) return;
@@ -484,7 +505,7 @@ function qcard(q, o = {}) {
     if (b.dataset.a === 'recite') {
       const rc = $('.recite', el);
       if (!rc.hidden) { rc.hidden = true; b.textContent = '背诵'; return; }
-      conceal(); rc.hidden = false; b.textContent = '收起背诵'; $('.rt', el).hidden = false; showCheck();
+      tStop(); conceal(); rc.hidden = false; b.textContent = '收起背诵'; $('.rt', el).hidden = false; showCheck();
       const mode0 = PTS.length > 1 ? (S.settings.reciteMode || 'key') : 'first';
       rc.innerHTML = `<div class="row rhd"><b>背诵</b><div class="seg sm" data-rm>${PTS.length > 1 ? `<button data-m="key">要点提示</button>` : ''}<button data-m="first">挖空填词</button><button data-m="full">全文</button></div><span class="sp"></span><button class="btn sm ghost" data-rall>全部揭开</button></div><div class="rbody"></div>`;
       const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m, q.q); rc.dataset.m = m; const ra = $('[data-rall]', rc); if (ra) { ra.dataset.open = '0'; ra.textContent = '全部揭开'; } };
@@ -506,6 +527,8 @@ function qcard(q, o = {}) {
       doRate(+b.dataset.l); const st = S.q[q.id]; st.miss = miss; st.pr = Math.round((PTS.length - miss.length) / PTS.length * 100); save();
       $('[data-psum]', el).textContent += miss.length ? ` · 已记下漏掉的要点，下次做这题时会提醒` : ' · 全部答出，太棒了'; return;
     }
+    if (b.dataset.ksok) { doRate(+b.dataset.ksok); return; }
+    if (b.dataset.why) { const st = Object.assign({ l: 0, n: 0, c: 0, w: 0 }, S.q[q.id]); if (st.why === b.dataset.why) delete st.why; else st.why = b.dataset.why; st.t = Date.now(); S.q[q.id] = st; save(); $$('[data-why]', el).forEach(x => x.setAttribute('aria-pressed', x.dataset.why === st.why)); return; }
     if (b.dataset.a === 'tts') { if (TTS.on && TTS.btn === b) ttsStop(); else ttsSpeak(speakText(q), b); return; }
     if (b.dataset.a === 'star') { const st = Object.assign({ l: 0, n: 0, c: 0 }, S.q[q.id]); st.w = st.w ? 0 : 1; st.t = Date.now(); S.q[q.id] = st; save(); b.textContent = st.w ? '已在错题本' : '加入错题本'; }
     if (b.dataset.a === 'note') { const n = $('.nt', el); n.hidden = !n.hidden; if (!n.hidden) $('textarea', n).focus(); }
@@ -518,6 +541,9 @@ function qcard(q, o = {}) {
     $$('.rt .btn', el).forEach(x => x.style.outline = x.dataset.r == l ? '2px solid currentColor' : '');
     $('.lv', el).className = 'lv l' + l; $('.lv', el).innerHTML = '<i></i>' + LVL[l] + (auto ? '（已自动判分，可修改）' : '');
     $('[data-a=star]', el).textContent = qs(q.id).w ? '已在错题本' : '加入错题本';
+    if (S.settings.labCause) { const w = $('.why', el);
+      if (l < 3) { w.hidden = false; w.innerHTML = whyHTML(q.id); }
+      else { w.hidden = true; if (!restore && S.q[q.id] && S.q[q.id].why) { delete S.q[q.id].why; save(); } } }
     if (!restore) o.onRated && o.onRated(l);
   }
   if (K) {
@@ -542,6 +568,14 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.1', d: '2026-11-25', t: '复习站 2.1：六个新的试验性功能', items: [
+    '关键词自动评分：写完答案点「对答案」，自动对照参考答案的关键词，告诉你写到了哪些、漏了哪些，并给出建议打分',
+    '限时作答：名解 3 分钟、简答 8 分钟、论述和分析 15 分钟，开始写就计时，超时变红提醒，用时记在题目上',
+    '易混概念对比：糊化和老化、结合水和自由水、酶促和非酶褐变、三种油脂氧化、三种酸败等 13 组对照表，可以挖空练习',
+    '名解闪卡：名词解释做成卡片，右滑「记住了」、左滑「还不会」，每组 20 张，没掌握的排在前面',
+    '冲刺计划：按考试日期倒推，把还没过完的考点分到每一天，最后 7 天只安排错题和模拟卷',
+    '错因标签：评「不会」「模糊」时选一下错在哪里，进度页统计最常见的失分原因并给出建议',
+    '以上都在「试验性功能」里，默认关闭，按需打开'] },
   { v: '2.0.10', d: '2026-11-25', t: '答案文本全面校对', items: [
     '对照答案汇编原文的分行，找回 145 处被并成一段的换行（如「按照来源不同…」和「按照化学结构…」现在分成两段，「醌类」后面不再直接接下一段），共涉及 49 道题',
     '小标题统一加粗：「（1）热处理法」「（2）热和酸引起的变化」这类单独成行或以短句开头的编号小标题，与同一题里其他小标题保持一致',
@@ -720,9 +754,13 @@ function openDiagram(id) {
 function openQ(id) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`); }
 
 /* ---------- 导航 ---------- */
-const PAGES = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
+const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
+/* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
+let PAGES = PAGES_BASE.slice();
+function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); PAGES = PAGES_BASE.slice(0, -2).concat(ex, PAGES_BASE.slice(-2)); }
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
+  syncPages();
   const cur = location.hash.slice(1) || 'today';
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="toc" aria-hidden="true">目　录</div>` +
     PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
@@ -752,7 +790,7 @@ function render() {
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
-  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings }[p] || pToday;
+  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings, flash: pFlash, compare: pCompare }[p] || pToday;
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
@@ -828,6 +866,7 @@ function pToday(m) {
     <div class="card tile">${icon('wrong', 'ti')}<b>${wrong}</b><span>错题本</span></div>
     <div class="card tile">${icon('stats', 'ti')}<b><span data-today-min>${Math.floor(L.min + pend)}</span><small style="font-size:13px"> 分钟</small></b><span>今天已学（本周 ${Math.round(week)} 分钟）</span></div>
   </div>
+  ${S.settings.labSprint ? sprintHTML() : ''}
   <h2>今日计划</h2>
   <div class="card"><div class="row" style="margin-bottom:10px"><span class="note">今天打算学多久？</span><div class="seg" id="dur">${[60, 90, 120].map(x => `<button aria-pressed="${dur === x}" data-d="${x}">${x} 分钟</button>`).join('')}</div><span class="sp"></span><span class="timer" id="tm">${S.settings.autoTime === false ? '学习时间记录已暂停' : '正在记录 · 今天 ' + Math.floor(L.min + pend) + ' 分钟'}</span><button class="btn sm" id="tbtn">${S.settings.autoTime === false ? '恢复记录' : '暂停记录'}</button></div>
   <div class="plan">
@@ -1091,7 +1130,7 @@ function pWrong(m) {
   list = list.filter(q => (wf.t === '全部' || q.t === wf.t) && (!wf.m || qmod(q) === wf.m)).sort((a, b) => (qs(a.id).l - qs(b.id).l) || (qs(b.id).t - qs(a.id).t));
   m.innerHTML = `<div class="kick">REVIEW · 错题与笔记</div><h1>错题本</h1><p class="lead">自评"不会""模糊"的题和手动加入的题都在这里。连续两次评"掌握"会自动移出，也可以手动移出。可以给每道题写笔记。</p>
   <div class="row" style="margin-bottom:10px"><div class="seg" id="wt">${['全部', '名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => `<button data-t="${t}" aria-pressed="${wf.t === t}">${t === '全部' ? '全部' : TLABEL[t]}</button>`).join('')}</div><select id="wm" aria-label="模块"><option value="0">全部模块</option>${MODS.map(x => `<option value="${x.id}" ${wf.m === x.id ? 'selected' : ''}>${x.id} ${esc(x.name)}</option>`).join('')}</select><span class="sp"></span><span class="note">共 ${tot} 题，当前 ${list.length} 题</span><button class="btn pri" id="wgo" ${list.length ? '' : 'disabled'}>逐题重练</button></div>
-  <div class="list" id="wl">${list.map(q => { const s = qs(q.id); return `<div class="li" data-q="${q.id}"><div class="stripe l${s.l}"></div><div class="main"><div class="t">${esc(q.q.split('\n')[0].slice(0, 90))}</div><div class="s"><span>${q.y || '原创'} · ${TLABEL[q.t]}</span><span>${esc((CL[q.c] || {}).n || '')}</span><span class="lv l${s.l}"><i></i>${LVL[s.l]}</span><span>练过 ${s.n || 0} 次</span>${s.note ? `<span>笔记：${esc(s.note.slice(0, 30))}${s.note.length > 30 ? '…' : ''}</span>` : ''}</div></div><div class="row"><button class="btn sm" data-a="open">展开</button><button class="btn sm ghost" data-a="rm">移出</button></div></div>`; }).join('') || ('<p class="empty">' + icon('wrong', 'empty-ill') + '错题本是空的。做题时自评"不会"或"模糊"，题目会自动收进来。</p>')}</div>`;
+  <div class="list" id="wl">${list.map(q => { const s = qs(q.id); return `<div class="li" data-q="${q.id}"><div class="stripe l${s.l}"></div><div class="main"><div class="t">${esc(q.q.split('\n')[0].slice(0, 90))}</div><div class="s"><span>${q.y || '原创'} · ${TLABEL[q.t]}</span><span>${esc((CL[q.c] || {}).n || '')}</span><span class="lv l${s.l}"><i></i>${LVL[s.l]}</span>${S.settings.labCause && s.why && s.l < 3 ? `<span class="chip why">${WHYN[s.why] || ''}</span>` : ''}<span>练过 ${s.n || 0} 次</span>${s.note ? `<span>笔记：${esc(s.note.slice(0, 30))}${s.note.length > 30 ? '…' : ''}</span>` : ''}</div></div><div class="row"><button class="btn sm" data-a="open">展开</button><button class="btn sm ghost" data-a="rm">移出</button></div></div>`; }).join('') || ('<p class="empty">' + icon('wrong', 'empty-ill') + '错题本是空的。做题时自评"不会"或"模糊"，题目会自动收进来。</p>')}</div>`;
   $('#wt').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { wf.t = b.dataset.t; render(); } };
   $('#wm').onchange = e => { wf.m = +e.target.value; render(); };
   $('#wgo').onclick = () => startPractice(list.map(q => q.id), '错题本重练');
@@ -1211,7 +1250,8 @@ function pStats(m) {
   <h2>模拟卷分数变化</h2><div class="card">${mockTrendSVG()}</div>
   <h2>近 14 天做题量</h2><div class="card"><svg viewBox="0 0 700 170" class="dg" role="img" aria-label="近14天做题量">${[0, .5, 1].map(f => `<line x1="30" x2="690" y1="${140 - f * 120}" y2="${140 - f * 120}" stroke="var(--line)"/><text x="24" y="${144 - f * 120}" text-anchor="end" class="dgl">${Math.round(mx * f)}</text>`).join('')}${days.map(([d, L], i) => `<rect x="${42 + i * 46}" y="${140 - L.done / mx * 120}" width="30" height="${Math.max(1, L.done / mx * 120)}" rx="3" fill="${i === 13 ? 'var(--accent)' : 'var(--c-blue-b)'}"/><text x="${57 + i * 46}" y="160" text-anchor="middle" class="dgl">${d}</text>${L.done ? `<text x="${57 + i * 46}" y="${134 - L.done / mx * 120}" text-anchor="middle" class="dgl">${L.done}</text>` : ''}`).join('')}</svg></div>
   <h2>各模块掌握情况</h2><div class="card grid" style="gap:8px">${MODS.map(mo => { const ids = new Set(mo.items.flatMap(i => i.cs)); return barRow(mo.id + ' ' + mo.name, all.filter(q => ids.has(q.c))); }).join('')}</div>
-  <h2>各题型掌握情况</h2><div class="card grid" style="gap:8px">${['名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => barRow(TLABEL[t], all.filter(q => q.t === t))).join('')}</div>`;
+  <h2>各题型掌握情况</h2><div class="card grid" style="gap:8px">${['名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => barRow(TLABEL[t], all.filter(q => q.t === t))).join('')}</div>
+  ${S.settings.labCause ? `<h2>失分原因</h2><div class="card">${whyStats()}</div>` : ''}`;
   chartHover(m);
   m.addEventListener('click', e => { const b = e.target.closest('[data-wm]'); if (!b) return; NAV.learnMod = +b.dataset.wm; NAV.learnOpen = null; go('learn'); });
 }
@@ -1268,9 +1308,256 @@ function chartHover(m) {
 }
 
 /* ---------- 试验性功能：默认关闭，打开后才在刷题界面出现 ---------- */
+/* ========== 试验性功能（2.1）：关键词自动评分、限时作答、易混对比卡、名解闪卡、冲刺计划、错因标签 ========== */
+
+/* ---------- 关键词：从一段答案里取出关键词（和背诵挖空用同一套分词与词表） ---------- */
+function keyTerms(text, topic) {
+  const out = [], seen = new Set(); topic = topic || '';
+  const isKey = x => x.isWordLike && /[一-鿿]/.test(x.segment) && !FC_STOP.has(x.segment) && ![...x.segment].every(c => FC_STOP.has(c));
+  let buf = '', run = false;
+  const flush = () => { if (buf) { if ([...buf].length > 1 && !seen.has(buf) && !topic.includes(buf)) { seen.add(buf); out.push(buf); } buf = ''; } };
+  for (const x of FC_SEG.segment(text)) {
+    if (isKey(x)) {
+      const n = [...x.segment].length, bn = [...buf].length;
+      if (n === 1) {
+        if (buf && !run && FC_SUF.has(x.segment) && bn + 1 <= 5) buf += x.segment;
+        else if (buf && run && bn < 4) buf += x.segment;
+        else { flush(); buf = x.segment; run = true; }
+      } else { flush(); buf = x.segment; run = false; }
+    } else flush();
+  }
+  flush();
+  return out;
+}
+/* 写到了吗：完全一样算写到；三个字以上的词，写出其中连续的大部分（约三分之二）也算 */
+function termHit(term, typed) {
+  if (typed.includes(term)) return true;
+  const c = [...term], n = c.length; if (n < 3) return false;
+  const k = Math.ceil(n * 2 / 3);
+  for (let i = 0; i + k <= n; i++) if (typed.includes(c.slice(i, i + k).join(''))) return true;
+  return false;
+}
+function autoScore(q, typed, PTS) {
+  const clean = String(typed || '').replace(/[\s，。、；：,.;:！？!?（）()“”"'【】\[\]]/g, '');
+  const pts = (PTS && PTS.length ? PTS : [{ label: '', text: txt(q.a || '') }]).map((p, i) => {
+    const terms = keyTerms(p.label ? (p.label + '：' + (p.body || '')) : (p.text || ''), q.q).slice(0, 14);
+    const hit = terms.filter(t => termHit(t, clean));
+    return { i, label: p.label || p.hint || '', terms, hit, miss: terms.filter(t => !hit.includes(t)) };
+  }).filter(p => p.terms.length);
+  const tot = pts.reduce((a, p) => a + p.terms.length, 0), got = pts.reduce((a, p) => a + p.hit.length, 0);
+  const r = tot ? got / tot : 0;
+  return { pts, tot, got, r, cov: pts.filter(p => p.hit.length / p.terms.length >= 0.5).length, l: r >= 0.7 ? 3 : r >= 0.35 ? 2 : 1 };
+}
+function scoreHTML(sc) {
+  if (!sc.tot) return '<div class="ph"><b>关键词自动评分</b><span class="note">这道题的答案里没找到可以对照的关键词</span></div>';
+  const pc = Math.round(sc.r * 100);
+  return `<div class="ph"><b>关键词自动评分</b><span class="note">对照参考答案里的关键词，结果仅供参考</span></div>
+    <div class="kbar" role="img" aria-label="关键词覆盖 ${pc}%"><i class="l${sc.l}" style="width:${Math.max(pc, 2)}%"></i></div>
+    <div class="row" style="margin:6px 0 4px"><b class="kpc">覆盖 ${pc}%</b><span class="note">写到 ${sc.got}/${sc.tot} 个关键词${sc.pts.length > 1 ? ` · 要点 ${sc.cov}/${sc.pts.length}` : ''}</span><span class="sp"></span><button class="btn sm pri" data-ksok="${sc.l}">按这个打分：${LVL[sc.l]}</button></div>
+    <div class="kpts">${sc.pts.map((p, i) => { const ok = p.hit.length / p.terms.length >= 0.5; return `<div class="kpt ${ok ? 'ok' : ''}"><span class="km">${ok ? '✓' : '✗'}</span><div><b>${sc.pts.length > 1 ? (p.label ? esc(p.label) : '要点 ' + (i + 1)) : '关键词'}</b>${p.miss.length ? `<div class="kmiss">没写到：${p.miss.slice(0, 8).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : '<div class="note">关键词都写到了</div>'}</div></div>`; }).join('')}</div>`;
+}
+
+/* ---------- 限时作答：按题型给建议时间，超时只提醒不打断 ---------- */
+const TLIM = { 名解: 3, 简答: 8, 论述: 15, 分析: 15 };
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+/* ---------- 错因标签 ---------- */
+const WHY = [['concept', '概念不清'], ['mix', '记混了'], ['miss', '漏要点'], ['read', '审题错'], ['expr', '会但写不出']];
+const WHYN = Object.fromEntries(WHY);
+function whyHTML(id) { const w = qs(id).why; return `<span class="note">错在哪里？</span>${WHY.map(([k, n]) => `<button class="btn sm" data-why="${k}" aria-pressed="${w === k}">${n}</button>`).join('')}`; }
+function whyStats() {
+  const c = {}; let n = 0;
+  for (const q of BANK) { const s = qs(q.id); if (s.why && s.l && s.l < 3) { c[s.why] = (c[s.why] || 0) + 1; n++; } }
+  if (!n) return '<p class="note" style="margin:0">还没有记录。做题时评「不会」或「模糊」后，选一下错在哪里，这里会统计你最常见的失分原因。</p>';
+  const max = Math.max(...Object.values(c));
+  const top = WHY.filter(([k]) => c[k]).sort((a, b) => c[b[0]] - c[a[0]]);
+  const tip = { concept: '回到「知识点」把定义和原理再读一遍，名解闪卡多过几轮', mix: '去「易混对比」把相近的概念放在一起对照着背', miss: '打开「按要点自评」或背诵的「要点提示」，先把要点的框架背下来', read: '做题前先圈出题干里的关键词（如「区别」「机理」「影响因素」），再动笔', expr: '多用「关键词自动评分」练习写完整，背诵时用「挖空填词」' }[top[0][0]];
+  return `<div class="grid" style="gap:8px">${top.map(([k, nm]) => `<div class="bar-row"><span class="bl">${nm}</span><span class="bt"><i style="width:${c[k] / max * 100}%"></i></span><b>${c[k]}</b></div>`).join('')}</div>
+    <p class="note" style="margin:10px 0 0">共 ${n} 道还没掌握的题标了原因。最多的是「${WHYN[top[0][0]]}」：${tip}。</p>`;
+}
+
+/* ---------- 冲刺计划：按考试日期倒推，把没过完的考点分到每一天，最后一周只做错题和模拟卷 ---------- */
+function clusterDone(id) { if (pathDone(id)) return true; const mm = clusterMastery(id); return mm.att >= Math.ceil(mm.tot / 2) && mm.avg >= 2.5; }
+function sprintHTML() {
+  if (!S.settings.exam) return `<div class="card sprint"><div class="sp-h"><b>冲刺计划</b><span class="chip">试验</span></div><p class="note" style="margin:6px 0 10px">先在设置里填好考试日期，冲刺计划会按剩下的天数，把所有考点分配到每一天。</p><button class="btn sm pri" data-go="settings">去设置考试日期</button></div>`;
+  const days = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY);
+  if (days < 0) return '';
+  const all = Object.keys(CS).sort((a, b) => CS[b].prio - CS[a].prio), left = all.filter(id => !clusterDone(id)), done = all.length - left.length;
+  const pct = Math.round(done / all.length * 100);
+  const head = `<div class="sp-h"><b>冲刺计划</b><span class="chip">试验</span><span class="sp"></span><span class="note">离考试 ${days} 天 · 考点过完 ${done}/${all.length}</span></div><div class="kbar"><i class="l3" style="width:${Math.max(pct, 2)}%"></i></div>`;
+  const chip = id => `<button class="chip cl" data-cl="${id}">${esc(CL[id].n)}</button>`;
+  let body = '';
+  if (days === 0) body = `<p class="sp-ph">今天考试，加油！</p><p class="note">不再刷新题。早点出门，带好证件和文具，考前翻一下错题本里的笔记就好。</p>`;
+  else if (days <= 2) body = `<p class="sp-ph">考前最后两天：只回顾，不做新题</p><ul class="chg"><li>把高频考点的要点过一遍：${all.slice(0, 8).map(chip).join('')}</li><li>${S.settings.labFlash ? '<a href="#flash">名解闪卡</a>' : '名词解释'}快速过一轮，只看「还不会」的</li><li>翻错题本里的笔记，早点睡</li></ul>`;
+  else if (days <= 7) {
+    const wrong = BANK.filter(q => qs(q.id).w).length, due = BANK.filter(q => isDue(q.id)).length;
+    body = `<p class="sp-ph">最后一周：错题清零 + 模拟卷</p><ul class="chg"><li>错题本还有 <b>${wrong}</b> 题，今天到期 <b>${due}</b> 题 <button class="btn sm" data-go="due">去复习</button></li><li>${days % 2 === 1 ? '今天做一套模拟卷，严格按 3 小时计时 <button class="btn sm" data-go="mock">去做模拟卷</button>' : '今天不做整卷，把昨天模拟卷里丢分的题重新写一遍'}</li>${left.length ? `<li>还没过完、最常考的几个考点，挑一两个快速看要点：${left.slice(0, 4).map(chip).join('')}</li>` : ''}</ul>`;
+  } else {
+    const L = days - 7, per = Math.max(1, Math.ceil(left.length / L));
+    if (!left.length) body = `<p class="sp-ph">所有考点都过完了，提前进入复习阶段</p><p class="note">每天做错题和到期复习，隔天一套模拟卷。离考试一周时，冲刺计划会自动切到最后一周的安排。</p>`;
+    else {
+      const today = left.slice(0, per), next = [];
+      for (let d = 1; d <= 4 && per * d < left.length; d++) next.push([d, left.slice(per * d, per * (d + 1))]);
+      const dl = d => { const t = new Date(sod() + d * DAY); return `${t.getMonth() + 1}/${t.getDate()}`; };
+      body = `<p class="sp-ph">考点学习阶段：还有 ${left.length} 个考点，每天 ${per} 个，${L} 天内过完，最后 7 天留给错题和模拟卷</p>
+        <div class="sp-today"><span class="note">今天</span>${today.map(chip).join('')}</div>
+        ${next.length ? `<details class="sp-next"><summary>接下来几天</summary>${next.map(([d, ids]) => `<div class="sp-day"><span class="note">${dl(d)}</span>${ids.map(chip).join('')}</div>`).join('')}</details>` : ''}
+        <p class="note" style="margin:8px 0 0">点考点进入复习路径，三步做完就算过完。已经掌握的考点会自动跳过，计划每天按你的进度重新分配。</p>`;
+    }
+  }
+  return `<div class="card sprint">${head}${body}</div>`;
+}
+
+/* ---------- 易混对比卡 ---------- */
+const CMP = [
+  { id: 'gel', t: '淀粉糊化 vs 淀粉老化', m: 3, cols: ['糊化', '老化'], rows: [
+    ['定义', '淀粉粒在适当温度下在水中吸水溶胀、分裂，形成均匀糊状溶液的过程', '糊化后的淀粉在室温或低温下放置，分子重新排列、相互靠拢，形成致密的高度晶化结构，变得不透明甚至凝结沉淀'],
+    ['结构变化', '有序 → 无序：破坏结晶区的氢键，胶束解体', '无序 → 有序：分子间氢键重新形成，部分重新结晶，但不能恢复成生淀粉的结构'],
+    ['条件', '加热且有足够的水', '2~4 ℃ 最易老化；含水量 30%~60%；直链淀粉多的易老化'],
+    ['对食品的影响', '变软、黏，容易消化', '变硬、口感变差，消化性下降（面包变硬、米饭回生）'],
+    ['应用或防止', '方便食品（α-化米饭、方便面）利用糊化', '80 ℃ 以上或 0 ℃ 以下迅速脱水；加入乳化剂、糖、脂类等延缓老化']] },
+  { id: 'water', t: '结合水 vs 自由水', m: 2, cols: ['结合水', '自由水'], rows: [
+    ['定义', '通过氢键与溶质或其他非水组分结合的水', '没有被非水物质化学结合，靠毛细管力等维系的水（截留水、毛细管水、游离水）'],
+    ['冻结', '−40 ℃ 也不结冰', '0 ℃ 左右可以结冰'],
+    ['溶剂能力', '不能作为溶剂', '能作为溶剂'],
+    ['微生物利用', '不能被微生物利用', '能被微生物利用，引起腐败'],
+    ['干燥除去', '很难除去', '容易除去'],
+    ['与稳定性', '对水分活度贡献很小', '决定水分活度，与食品稳定性关系密切']] },
+  { id: 'aw', t: '水分含量 vs 水分活度', m: 2, cols: ['水分含量', '水分活度 Aw'], rows: [
+    ['定义', '食品中水的总量（质量分数）', '食品中水的蒸汽压与同温下纯水蒸汽压之比，Aw = p/p₀ = ERH/100'],
+    ['反映什么', '水有多少', '水的存在状态，能被微生物和化学反应利用的程度'],
+    ['预测稳定性', '差：含水量相同的食品，稳定性可能相差很大', '好：与微生物生长、化学反应速率关系密切'],
+    ['温度影响', '与温度无关', '随温度升高而增大'],
+    ['范围', '0~100%', '0~1']] },
+  { id: 'brown', t: '酶促褐变 vs 非酶褐变', m: 8, cols: ['酶促褐变', '非酶褐变'], rows: [
+    ['本质', '多酚氧化酶催化酚类物质氧化成醌，醌再聚合成黑色素', '不需要酶参与：美拉德反应、焦糖化反应、抗坏血酸氧化褐变'],
+    ['必要条件', '酚类底物、酚酶、氧，三者缺一不可', '羰基与氨基化合物共存（美拉德）、糖高温加热（焦糖化）或抗坏血酸氧化'],
+    ['常见场合', '果蔬切开、碰伤后的切面（苹果、马铃薯、香蕉）', '加热和贮藏中（面包皮、酱油、焙烤食品、果汁）'],
+    ['控制方法', '热烫钝化酶、加酸调低 pH、二氧化硫和亚硫酸盐、驱除或隔绝氧、加抗坏血酸', '降低温度、调低 pH、控制水分活度、选用不易褐变的糖、加亚硫酸盐或钙盐']] },
+  { id: 'mail', t: '美拉德反应 vs 焦糖化反应', m: 3, cols: ['美拉德反应', '焦糖化反应'], rows: [
+    ['反应物', '羰基化合物（还原糖）+ 氨基化合物（氨基酸、肽、蛋白质）', '只有糖类，不需要氨基化合物'],
+    ['温度', '常温下也能发生，加热明显加快', '需要高温直接加热糖（一般 150~200 ℃ 以上）'],
+    ['产物', '类黑精（类黑色素）和多种风味物质（如吡嗪类）', '焦糖色素和焦糖香味物质'],
+    ['影响', '产生色泽和风味；赖氨酸等必需氨基酸损失；可能生成丙烯酰胺', '产生色泽和焦糖风味，可用于生产焦糖色素'],
+    ['影响因素', '糖的种类、pH、水分活度、温度、金属离子', '温度、pH，酸、碱和铵盐等催化剂可以加速']] },
+  { id: 'oxid', t: '油脂自动氧化 vs 光敏氧化 vs 酶促氧化', m: 5, cols: ['自动氧化', '光敏氧化', '酶促氧化'], rows: [
+    ['参与的氧', '三线态氧（³O₂）', '单线态氧（¹O₂）', '三线态氧，在脂肪氧合酶催化下'],
+    ['机理', '自由基链式反应：链引发、链传递、链终止', '光敏剂吸光激发，把 ³O₂ 变成 ¹O₂，¹O₂ 直接与双键加成', '脂肪氧合酶专一作用于含顺,顺-1,4-戊二烯结构的多不饱和脂肪酸'],
+    ['诱导期', '有', '没有', '没有明显诱导期'],
+    ['速度', '较慢', '很快，约为自动氧化的 1500 倍', '快'],
+    ['抑制方法', '加抗氧化剂（自由基清除剂）、避光、隔氧、低温、除金属离子', '单线态氧淬灭剂（β-胡萝卜素、生育酚）、避光', '热烫钝化脂肪氧合酶']] },
+  { id: 'rancid', t: '三种油脂酸败', m: 5, cols: ['水解型酸败', '酮型酸败（β-氧化型）', '氧化型酸败'], rows: [
+    ['原因', '油脂在水、脂肪酶或高温作用下水解，产生游离脂肪酸', '饱和脂肪酸在微生物酶作用下发生 β-氧化，生成 β-酮酸，再脱羧成甲基酮', '不饱和脂肪酸被氧化成氢过氧化物，再分解成醛、酮、酸等'],
+    ['不良气味来源', '低级游离脂肪酸（如丁酸、己酸）', '甲基酮的特殊臭味', '醛、酮等小分子，即「哈喇味」'],
+    ['容易发生的油脂', '含低级脂肪酸多的油脂，如乳脂', '受微生物污染、含水和含氮物质多的油脂，如奶油、椰子油', '含不饱和脂肪酸多的油脂，最常见'],
+    ['防止', '降低水分、低温、钝化脂肪酶', '防止微生物污染、降低水分', '避光、隔氧、低温、加抗氧化剂、除去金属离子']] },
+  { id: 'starch', t: '直链淀粉 vs 支链淀粉', m: 3, cols: ['直链淀粉', '支链淀粉'], rows: [
+    ['结构', 'α-1,4-糖苷键连接的线性分子，呈螺旋结构', '主链 α-1,4-糖苷键，分支点 α-1,6-糖苷键，呈树枝状'],
+    ['分子大小', '较小', '很大'],
+    ['遇碘', '蓝色', '紫红色'],
+    ['溶解与糊', '难溶于冷水，糊不稳定，容易凝沉', '容易分散，糊黏度高、稳定'],
+    ['老化', '容易老化', '不易老化'],
+    ['例子', '普通玉米、豆类淀粉含量较高', '糯米、糯玉米几乎全是支链淀粉']] },
+  { id: 'salt', t: '盐溶 vs 盐析', m: 4, cols: ['盐溶', '盐析'], rows: [
+    ['条件', '低浓度中性盐', '高浓度中性盐（如硫酸铵）'],
+    ['结果', '蛋白质溶解度增大', '蛋白质溶解度降低，从溶液中沉淀析出'],
+    ['原因', '盐离子与蛋白质表面电荷作用，减弱蛋白质分子间的静电吸引，增强与水的作用', '盐离子与蛋白质争夺水分子，破坏水化层，蛋白质分子聚集沉淀'],
+    ['是否变性', '不变性', '一般不变性，过程可逆，常用于蛋白质分离纯化']] },
+  { id: 'denat', t: '蛋白质变性 vs 蛋白质水解', m: 4, cols: ['变性', '水解'], rows: [
+    ['本质', '二、三、四级结构改变，一级结构（肽键）不变', '肽键断裂，一级结构被破坏，生成肽和氨基酸'],
+    ['引起因素', '热、酸、碱、有机溶剂、重金属盐、辐射、剧烈搅拌等', '酸、碱或蛋白酶'],
+    ['结果', '溶解度降低、生物活性丧失、更容易被酶消化', '分子变小、溶解性增加，可能产生苦味肽'],
+    ['可逆性', '有的可逆，有的不可逆', '不可逆']] },
+  { id: 'antho', t: '花青素 vs 花黄素（类黄酮）', m: 9, cols: ['花青素', '花黄素'], rows: [
+    ['基本结构', '2-苯基苯并吡喃阳离子（黄烊盐）', '2-苯基苯并吡喃酮（色原酮）'],
+    ['颜色', '红、紫、蓝，随 pH 变化：酸性偏红，中性偏紫，碱性偏蓝', '浅黄至无色，碱性条件下变黄'],
+    ['稳定性', '不稳定，受 pH、温度、光、氧、二氧化硫和金属离子影响', '比较稳定，但遇金属离子会络合变色（如遇铁变蓝绿或褐色）'],
+    ['常见来源', '葡萄皮、紫甘蓝、草莓、紫薯', '洋葱、柑橘、茶叶（槲皮素、芦丁）']] },
+  { id: 'vit', t: '脂溶性维生素 vs 水溶性维生素', m: 6, cols: ['脂溶性', '水溶性'], rows: [
+    ['包括', '维生素 A、D、E、K', 'B 族维生素、维生素 C'],
+    ['吸收', '随脂类一起吸收，需要胆汁', '直接吸收'],
+    ['体内储存', '可以储存在肝脏和脂肪中，过量可能中毒', '一般不储存，多余的随尿排出，需要经常补充'],
+    ['加工损失', '主要因光和氧引起的氧化', '容易溶在水里流失，很多对热敏感（如维生素 C、B₁）']] },
+  { id: 'index', t: '碘值 vs 酸价 vs 过氧化值', m: 5, cols: ['碘值', '酸价', '过氧化值'], rows: [
+    ['定义', '100 g 油脂吸收碘的克数', '中和 1 g 油脂中游离脂肪酸所需氢氧化钾的毫克数', '每千克油脂中所含过氧化物的毫摩尔数（或毫克当量数）'],
+    ['反映什么', '油脂的不饱和程度', '游离脂肪酸的多少（水解程度、新鲜度）', '油脂初期氧化的程度'],
+    ['数值高说明', '不饱和程度高，更容易氧化', '水解或酸败严重，品质差', '已经发生氧化；氧化后期过氧化物分解，数值反而会下降']] }
+];
+function pCompare(m) {
+  const cl = NAV.cmpCloze;
+  m.innerHTML = `<div class="kick">COMPARE · 易混对比</div><h1>易混概念对比</h1><p class="lead">把考试里常被问「区别」的概念放在一张表里对照着背。打开「挖空练习」后，表格内容会盖住，点一格看一格。</p>
+  <div class="row" style="margin-bottom:12px"><div class="seg" id="cmz"><button data-z="0" aria-pressed="${!cl}">直接看</button><button data-z="1" aria-pressed="${!!cl}">挖空练习</button></div><span class="sp"></span><select id="cmm" aria-label="模块"><option value="0">全部模块</option>${[...new Set(CMP.map(c => c.m))].sort((a, b) => a - b).map(x => `<option value="${x}" ${NAV.cmpMod === x ? 'selected' : ''}>${esc(MODN[x] || '')}</option>`).join('')}</select></div>
+  <div class="cmps">${CMP.filter(c => !NAV.cmpMod || c.m === NAV.cmpMod).map(c => `<div class="card cmp" data-cmp="${c.id}"><div class="row cmp-h"><b>${esc(c.t)}</b><span class="note">${esc(MODN[c.m] || '')}</span><span class="sp"></span>${cl ? '<button class="btn sm ghost" data-call>全部揭开</button>' : ''}</div>
+    <div class="tw"><table class="t cmpt"><tr><th></th>${c.cols.map(x => `<th>${esc(x)}</th>`).join('')}</tr>${c.rows.map(([k, ...v]) => `<tr><th>${esc(k)}</th>${v.map(x => cl ? `<td class="cz" tabindex="0" role="button"><span class="czb">点一下看</span><span class="czt" hidden>${esc(x)}</span></td>` : `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div></div>`).join('')}</div>`;
+  $('#cmz').onclick = e => { const b = e.target.closest('[data-z]'); if (b) { NAV.cmpCloze = b.dataset.z === '1'; render(); } };
+  $('#cmm').onchange = e => { NAV.cmpMod = +e.target.value; render(); };
+  const flip = (td, open) => { td.classList.toggle('open', open); $('.czt', td).hidden = !open; $('.czb', td).hidden = open; };
+  m.addEventListener('click', e => {
+    const td = e.target.closest('.cz'); if (td) { flip(td, !td.classList.contains('open')); return; }
+    const b = e.target.closest('[data-call]'); if (b) { const open = b.dataset.open !== '1'; $$('.cz', b.closest('.cmp')).forEach(x => flip(x, open)); b.dataset.open = open ? '1' : '0'; b.textContent = open ? '全部收起' : '全部揭开'; }
+  });
+  m.addEventListener('keydown', e => { const td = e.target.closest('.cz'); if (td && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(td, !td.classList.contains('open')); } });
+}
+
+/* ---------- 名解闪卡：左滑「还不会」，右滑「记住了」 ---------- */
+const FL = { deck: null, i: 0, res: [], flt: 'weak', mod: 0 };
+function flashDeck() {
+  const seen = new Map();
+  for (const q of BANK) if (q.t === '名解' && q.a) { const k = q.q.replace(/\s/g, ''); if (!seen.has(k)) seen.set(k, [q]); else seen.get(k).push(q); }
+  let list = [...seen.values()];
+  if (FL.mod) list = list.filter(g => qmod(g[0]) === FL.mod);
+  const lv = g => Math.max(...g.map(q => qs(q.id).l || 0)), due = g => g.some(q => isDue(q.id));
+  if (FL.flt === 'weak') list = list.filter(g => lv(g) < 3 || due(g));
+  list.sort((a, b) => (lv(a) - lv(b)) || (due(b) - due(a)) || (Math.random() - 0.5));
+  return list.slice(0, 20);
+}
+function pFlash(m) {
+  if (!FL.deck) { FL.deck = flashDeck(); FL.i = 0; FL.res = []; }
+  const D = FL.deck, g = D[FL.i];
+  const ctl = `<div class="row" style="margin-bottom:12px"><div class="seg" id="flf"><button data-f="weak" aria-pressed="${FL.flt === 'weak'}">没掌握的优先</button><button data-f="all" aria-pressed="${FL.flt === 'all'}">全部</button></div><select id="flm" aria-label="模块"><option value="0">全部模块</option>${MODS.map(x => `<option value="${x.id}" ${FL.mod === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><span class="sp"></span><button class="btn sm ghost" id="flnew">换一组</button></div>`;
+  const head = `<div class="kick">FLASHCARDS · 名解闪卡</div><h1>名解闪卡</h1><p class="lead">看到名词先在心里说出定义，再点卡片翻面核对。右滑（或点「记住了」）算掌握，左滑算「还不会」，结果会记进你的做题记录。每组 20 张。</p>${ctl}`;
+  if (!D.length) { m.innerHTML = head + `<div class="card"><p style="margin:0">这个范围里的名词解释都掌握了 🎉 换成「全部」可以再过一遍。</p></div>`; bindFl(m); return; }
+  if (!g) {
+    const ok = FL.res.filter(x => x === 3).length, mid = FL.res.filter(x => x === 2).length, bad = FL.res.filter(x => x === 1).length;
+    m.innerHTML = head + `<div class="card fl-end"><b>这一组过完了</b><p>记住了 <b class="ok">${ok}</b> 张 · 模糊 <b class="mid">${mid}</b> 张 · 还不会 <b class="bad">${bad}</b> 张</p><p class="note">还不会的会排到下一组前面，也会进入到期复习。</p><button class="btn pri" id="flnext">再来一组</button></div>`;
+    bindFl(m); $('#flnext').onclick = () => { FL.deck = null; render(); }; return;
+  }
+  const q = g[0];
+  m.innerHTML = head + `<div class="fl-prog"><span>第 ${FL.i + 1} / ${D.length} 张</span><span class="sp"></span><span class="note">${g.map(x => x.y).filter(Boolean).join('、')} 年考过 · ${esc((CL[q.c] || {}).n || '')}</span></div><div class="fl-bar"><i style="width:${FL.i / D.length * 100}%"></i></div>
+    <div class="fl-stage"><div class="fl-card" id="flc" tabindex="0" role="button" aria-label="翻面"><div class="fl-front"><div class="fl-term">${esc(q.q)}</div><div class="note">点一下翻面看定义</div></div><div class="fl-back" hidden><div class="fl-term sm">${esc(q.q)}</div><div class="fl-def">${q.a}</div></div><span class="fl-stamp l" aria-hidden="true">还不会</span><span class="fl-stamp r" aria-hidden="true">记住了</span></div></div>
+    <div class="row fl-btns"><button class="btn r1" data-fl="1">← 还不会</button><button class="btn r2" data-fl="2">模糊</button><button class="btn r3" data-fl="3">记住了 →</button></div>`;
+  bindFl(m);
+  const card = $('#flc'), flipC = () => { const b = $('.fl-back', card), f = $('.fl-front', card); const open = b.hidden; b.hidden = !open; f.hidden = open; card.classList.toggle('flipped', open); };
+  const commit = l => {
+    rate(q.id, l); const st = S.q[q.id];
+    for (const x of g.slice(1)) S.q[x.id] = Object.assign({}, st);   /* 同一个名词在不同年份出现过，一起记 */
+    save(); FL.res.push(l); FL.i++;
+    card.classList.add(l === 3 ? 'out-r' : l === 1 ? 'out-l' : 'out-d'); setTimeout(render, 220);
+  };
+  m.querySelector('.fl-btns').onclick = e => { const b = e.target.closest('[data-fl]'); if (b) commit(+b.dataset.fl); };
+  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipC(); } if (e.key === 'ArrowRight') commit(3); if (e.key === 'ArrowLeft') commit(1); });
+  let sx = null, dx = 0, moved = false;
+  card.addEventListener('pointerdown', e => { sx = e.clientX; dx = 0; moved = false; card.setPointerCapture(e.pointerId); card.style.transition = 'none'; });
+  card.addEventListener('pointermove', e => { if (sx === null) return; dx = e.clientX - sx; if (Math.abs(dx) > 6) moved = true; card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; card.classList.toggle('to-r', dx > 60); card.classList.toggle('to-l', dx < -60); });
+  const end = () => { if (sx === null) return; sx = null; card.style.transition = ''; card.classList.remove('to-r', 'to-l');
+    if (dx > 110) commit(3); else if (dx < -110) commit(1); else { card.style.transform = ''; if (!moved) flipC(); } };
+  card.addEventListener('pointerup', end); card.addEventListener('pointercancel', () => { sx = null; card.style.transition = ''; card.style.transform = ''; card.classList.remove('to-r', 'to-l'); });
+}
+function bindFl(m) {
+  $('#flf').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { FL.flt = b.dataset.f; FL.deck = null; render(); } };
+  $('#flm').onchange = e => { FL.mod = +e.target.value; FL.deck = null; render(); };
+  $('#flnew').onclick = () => { FL.deck = null; render(); };
+}
+
 const LABS = [
   { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
-  { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' }
+  { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' },
+  { k: 'labScore', t: '关键词自动评分', d: '在输入框里写下答案后点「对答案」，自动对照参考答案里的关键词，告诉你写到了哪些、漏了哪些，并给出建议的掌握程度。', how: ['覆盖 70% 以上建议「掌握」，35% 以上建议「模糊」', '按要点列出没写到的关键词，写到大部分的要点打 ✓', '同时开着「按要点自评」时，会帮你把写到的要点先勾上'], where: '名解和大题的题卡，对完答案后' },
+  { k: 'labTimer', t: '限时作答', d: '按考试节奏给名解和大题计时：名解 3 分钟、简答 8 分钟、论述和分析 15 分钟。开始写的时候自动计时，超时只变红提醒，不会打断你。', how: ['在输入框里打字或点进去就开始计时', '点「对答案」停止，显示这题用了多久', '用时会记在这道题上，下次做时能看到上次用时'], where: '题卡左上角的标签栏' },
+  { k: 'labCompare', t: '易混概念对比', d: '把常被问「区别」的概念做成对照表：糊化和老化、结合水和自由水、酶促和非酶褐变、三种油脂氧化、三种酸败等 13 组。', how: ['「直接看」用来理解，「挖空练习」把表格盖住，点一格看一格', '可以按模块筛选', '打开后侧边栏多一个「易混对比」'], where: '侧边栏「易混对比」' },
+  { k: 'labFlash', t: '名解闪卡', d: '名词解释做成一张张卡片，先在心里说出定义，再翻面核对。右滑「记住了」、左滑「还不会」，适合碎片时间快速过一轮。', how: ['每组 20 张，没掌握和到期的排在前面', '同一个名词在不同年份考过，只出现一次，结果一起记', '打开后侧边栏多一个「名解闪卡」'], where: '侧边栏「名解闪卡」' },
+  { k: 'labSprint', t: '冲刺计划', d: '按设置里的考试日期倒推：把还没过完的考点按常考程度分到每一天，最后 7 天只安排错题和模拟卷，考前两天只回顾。', how: ['已经做完复习路径或掌握的考点会自动跳过', '计划每天按你的进度重新分配，落下了也不用补', '需要先在设置里填好考试日期'], where: '首页「今日计划」上方' },
+  { k: 'labCause', t: '错因标签', d: '评「不会」或「模糊」时，顺手选一下错在哪里：概念不清、记混了、漏要点、审题错、会但写不出。进度页会统计你最常见的失分原因，并给出建议。', how: ['评为「掌握」后，这道题的错因自动清除', '错题本里会显示每道题的错因', '统计只算还没掌握的题'], where: '题卡打分按钮下方；进度页' }
 ];
 function pLabs(m) {
   const st = S.settings;
