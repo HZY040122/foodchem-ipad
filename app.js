@@ -346,7 +346,7 @@ function answerPoints(q) {
   PTS_CACHE.set(q.id, pts); return pts;
 }
 /* 首字提示：每个小句只露出开头两个字，其余换成横线，点一下显示整句 */
-/* 首字提示：按词挖空，只挖关键词（名词、术语、动词等），每个关键词留第一个字作提示；
+/* 挖空填词：按词挖空，只挖关键词（名词、术语、动词等），整个词挖掉；
    序号（1）、数字、字母（pH、VE）、标点和「且、受、较、使、等」这类虚词照常显示，句子骨架保留，读起来更顺 */
 const FC_STOP = new Set(('的 了 过 是 在 它 它们 它的 差 好 强 弱 快 慢 难 新 旧 少量 大量 部分 全部 较为 相对 和 与 及 或 而 且 并 对 受 使 被 由 于 中 等 较 更 最 很 不 也 都 还 又 可 能 会 易 为 以 其 之 从 到 向 把 将 如 即 则 因 此 所 有 无 多 少 大 小 高 低 一 个 种 各 每 该 这 那 时 后 前 上 下 内 外 间 来 得 地 就 才 再 均 仍 已 亦 若 但 越 愈 其他 ' +
   '具有 含有 可以 能够 使得 由于 因为 所以 因此 从而 因而 同时 此外 另外 例如 比如 以及 并且 而且 但是 或者 通过 进行 发生 产生 导致 引起 一般 通常 主要 其中 之间 之一 以上 以下 不同 一定 较大 较小 较高 较低 容易 可能 能 作为 成为 对于 关于 随着 以及 等等 方面 情况 过程 作用 时候 ' +
@@ -366,9 +366,9 @@ const FC_SEG = { segment(t) {
   return out;
 } };
 function fcUnit(w) {
-  if ([...w].length < 2) return esc(w);
-  const c = [...w];
-  return `<span class="fc" tabindex="0" role="button" title="点一下显示"><b>${esc(c[0])}</b><span class="fcb">${'＿'.repeat(Math.min(c.length - 1, 8))}</span><span class="fct" hidden>${esc(c.slice(1).join(''))}</span></span>`;
+  /* 整个关键词挖掉，横线长度和词的字数一样，点一下显示 */
+  const n = [...w].length;
+  return `<span class="fc" tabindex="0" role="button" title="点一下显示"><span class="fcb">${'＿'.repeat(Math.min(Math.max(n, 2), 8))}</span><span class="fct" hidden>${esc(w)}</span></span>`;
 }
 function firstChars(text, ctx) {
   ctx = ctx || { seen: new Set(), topic: '' };
@@ -486,13 +486,19 @@ function qcard(q, o = {}) {
       if (!rc.hidden) { rc.hidden = true; b.textContent = '背诵'; return; }
       conceal(); rc.hidden = false; b.textContent = '收起背诵'; $('.rt', el).hidden = false; showCheck();
       const mode0 = PTS.length > 1 ? (S.settings.reciteMode || 'key') : 'first';
-      rc.innerHTML = `<div class="row rhd"><b>背诵</b><div class="seg sm" data-rm>${PTS.length > 1 ? `<button data-m="key">要点提示</button>` : ''}<button data-m="first">首字提示</button><button data-m="full">全文</button></div><span class="sp"></span><button class="btn sm ghost" data-rall>全部揭开</button></div><div class="rbody"></div>`;
-      const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m, q.q); rc.dataset.m = m; };
+      rc.innerHTML = `<div class="row rhd"><b>背诵</b><div class="seg sm" data-rm>${PTS.length > 1 ? `<button data-m="key">要点提示</button>` : ''}<button data-m="first">挖空填词</button><button data-m="full">全文</button></div><span class="sp"></span><button class="btn sm ghost" data-rall>全部揭开</button></div><div class="rbody"></div>`;
+      const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m, q.q); rc.dataset.m = m; const ra = $('[data-rall]', rc); if (ra) { ra.dataset.open = '0'; ra.textContent = '全部揭开'; } };
       draw(mode0); if (!shown) { shown = true; o.onReveal && o.onReveal(); }
       return;
     }
-    if (b.closest('[data-rm]') && b.dataset.m) { const rc = $('.recite', el); if (PTS.length > 1) { S.settings.reciteMode = b.dataset.m === 'full' ? S.settings.reciteMode : b.dataset.m; save(); } $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x === b)); $('.rbody', rc).innerHTML = reciteHTML(PTS, b.dataset.m, q.q); return; }
-    if (b.dataset.rall !== undefined) { $$('.recite .rk', el).forEach(x => { x.classList.add('open'); $('.rc1', x).hidden = false; $('.rtap', x).hidden = true; }); $$('.recite .fc', el).forEach(x => { $('.fct', x).hidden = false; $('.fcb', x).hidden = true; x.classList.add('open'); }); return; }
+    if (b.closest('[data-rm]') && b.dataset.m) { const rc = $('.recite', el); if (PTS.length > 1) { S.settings.reciteMode = b.dataset.m === 'full' ? S.settings.reciteMode : b.dataset.m; save(); } $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x === b)); $('.rbody', rc).innerHTML = reciteHTML(PTS, b.dataset.m, q.q); const ra = $('[data-rall]', rc); if (ra) { ra.dataset.open = '0'; ra.textContent = '全部揭开'; } return; }
+    if (b.dataset.rall !== undefined) {
+      /* 「全部揭开」和「全部收起」来回切换 */
+      const close = b.dataset.open === '1';
+      $$('.recite .rk', el).forEach(x => { x.classList.toggle('open', !close); $('.rc1', x).hidden = close; $('.rtap', x).hidden = !close; });
+      $$('.recite .fc', el).forEach(x => { $('.fct', x).hidden = close; $('.fcb', x).hidden = !close; x.classList.toggle('open', !close); });
+      b.dataset.open = close ? '0' : '1'; b.textContent = close ? '全部揭开' : '全部收起'; return;
+    }
     if (b.dataset.pi !== undefined) { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); checkState(); return; }
     if (b.dataset.pall !== undefined) { const all = $$('.pchip', el).every(x => x.getAttribute('aria-pressed') === 'true'); $$('.pchip', el).forEach(x => x.setAttribute('aria-pressed', !all)); checkState(); return; }
     if (b.dataset.pok !== undefined) {
@@ -536,6 +542,9 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.9', d: '2026-11-25', t: '背诵：整词挖空与全部收起', items: [
+    '背诵模式的「首字提示」改名为「挖空填词」：关键词整个挖掉（如「坚牢度较差」挖成「＿＿＿较差」），不再留第一个字，横线长度和词的字数一样',
+    '「全部揭开」之后按钮变成「全部收起」，可以把揭开的内容全部重新盖上，再背一遍'] },
   { v: '2.0.8', d: '2026-11-25', t: '背诵模式的首字提示更合理', items: [
     '「首字提示」改为按词挖空：只挖关键词（术语、名词、动词），每个词留第一个字作提示；序号（1）、数字、pH 这类字母和「且、受、较、等」这类虚词照常显示，句子读起来是通的',
     '题干里已经出现的词（比如题目问淀粉糊化，就不挖「淀粉」「糊化」）不挖；同一个词在一道题里只挖第一次',
@@ -1254,7 +1263,7 @@ function chartHover(m) {
 
 /* ---------- 试验性功能：默认关闭，打开后才在刷题界面出现 ---------- */
 const LABS = [
-  { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>首字提示</b>：每句只露出开头两个字，其余换成横线，点一下显示整句', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
+  { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
   { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' }
 ];
 function pLabs(m) {
