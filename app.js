@@ -346,19 +346,63 @@ function answerPoints(q) {
   PTS_CACHE.set(q.id, pts); return pts;
 }
 /* 首字提示：每个小句只露出开头两个字，其余换成横线，点一下显示整句 */
-function firstChars(text) {
-  return text.split(/(?<=[，。；：、,;:！？])/).map(seg => {
-    const core = seg.replace(/[，。；：、,;:！？]$/, ''), p = seg.slice(core.length);
-    if (core.length <= 3) return esc(seg);
-    return `<span class="fc" tabindex="0" role="button" title="点一下显示"><b>${esc(core.slice(0, 2))}</b><span class="fcb">${'＿'.repeat(Math.min(core.length - 2, 12))}</span><span class="fct" hidden>${esc(core.slice(2))}</span></span>${esc(p)}`;
-  }).join('');
+/* 首字提示：按词挖空，只挖关键词（名词、术语、动词等），每个关键词留第一个字作提示；
+   序号（1）、数字、字母（pH、VE）、标点和「且、受、较、使、等」这类虚词照常显示，句子骨架保留，读起来更顺 */
+const FC_STOP = new Set(('的 了 过 是 在 它 它们 它的 差 好 强 弱 快 慢 难 新 旧 少量 大量 部分 全部 较为 相对 和 与 及 或 而 且 并 对 受 使 被 由 于 中 等 较 更 最 很 不 也 都 还 又 可 能 会 易 为 以 其 之 从 到 向 把 将 如 即 则 因 此 所 有 无 多 少 大 小 高 低 一 个 种 各 每 该 这 那 时 后 前 上 下 内 外 间 来 得 地 就 才 再 均 仍 已 亦 若 但 越 愈 其他 ' +
+  '具有 含有 可以 能够 使得 由于 因为 所以 因此 从而 因而 同时 此外 另外 例如 比如 以及 并且 而且 但是 或者 通过 进行 发生 产生 导致 引起 一般 通常 主要 其中 之间 之一 以上 以下 不同 一定 较大 较小 较高 较低 容易 可能 能 作为 成为 对于 关于 随着 以及 等等 方面 情况 过程 作用 时候 ' +
+  '形成 获得 发挥 显示 影响 直接 间接 重要 必须 逐渐 恢复 常用 称为 又称 叫做 包括 属于 存在 出现 增加 降低 提高 减少 加入 需要 保持 维持 达到 相互 分别 迅速 有关 相关 各种 某些 一些 大多 大多数 一种 这种 这些 正常 特定 充分 发生 进而 使用 利用 用于 用作 称作 也称 主要是 就是 不能 不会 没有 较多 较少 食品 本质 原因 特点 优点 缺点 非常 十分 比较 极易 难以').split(' '));
+const FC_SUF = new Set('粒 性 度 剂 素 化 物 类 质 率 值 力 法 型 酶 酸 盐 糖 体 基 量 点 色 味 感 键 链 团 液 胶 粉 油 脂'.split(' '));
+/* 分词用题库自带的词表（构建时从全部答案里提取），按「最长匹配」切词：
+   各浏览器自带的中文分词不一定有词典，有的会切成单字，所以不用它，保证每台设备挖空一致 */
+const FC_DICT = new Set(((META && META.words) || '').split(' ').filter(Boolean)); let FC_MAX = 2; for (const w of FC_DICT) FC_MAX = Math.max(FC_MAX, w.length);
+const FC_SEG = { segment(t) {
+  const out = []; let i = 0;
+  while (i < t.length) {
+    if (/[一-鿿]/.test(t[i])) {
+      let L = 1; for (let n = Math.min(FC_MAX, t.length - i); n >= 2; n--) if (FC_DICT.has(t.substr(i, n))) { L = n; break; }
+      out.push({ segment: t.substr(i, L), isWordLike: true }); i += L;
+    } else { let j = i; while (j < t.length && !/[一-鿿]/.test(t[j])) j++; out.push({ segment: t.slice(i, j), isWordLike: false }); i = j; }
+  }
+  return out;
+} };
+function fcUnit(w) {
+  if ([...w].length < 2) return esc(w);
+  const c = [...w];
+  return `<span class="fc" tabindex="0" role="button" title="点一下显示"><b>${esc(c[0])}</b><span class="fcb">${'＿'.repeat(Math.min(c.length - 1, 8))}</span><span class="fct" hidden>${esc(c.slice(1).join(''))}</span></span>`;
 }
-function reciteHTML(pts, mode) {
+function firstChars(text, ctx) {
+  ctx = ctx || { seen: new Set(), topic: '' };
+  const m = text.match(/^\s*(（\s*\d+\s*）|\(\s*\d+\s*\)|\d+\s*[.、．]|[①-⑳]|[一二三四五六七八九十]+\s*、)\s*/);
+  const lead = m ? m[0] : '', body = text.slice(lead.length);
+  if (!FC_SEG) { /* 不支持分词的旧系统：按小句留首字 */
+    return esc(lead) + body.split(/(?<=[，。；：、,;:！？])/).map(seg => { const core = seg.replace(/[，。；：、,;:！？]$/, ''); return (core.length <= 2 ? esc(core) : fcUnit(core)) + esc(seg.slice(core.length)); }).join('');
+  }
+  /* 关键词：中文、不是虚词，也不是全由虚词单字组成（如「就不能」「可与」） */
+  const isKey = x => x.isWordLike && /[\u4e00-\u9fff]/.test(x.segment) && !FC_STOP.has(x.segment) && ![...x.segment].every(c => FC_STOP.has(c));
+  let out = esc(lead), buf = '', run = false;
+  /* 题干里出现过的词（题目本身的主题，如「淀粉」「糊化」）不挖；同一道题里一个词只挖第一次，后面照常显示 */
+  const flush = () => { if (buf) { const k = [...buf].length > 1 && !ctx.seen.has(buf) && !(ctx.topic && ctx.topic.includes(buf)); if (k) ctx.seen.add(buf); out += k ? fcUnit(buf) : esc(buf); buf = ''; } };
+  for (const x of FC_SEG.segment(body)) {
+    if (isKey(x)) {
+      const n = [...x.segment].length, bn = [...buf].length;
+      /* 词表里没有、被拆成单字的术语（如「坚|牢|度」）连起来算一个词；「稳定+性」这类后缀并到前一个词上；落单的一个字照常显示 */
+      if (n === 1) {
+        if (buf && !run && FC_SUF.has(x.segment) && bn + 1 <= 5) buf += x.segment;
+        else if (buf && run && bn < 4) buf += x.segment;
+        else { flush(); buf = x.segment; run = true; }
+      } else { flush(); buf = x.segment; run = false; }
+    } else { flush(); out += esc(x.segment); }
+  }
+  flush();
+  return out;
+}
+function reciteHTML(pts, mode, topic) {
+  const ctx = { seen: new Set(), topic: String(topic || '').replace(/<[^>]+>/g, '') };
   let lastHead = null;
   const items = pts.map((p, i) => {
     const h = p.head && p.head !== lastHead ? `<div class="rh">${esc(p.head)}</div>` : ''; lastHead = p.head;
     if (mode === 'full') return h + `<div class="rp open">${p.html}</div>`;
-    if (mode === 'first') return h + `<div class="rp"><span class="rn">${i + 1}</span>${p.label ? `<b>${esc(p.label)}：</b>` : ''}${/^<table/i.test(p.html) ? p.html : firstChars(p.label ? p.body : p.text)}</div>`;
+    if (mode === 'first') return h + `<div class="rp"><span class="rn">${i + 1}</span>${p.label ? `<b>${esc(p.label)}：</b>` : ''}${/^<table/i.test(p.html) ? p.html : firstChars(p.label ? p.body : p.text, ctx)}</div>`;
     return h + `<div class="rp rk" data-rp="${i}" role="button" tabindex="0"><span class="rn">${i + 1}</span><span class="rt1">${esc(p.label || p.hint)}</span><span class="rtap">点一下揭开</span><div class="rc1" hidden>${p.html}</div></div>`;
   }).join('');
   return items;
@@ -443,11 +487,11 @@ function qcard(q, o = {}) {
       conceal(); rc.hidden = false; b.textContent = '收起背诵'; $('.rt', el).hidden = false; showCheck();
       const mode0 = PTS.length > 1 ? (S.settings.reciteMode || 'key') : 'first';
       rc.innerHTML = `<div class="row rhd"><b>背诵</b><div class="seg sm" data-rm>${PTS.length > 1 ? `<button data-m="key">要点提示</button>` : ''}<button data-m="first">首字提示</button><button data-m="full">全文</button></div><span class="sp"></span><button class="btn sm ghost" data-rall>全部揭开</button></div><div class="rbody"></div>`;
-      const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m); rc.dataset.m = m; };
+      const draw = m => { $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m)); $('.rbody', rc).innerHTML = reciteHTML(PTS, m, q.q); rc.dataset.m = m; };
       draw(mode0); if (!shown) { shown = true; o.onReveal && o.onReveal(); }
       return;
     }
-    if (b.closest('[data-rm]') && b.dataset.m) { const rc = $('.recite', el); if (PTS.length > 1) { S.settings.reciteMode = b.dataset.m === 'full' ? S.settings.reciteMode : b.dataset.m; save(); } $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x === b)); $('.rbody', rc).innerHTML = reciteHTML(PTS, b.dataset.m); return; }
+    if (b.closest('[data-rm]') && b.dataset.m) { const rc = $('.recite', el); if (PTS.length > 1) { S.settings.reciteMode = b.dataset.m === 'full' ? S.settings.reciteMode : b.dataset.m; save(); } $$('[data-rm] button', rc).forEach(x => x.setAttribute('aria-pressed', x === b)); $('.rbody', rc).innerHTML = reciteHTML(PTS, b.dataset.m, q.q); return; }
     if (b.dataset.rall !== undefined) { $$('.recite .rk', el).forEach(x => { x.classList.add('open'); $('.rc1', x).hidden = false; $('.rtap', x).hidden = true; }); $$('.recite .fc', el).forEach(x => { $('.fct', x).hidden = false; $('.fcb', x).hidden = true; x.classList.add('open'); }); return; }
     if (b.dataset.pi !== undefined) { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); checkState(); return; }
     if (b.dataset.pall !== undefined) { const all = $$('.pchip', el).every(x => x.getAttribute('aria-pressed') === 'true'); $$('.pchip', el).forEach(x => x.setAttribute('aria-pressed', !all)); checkState(); return; }
@@ -492,6 +536,11 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.8', d: '2026-11-25', t: '背诵模式的首字提示更合理', items: [
+    '「首字提示」改为按词挖空：只挖关键词（术语、名词、动词），每个词留第一个字作提示；序号（1）、数字、pH 这类字母和「且、受、较、等」这类虚词照常显示，句子读起来是通的',
+    '题干里已经出现的词（比如题目问淀粉糊化，就不挖「淀粉」「糊化」）不挖；同一个词在一道题里只挖第一次',
+    '分词改用题库自带的词表，iPad、iPhone、安卓和电脑上挖的空完全一样',
+    '修复序号「（1）」被拆开、提示停在半个词上（如「且大」「一般」）的问题'] },
   { v: '2.0.7', d: '2026-11-25', t: '本周学习时长', items: [
     '首页的「本周」学习时长改为从这周一开始算，每周一重新计；之前算的是最近 7 天，刚开始使用的几天里看起来就和总时长一样'] },
   { v: '2.0.6', d: '2026-11-24', t: '主屏幕版更像原生 App', items: [

@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "2.0.18",
-  "apk": "FoodChemReview-v2.0.18.apk",
-  "notes": "2.0.7：首页「本周」学习时长改为从这周一开始算。直接覆盖安装，进度会保留。"
+  "versionCode": 19,
+  "versionName": "2.0.19",
+  "apk": "FoodChemReview-v2.0.19.apk",
+  "notes": "2.0.8：背诵模式的「首字提示」改为按词挖空，更合理。直接覆盖安装，进度会保留。"
 }
