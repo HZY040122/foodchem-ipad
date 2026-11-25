@@ -287,6 +287,7 @@ const syncReady = (async () => {
   } catch (e) { syncOK = false; setSync('进度保存在本浏览器'); }
 })();
 
+const featOn = k => S.settings[k] !== false;   /* 已转正的功能（背诵、冲刺计划、睡前回顾）：默认开启，在设置里关 */
 const qs = id => S.q[id] || { l: 0, n: 0, c: 0, w: 0, t: 0, d: 0 };
 function logDone() { const k = dkey(); const L = logMine(k); L.by[DEV].done = (L.by[DEV].done || 0) + 1; logSum(L); S.log[k] = L; }
 function rate(id, l) {
@@ -448,7 +449,7 @@ function qcard(q, o = {}) {
   const TMR = S.settings.labTimer && TLIM[q.t] && !(q.opts && q.opts.length) && q.t !== '判断';
   el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}${TMR ? `<span class="chip tmr" data-tmr>⏱ 建议 ${TLIM[q.t]} 分钟${s.tu ? ' · 上次用时 ' + mmss(s.tu) : ''}</span>` : ''}</div><div class="qtext">${esc(q.q)}</div>${body}
     ${S.settings.labPoints && s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
-    <div class="row"><button class="btn pri" data-a="show">对答案</button>${S.settings.labRecite && answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}${S.settings.labFrame && !OBJ.includes(q.t) && frameFor(q) ? '<button class="btn" data-a="frame">答题框架</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
+    <div class="row"><button class="btn pri" data-a="show">对答案</button>${featOn('labRecite') && answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}${S.settings.labFrame && !OBJ.includes(q.t) && frameFor(q) ? '<button class="btn" data-a="frame">答题框架</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
     <div class="frm-p" hidden></div>
     <div class="recite" hidden></div>
     <div class="ans" hidden><div class="h">参考答案 ${q.src === '汇编' ? '· 来自你的答案汇编' : q.src === '补充' ? '· Claude 按教材补写，建议对照课本' : '· Claude 整理，建议核对'}${q.doubt ? '<span class="chip doubt">存疑</span>' : ''}</div>${q.a || '<p>暂无参考答案。</p>'}</div>
@@ -584,6 +585,12 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.6', d: '2026-11-25', t: '复习站 2.6：速查手册、学习周报，三个功能转正', items: [
+    '新增「考前速查手册」：按模块列出每个考点常考的名词解释和大题要点，可以只看高频或没掌握的考点，网页版和 iPad 版能打印或存为 PDF',
+    '新增「学习周报」：一周的学习时长、每天的时长柱状图、做题和评分情况、薄弱模块和下周建议，可以翻看以前的周，一键复制周报文字',
+    '大题背诵模式、冲刺计划、睡前五分钟回顾转为正式功能，默认开启，在设置的「学习功能」里开关',
+    '「试验性功能」从侧边栏移到设置里；设置列表去掉「下载 App」和「更新日志」，改从右上角 ⓘ 进入',
+    '修复：风格只有三个时，设置里的风格卡片挤在左边'] },
   { v: '2.5', d: '2026-11-25', t: '复习站 2.5：设置改成 iPad 设置的样式', items: [
     '设置窗口改成单栏的分组列表：最上面是头像和账号，下面是「学习」「应用程序」两组，点进去是二级页面，左上角返回',
     '外观直接放在设置首页：风格四宫格，颜色模式改成浅色、深色、系统三张预览图，字号在最后一行',
@@ -822,7 +829,7 @@ function openDiagram(id) {
 function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`, opt); }
 
 /* ---------- 导航 ---------- */
-const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试']];
+const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度']];
 /* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
 let PAGES = PAGES_BASE.slice();
 function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(S.settings.labSearch && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
@@ -851,22 +858,22 @@ function openMoreSheet() {
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
-window.addEventListener('hashchange', () => { if (SET.open && location.hash !== '#settings') closeSettings(); render(); toTop(); });
+window.addEventListener('hashchange', () => { if (SET.open && !['#settings', '#labs'].includes(location.hash)) closeSettings(); render(); toTop(); });
 /* 侧栏「下载 App」：跳到设置页的下载区 */
 document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
   if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 function render() {
-  if (location.hash === '#settings') {   /* 设置改成浮窗：打开窗口，背后留在原来的页面 */
-    const back = render.last && render.last !== 'settings' ? render.last : 'today';
+  if (location.hash === '#settings' || location.hash === '#labs') {   /* 设置是浮窗：打开窗口，背后留在原来的页面 */
+    const back = render.last && !['settings', 'labs'].includes(render.last) ? render.last : 'today', lab = location.hash === '#labs';
     history.replaceState(null, '', '#' + back);
     const j = pSettings.jump; pSettings.jump = null;
-    openSettings(j === 'download' ? 'download' : null);
+    openSettings(lab ? 'labs' : j === 'download' ? 'download' : null);
     if (render.last) { navHTML(); return; }
   }
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
-  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, labs: pLabs, settings: pSettings, flash: pFlash, compare: pCompare, frame: pFrame, changelog: pChangelog }[p] || pToday;
+  const f = { today: pToday, map: pMap, learn: pLearn, path: pPath, practice: pPractice, daily: pDaily, wrong: pWrong, mock: pMock, search: pSearch, stats: pStats, settings: pSettings, handbook: pHandbook, weekly: pWeekly, flash: pFlash, compare: pCompare, frame: pFrame, changelog: pChangelog }[p] || pToday;
   const m = document.createElement('div'); const pi = PAGES.findIndex(x => x[0] === p);
   m.dataset.pg = pi >= 0 ? pi + 1 : 1;
   const main = $('#main'), old = main.firstElementChild, changed = render.last && p !== render.last;
@@ -944,8 +951,8 @@ function pToday(m) {
     <div class="card tile">${icon('wrong', 'ti')}<b>${wrong}</b><span>错题本</span></div>
     <div class="card tile">${icon('stats', 'ti')}<b><span data-today-min>${Math.floor(L.min + pend)}</span><small style="font-size:13px"> 分钟</small></b><span>今天已学（本周 ${Math.round(week)} 分钟）</span></div>
   </div>
-  ${S.settings.labNight ? nightHTML() : ''}
-  ${S.settings.labSprint ? sprintHTML() : ''}
+  ${featOn('labNight') ? nightHTML() : ''}
+  ${featOn('labSprint') ? sprintHTML() : ''}
   <h2>今日计划</h2>
   <div class="card"><div class="row" style="margin-bottom:10px"><span class="note">今天打算学多久？</span><div class="seg" id="dur">${[60, 90, 120].map(x => `<button aria-pressed="${dur === x}" data-d="${x}">${x} 分钟</button>`).join('')}</div><span class="sp"></span><span class="timer" id="tm">${S.settings.autoTime === false ? '学习时间记录已暂停' : '正在记录 · 今天 ' + Math.floor(L.min + pend) + ' 分钟'}</span><button class="btn sm" id="tbtn">${S.settings.autoTime === false ? '恢复记录' : '暂停记录'}</button></div>
   <div class="plan">
@@ -957,7 +964,7 @@ function pToday(m) {
   <h2>高频考点（按出现年数和近年热度排序）</h2>
   <div class="list" id="hot"></div>`;
   $('#hot').innerHTML = Object.entries(CS).sort((a, b) => b[1].prio - a[1].prio).slice(0, 8).map(([id, s]) => clusterRow(id)).join('');
-  if (HAS_REM) try { window.AndroidApp.setReminderText((S.settings.labNight && nightIds().length ? `睡前回顾：今天有 ${nightIds().length} 道题没掌握 · ` : '') + PL.done ? `今天的复习路径已完成，还有 ${due} 题到期复习` : `今天的复习路径：「${rc.n}」（已完成 ${pStep}/3 步）· ${due} 题到期复习`); } catch (e) { }
+  if (HAS_REM) try { window.AndroidApp.setReminderText((featOn('labNight') && nightIds().length ? `睡前回顾：今天有 ${nightIds().length} 道题没掌握 · ` : '') + PL.done ? `今天的复习路径已完成，还有 ${due} 题到期复习` : `今天的复习路径：「${rc.n}」（已完成 ${pStep}/3 步）· ${due} 题到期复习`); } catch (e) { }
   const mp = $('#morePath'); if (mp) mp.onclick = () => { S.planPath = { c: recommendCluster(S.planPath.c), t: Date.now() }; save(); render(); };
   $('#dur').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { S.settings.dur = +b.dataset.d; save(); render(); } };
   $('#tbtn').onclick = () => { flushTime(); S.settings.autoTime = S.settings.autoTime === false; save(); render(); };
@@ -1763,6 +1770,7 @@ document.addEventListener('keydown', e => {
   if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); gsOpen(); }
 });
 
+const STABLE = new Set(['labRecite', 'labSprint', 'labNight']);
 const LABS = [
   { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
   { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' },
@@ -1779,12 +1787,105 @@ const LABS = [
   { k: 'labSearch', t: '悬浮搜索框', d: '把「检索」从侧边栏移到页面上方的悬浮搜索框，在任何页面都能随手搜，不用离开当前页面。', how: ['点页面顶部的搜索框，或按 ⌘K / Ctrl K、/ 键打开', '边输入边出结果，点题目直接弹出题卡', '手机上在顶栏右侧的放大镜图标'], where: '页面顶部；手机在顶栏' }
 ];
 function pLabs(m) {
-  const st = S.settings;
+  const st = S.settings; const LABS2 = LABS.filter(f => !STABLE.has(f.k));
   m.innerHTML = `<div class="kick">LABS · 试验性功能</div><h1>试验性功能 <sup class="beta lg">beta</sup></h1><p class="lead">这里放的是还在打磨的新功能，默认都是关闭的。打开后，对应的按钮才会出现在刷题界面里；觉得用不惯，随时关掉，学习记录不受影响。</p>
-  <div class="labs">${LABS.map(f => `<div class="card lab${st[f.k] ? ' on' : ''}" data-lab="${f.k}"><div class="lab-h"><div><b>${esc(f.t)}</b><span class="note">出现在：${esc(f.where)}</span></div><button class="switch" role="switch" aria-checked="${!!st[f.k]}" aria-label="${esc(f.t)}" data-sw="${f.k}"><i></i></button></div>
+  <div class="labs">${LABS2.map(f => `<div class="card lab${st[f.k] ? ' on' : ''}" data-lab="${f.k}"><div class="lab-h"><div><b>${esc(f.t)}</b><span class="note">出现在：${esc(f.where)}</span></div><button class="switch" role="switch" aria-checked="${!!st[f.k]}" aria-label="${esc(f.t)}" data-sw="${f.k}"><i></i></button></div>
     <p>${esc(f.d)}</p><ul class="chg">${f.how.map(x => `<li>${x}</li>`).join('')}</ul><div class="lab-st note">${st[f.k] ? '已开启 · 去刷题界面试试吧' : '未开启'}</div></div>`).join('')}</div>`;
   m.addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (!b) return; const k = b.dataset.sw; st[k] = !st[k]; save();
     b.setAttribute('aria-checked', !!st[k]); const c = b.closest('.lab'); c.classList.toggle('on', !!st[k]); $('.lab-st', c).textContent = st[k] ? '已开启 · 去刷题界面试试吧' : '未开启'; });
+}
+
+/* ========== 考前速查手册：每个考点最常考的名词解释和大题要点，压成一页一页过 ========== */
+const HB = { mod: 0, f: 'all' };
+const hbCut = (s, n) => (s = String(s || '').trim()).length > n ? s.slice(0, n - 1) + '…' : s;
+function hbDef(q) { const t = txt(q.a || '').replace(/\s+/g, ' '); const s = (t.match(/^[\s\S]*?[。；]/) || [t])[0]; return hbCut(s.replace(/[；]$/, '。'), 96); }
+function hbLevel(id) { const mm = clusterMastery(id); if (!mm.att) return ['none', '未练']; if (mm.m3 / mm.tot >= .6) return ['ok', '已掌握']; return mm.avg >= 2 ? ['mid', '模糊'] : ['low', '没掌握']; }
+function hbCluster(id) {
+  const c = CL[id], s = CS[id];
+  const seen = new Set(), terms = s.qs.filter(q => q.t === '名解').sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.trim(); if (seen.has(k)) return false; seen.add(k); return true; });
+  const bs = new Set(), bigs = s.qs.filter(q => BIG.includes(q.t)).sort((a, b) => (b.y || 0) - (a.y || 0)).filter(q => { const k = q.q.replace(/\s/g, '').slice(0, 24); if (bs.has(k)) return false; bs.add(k); return true; }).slice(0, 2);
+  const [lc, ln] = hbLevel(id);
+  return `<section class="hb-c">
+    <header class="hb-h"><b>${esc(c.n)}</b>${hotSet.has(id) ? '<span class="chip hot">高频</span>' : ''}<span class="note">考过 ${s.n} 年${s.last ? ' · 最近 ' + s.last : ''}</span><span class="sp"></span><span class="hb-lv ${lc}">${ln}</span></header>
+    ${terms.length ? `<div class="hb-ts">${terms.map(q => `<button class="hb-term" data-q="${q.id}"><b>${esc(q.q)}</b><span>${esc(hbDef(q))}</span></button>`).join('')}</div>` : ''}
+    ${bigs.map(q => { const pts = answerPoints(q); return `<div class="hb-q"><button class="hb-qt" data-q="${q.id}"><span class="chip y">${q.y || '补充'} · ${esc(TLABEL[q.t] || q.t)}</span><span>${esc(hbCut(q.q.replace(/\n/g, ' '), 90))}</span></button>
+      ${pts.length ? `<ol>${pts.slice(0, 8).map(p => `<li>${p.label ? `<b>${esc(p.label)}</b>：` : ''}${esc(hbCut(p.label ? p.body : p.text, 52))}</li>`).join('')}${pts.length > 8 ? `<li class="note">还有 ${pts.length - 8} 条，点题目看完整答案</li>` : ''}</ol>` : ''}</div>`; }).join('')}
+    <div class="hb-go"><button class="btn sm ghost" data-hpath="${id}">走复习路径 ›</button></div></section>`;
+}
+function pHandbook(m) {
+  const keep = id => (HB.f === 'hot' ? hotSet.has(id) : HB.f === 'weak' ? hbLevel(id)[0] !== 'ok' : true);
+  const mods = MODS.filter(mo => !HB.mod || mo.id === HB.mod).map(mo => { const ids = [...new Set(mo.items.flatMap(i => i.cs))].filter(id => CS[id] && CL[id] && CL[id].m === mo.id && keep(id)); return [mo, ids]; }).filter(x => x[1].length);
+  const n = mods.reduce((a, x) => a + x[1].length, 0);
+  m.innerHTML = `<div class="kick">HANDBOOK · 考前速查</div><h1>考前速查手册</h1><p class="lead">每个考点最常考的名词解释和大题要点压缩在一起，考前快速过一遍。点名词或题目看完整答案。</p>
+  <div class="hb-bar"><div class="seg" id="hbF">${[['all', '全部'], ['hot', '只看高频'], ['weak', '只看没掌握']].map(([v, t]) => `<button data-v="${v}" aria-pressed="${HB.f === v}">${t}</button>`).join('')}</div>
+    <select id="hbM" aria-label="模块"><option value="0">全部模块</option>${MODS.map(mo => `<option value="${mo.id}" ${HB.mod === mo.id ? 'selected' : ''}>${mo.id} ${esc(mo.name)}</option>`).join('')}</select>
+    <span class="note">${n} 个考点</span><span class="sp"></span>${window.AndroidApp ? '' : '<button class="btn sm" id="hbP">打印 / 存为 PDF</button>'}</div>
+  ${mods.length ? mods.map(([mo, ids]) => `<h2 class="hb-mh">${mo.id} ${esc(mo.name)}</h2>${ids.map(hbCluster).join('')}`).join('') : '<div class="card"><p class="note" style="margin:0">这个筛选下没有考点。</p></div>'}`;
+  $('#hbF', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; HB.f = b.dataset.v; pHandbook(m); };
+  $('#hbM', m).onchange = e => { HB.mod = +e.target.value; pHandbook(m); };
+  const pr = $('#hbP', m); if (pr) pr.onclick = () => window.print();
+  m.onclick = e => { const q = e.target.closest('[data-q]'); if (q) return openQ(q.dataset.q); const p = e.target.closest('[data-hpath]'); if (p) { NAV.pathC = p.dataset.hpath; NAV.pathStep = 1; go('path'); } };
+}
+
+/* ========== 学习周报：一周的学习时长、做题、自测、模拟卷和薄弱模块，附下周建议 ========== */
+const WK = { off: 0 };
+function weekStart(off) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (d.getDay() + 6) % 7 + off * 7); return d.getTime(); }
+function weekData(off) {
+  const t0 = weekStart(off), e = new Date(t0); e.setDate(e.getDate() + 7); const t1 = e.getTime();
+  const days = [...Array(7)].map((_, i) => { const d = new Date(t0); d.setDate(d.getDate() + i); const k = dkey(d.getTime()), L = S.log[k] || {}; return { k, d, min: Math.round(L.min || 0), done: L.done || 0 }; });
+  const rated = Object.entries(S.q).filter(([id, s]) => s && s.t >= t0 && s.t < t1 && BY[id]);
+  const lv = [0, 0, 0, 0]; const mod = {};
+  rated.forEach(([id, s]) => { lv[s.l]++; const mo = qmod(BY[id]); if (mo) { mod[mo] = mod[mo] || [0, 0, 0, 0]; mod[mo][s.l]++; } });
+  const dDays = days.filter(d => { const D = S.daily[d.k]; return D && D.ids && D.res && Object.keys(D.res).length >= D.ids.length; }).length;
+  const mocks = (S.mocks || []).filter(x => x.ts >= t0 && x.ts < t1);
+  return { t0, t1, days, rated: rated.length, lv, mod, dDays, mocks, min: days.reduce((a, d) => a + d.min, 0), done: days.reduce((a, d) => a + d.done, 0), act: days.filter(d => d.min || d.done).length };
+}
+const fmtMin = n => n >= 60 ? `${Math.floor(n / 60)} 小时${n % 60 ? ' ' + (n % 60) + ' 分' : ''}` : `${n} 分钟`;
+const fmtMD = t => { const d = new Date(t); return `${d.getMonth() + 1} 月 ${d.getDate()} 日`; };
+function wkAdvice(W) {
+  const out = [], plan = (S.settings.dur || 90) * 7;
+  if (W.act < 5) out.push(`这周学了 ${W.act} 天。考前最后阶段，每天哪怕只做一组每日自测，也比集中突击记得牢。`);
+  else if (W.min < plan * .7) out.push(`学习时长是计划（每天 ${S.settings.dur || 90} 分钟）的 ${Math.round(W.min / plan * 100)}%，下周可以每天多留 20 分钟给错题。`);
+  else out.push('学习节奏很稳，继续保持每天的复习路径和每日自测。');
+  const weak = Object.entries(W.mod).map(([m, a]) => [m, a[1] + a[2], a[1] + a[2] + a[3]]).filter(x => x[1] >= 2).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  if (weak.length) out.push(`本周丢分集中在${weak.map(([m]) => `「${MODN[m]}」`).join('和')}，下周优先回顾这些模块的考点，可以在速查手册里按模块筛选。`);
+  const due = Object.values(S.q).filter(s => s && s.w && s.d && s.d < Date.now() + 7 * DAY).length;
+  if (due) out.push(`错题本里有 ${due} 道题会在下周到期复习，记得清掉。`);
+  if (!W.mocks.length) out.push('这周没有做模拟卷，建议周末计时做一套，检查答题速度。');
+  if (S.settings.exam) { const left = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY); if (left > 0 && left <= 30) out.push(`离考试还有 ${left} 天，${left <= 7 ? '最后一周只看错题和速查手册，不再开新内容。' : '开始把重心转到错题、模拟卷和高频考点。'}`); }
+  return out;
+}
+function wkChart(W) {
+  const sm = innerWidth <= 560, mx = Math.max(30, ...W.days.map(d => d.min)), H = 150, bw = 54, gap = 40, x0 = 34, today = dkey();
+  const nm = ['一', '二', '三', '四', '五', '六', '日'];
+  return `<svg viewBox="0 0 ${x0 + 7 * (bw + gap)} ${H + 60}" class="dg wk-ch${sm ? ' sm' : ''}" role="img" aria-label="每天学习分钟数">
+    ${[0, .5, 1].map(f => `<line x1="${x0}" x2="${x0 + 7 * (bw + gap) - gap}" y1="${26 + H * (1 - f)}" y2="${26 + H * (1 - f)}" stroke="var(--line)"/><text x="${x0 - 6}" y="${30 + H * (1 - f)}" text-anchor="end" class="ax">${Math.round(mx * f)}</text>`).join('')}
+    ${W.days.map((d, i) => { const h = d.min / mx * H, x = x0 + i * (bw + gap); return `<g><title>${fmtMD(d.d.getTime())}：${d.min} 分钟，评分 ${d.done} 题</title>${d.min ? `<path d="M${x} ${26 + H}V${26 + H - h + 4}q0-4 4-4h${bw - 8}q4 0 4 4V${26 + H}z" fill="var(--accent)" opacity="${d.k === today ? 1 : .78}"/>` : ''}<text x="${x + bw / 2}" y="${26 + H - h - 6}" text-anchor="middle" class="vl">${d.min || ''}</text><text x="${x + bw / 2}" y="${H + 50}" text-anchor="middle" class="ax${d.k === today ? ' on' : ''}">周${nm[i]}</text></g>`; }).join('')}</svg>`;
+}
+function pWeekly(m) {
+  const W = weekData(WK.off), P = weekData(WK.off - 1), dm = W.min - P.min;
+  const end = new Date(W.t1 - DAY).getTime(), name = WK.off === 0 ? '本周' : WK.off === -1 ? '上周' : '';
+  const tot = W.lv[1] + W.lv[2] + W.lv[3] || 1, bar = a => `<div class="bar"><i style="width:${a[3] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--ok)"></i><i style="width:${a[2] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--mid)"></i><i style="width:${a[1] / (a[1] + a[2] + a[3] || 1) * 100}%;background:var(--bad)"></i></div>`;
+  const mods = Object.entries(W.mod).sort((a, b) => (b[1][1] + b[1][2] + b[1][3]) - (a[1][1] + a[1][2] + a[1][3]));
+  const adv = wkAdvice(W);
+  m.innerHTML = `<div class="kick">WEEKLY · 学习周报</div><h1>学习周报</h1>
+  <div class="wk-nav"><button class="btn sm ghost" data-wk="-1">‹ 上一周</button><b>${name ? name + ' · ' : ''}${fmtMD(W.t0)} – ${fmtMD(end)}</b>${WK.off < 0 ? '<button class="btn sm ghost" data-wk="1">下一周 ›</button>' : '<span></span>'}</div>
+  <div class="grid g4">
+    <div class="card tile"><b>${fmtMin(W.min)}</b><span>学习时长</span>${W.min || P.min ? `<span class="wk-dl ${dm >= 0 ? 'up' : 'dn'}">比上周${dm >= 0 ? '多' : '少'} ${fmtMin(Math.abs(dm))}</span>` : ''}</div>
+    <div class="card tile"><b>${W.done} 题</b><span>评分次数 · 涉及 ${W.rated} 道题</span></div>
+    <div class="card tile"><b>${W.act} / 7 天</b><span>有学习记录的天数</span></div>
+    <div class="card tile"><b>${W.dDays} 天</b><span>完成每日自测</span></div></div>
+  <h2>每天学习时长（分钟）</h2><div class="card">${W.min ? wkChart(W) : '<p class="note" style="margin:0">这一周还没有学习时长记录。</p>'}</div>
+  <h2>本周做题情况</h2><div class="card">${W.rated ? `<div class="wk-lv">${bar(W.lv)}<div class="wk-lg"><span><i style="background:var(--ok)"></i>掌握 ${W.lv[3]}</span><span><i style="background:var(--mid)"></i>模糊 ${W.lv[2]}</span><span><i style="background:var(--bad)"></i>不会 ${W.lv[1]}</span><span class="note">按每道题本周最后一次评分统计</span></div></div>
+    <div class="wk-mods">${mods.map(([mo, a]) => `<div class="wk-mod"><span>${mo} ${esc(MODN[mo])}</span>${bar(a)}<span class="note">${a[3]}/${a[1] + a[2] + a[3]} 掌握</span></div>`).join('')}</div>` : '<p class="note" style="margin:0">这一周还没有评分记录。</p>'}</div>
+  ${W.mocks.length ? `<h2>模拟卷</h2><div class="card">${W.mocks.map(x => `<div class="row" style="margin:0 0 6px"><span>${esc(x.title || '模拟卷')}</span><span class="sp"></span><b>${x.score} / ${x.total}</b><span class="note">${x.min} 分钟</span></div>`).join('')}</div>` : ''}
+  ${WK.off === 0 || WK.off === -1 ? `<h2>下周建议</h2><div class="card"><ul class="chg" style="margin:0">${adv.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+  <div class="row" style="margin-top:16px"><button class="btn" id="wkCp">复制周报文字</button><span class="note" id="wkMsg"></span></div>`;
+  m.onclick = e => { const b = e.target.closest('[data-wk]'); if (b) { WK.off = Math.min(0, WK.off + +b.dataset.wk); pWeekly(m); } };
+  $('#wkCp', m).onclick = async () => {
+    const t = `食品化学复习周报（${fmtMD(W.t0)} – ${fmtMD(end)}）\n学习时长：${fmtMin(W.min)}（${W.act}/7 天有记录）\n评分：${W.done} 次，掌握 ${W.lv[3]} / 模糊 ${W.lv[2]} / 不会 ${W.lv[1]}\n每日自测：完成 ${W.dDays} 天${W.mocks.length ? `\n模拟卷：${W.mocks.map(x => x.score + '/' + x.total).join('、')}` : ''}${adv.length ? '\n下周建议：\n' + adv.map(x => '· ' + x).join('\n') : ''}`;
+    try { if (window.AndroidApp && window.AndroidApp.copy) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); $('#wkMsg').textContent = '已复制'; } catch (err) { $('#wkMsg').textContent = '无法自动复制'; }
+  };
 }
 
 /* ---------- 设置 · 账号与同步 ---------- */
@@ -1863,8 +1964,14 @@ const SET_SECS = [
   ['download', '下载 App', '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>'],
   ['update', 'App 更新', '<circle cx="12" cy="12" r="8.5"/><path d="M12 16V8.5M8.8 11.5 12 8.3l3.2 3.2"/>'],
   ['backup', '备份与恢复', '<path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'],
-  ['log', '更新日志', '<path d="M7 4h10a1 1 0 0 1 1 1v15l-3-2-3 2-3-2-3 2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 12.5h6"/>']
+  ['log', '更新日志', '<path d="M7 4h10a1 1 0 0 1 1 1v15l-3-2-3 2-3-2-3 2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 12.5h6"/>'],
+  ['labs', '试验性功能', '<path d="M9.5 3.5h5M10.5 3.5v5.2L5.3 18.2a1.5 1.5 0 0 0 1.3 2.3h10.8a1.5 1.5 0 0 0 1.3-2.3L13.5 8.7V3.5"/><path d="M7.4 15h9.2"/>']
 ];
+const SET_FEAT = [['labRecite', '大题背诵模式', '<path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8z"/><path d="M12 6.3v13"/>'],
+  ['labSprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
+  ['labNight', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>']];
+const SET_TOOL = [['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
+  ['weekly', '学习周报', '<path d="M4.5 20V4M4.5 20h15"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>']];
 const SET_H2 = { '个人资料': 'profile', '学习安排': 'study', '外观': 'look', '每日学习提醒': 'remind', 'App 更新': 'update', '下载 App': 'download', '更新日志': 'log', '备份与恢复': 'backup' };
 const SET = { open: false, sec: 'root', from: null, has: new Set(), rootTop: 0 };
 const isPhone = () => innerWidth <= 860;
@@ -1887,8 +1994,10 @@ function openSettings(sec) {
       if (pop && !e.target.closest('#setInfo')) { setInfoClose(); return; }
       const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') { updStatus && updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); toast('正在检查更新……'); } else setGo(ia.dataset.info); return; }
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
+      const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
+      const nv = e.target.closest('[data-nav]'); if (nv) { location.hash = nv.dataset.nav; return; }
     });
-    $('#setBody').addEventListener('scroll', e => $('.set-hd').classList.toggle('scrolled', e.target.scrollTop > 4), { passive: true });
+    $('#setBody').addEventListener('scroll', e => { const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
   }
   setFill(); $('#setBody').scrollTop = 0;
 }
@@ -1935,6 +2044,7 @@ function setFill() {
   if (look) {
     const th = $('#th', look);
     if (th) { const v = st.theme || ''; th.className = 'th-tiles'; th.innerHTML = [['light', '浅色', 'l'], ['dark', '深色', 'd'], ['', '系统', 's']].map(([k, n, c]) => `<button data-v="${k}" aria-pressed="${v === k}"><span class="thpv ${c}" aria-hidden="true"><i></i><i></i><em></em></span><span>${n}</span></button>`).join(''); }
+    const sk = $('#sk', look); if (sk) sk.classList.add('n' + sk.children.length);
     const zm = $('#zm', look); if (zm) zm.closest('.row').classList.add('ios-inline');
     const ga = $('#glassA', look); if (ga) ga.closest('.row').classList.add('ios-inline');
     const md = $('#md3d', look); if (md) md.closest('.row').classList.add('ios-inline');
@@ -1943,6 +2053,8 @@ function setFill() {
   body.innerHTML = '';
   SET.has = new Set();
   const pages = {};
+  { const lp = document.createElement('div'); pLabs(lp); $$('.kick, h1', lp).forEach(x => x.remove()); const ld = $('.lead', lp); if (ld) ld.className = 'ios-note';
+    lp.addEventListener('click', e => { if (e.target.closest('[data-sw]')) navHTML(); }); groups.labs = { childNodes: [lp] }; }
   for (const [k] of SET_SECS) if (groups[k]) { const pg = document.createElement('div'); pg.className = 'set-pg'; pg.dataset.p = k; pg.append(...groups[k].childNodes); pages[k] = pg; SET.has.add(k); }
   /* 首页 */
   const row = k => { const s = SET_SECS.find(x => x[0] === k); if (!s || !SET.has.has(k)) return '';
@@ -1951,7 +2063,10 @@ function setFill() {
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
     <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('remind')}</div>
-    <p class="ios-lab">应用程序</p><div class="ios-grp">${row('download')}${row('update')}${row('backup')}${row('log')}</div>
+    <p class="ios-lab">学习功能</p><div class="ios-grp">${SET_FEAT.map(([k, n, ic]) => `<div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(ic)}<span class="ios-n">${n}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${n}"><i></i></button></div>`).join('')}</div>
+    <p class="ios-note">背诵模式：大题题卡上多一个「背诵」按钮，按要点、挖空或全文来背。冲刺计划：按考试日期倒推，首页显示每天该过的考点。睡前回顾：把今天没掌握的题集中到首页，睡前过一遍。</p>
+    <p class="ios-lab">复习工具</p><div class="ios-grp">${SET_TOOL.map(([k, n, ic]) => `<button class="ios-row" data-nav="${k}">${SV(ic)}<span class="ios-n">${n}</span>${SVG_CHEV}</button>`).join('')}</div>
+    <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
     ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
     ${CLOUD.user ? `<div class="ios-grp" style="margin-top:22px"><button class="ios-row red" data-rout>${SV('<path d="M10 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h4M14.5 8l4 4-4 4M9.5 12h9"/>')}<span class="ios-n">退出登录</span></button></div>` : ''}`;
   if (look) { const c = look.querySelector(':scope > .card'); $('.set-look', root).append(...(c ? c.childNodes : look.childNodes)); }
