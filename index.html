@@ -42,8 +42,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 /* body 不再固定为一屏高：固定高度时，手机顶栏（sticky）滚过一屏就会跟着滚走 */
-html { height: 100%; background: var(--bg); overscroll-behavior: none; }
-body { min-height: 100%; overscroll-behavior: none; }
+html { height: 100%; background: var(--bg); }
+body { min-height: 100%; }
 [data-skin="book"] body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15.5px; line-height: 1.7; }
 a { color: var(--accent); }
@@ -991,9 +991,18 @@ html.ios-app .gs-ov { padding-top: 40px; }
 .chlog-all .chev { font-size: 20px; line-height: 1; }
 .sub-back { display: inline-block; margin: 0 0 6px; color: var(--accent); text-decoration: none; font-weight: 600; }
 
-/* 2.2.4：页面滑到顶或底时不再回弹露出空白；万一系统仍回弹，露出的底色也和页面一致 */
+/* 2.2.4：回弹时露出的底色和页面一致 */
 :root[data-skin="glass"] { background: var(--wall); }
 :root[data-skin="book"] { background: var(--desk-2); }
+
+/* 2.2.5：App 外壳 —— iPad/iPhone 主屏幕版和安卓 App 里，整页不动，只有内容区自己滚动和回弹：
+   侧边栏、顶栏、背景都固定，回弹不会露出空白，顶栏也不会跟着被拉动（书本风格本来就是这样，不受影响） */
+html.appshell:not([data-skin="book"]), html.appshell:not([data-skin="book"]) body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.appshell:not([data-skin="book"]) body { display: flex; flex-direction: column; }
+html.appshell:not([data-skin="book"]) #topnav { flex: none; position: relative; top: auto; }
+html.appshell:not([data-skin="book"]) .shell { flex: 1 1 auto; min-height: 0; height: auto; grid-template-rows: minmax(0, 1fr); }
+html.appshell:not([data-skin="book"]) .shell > main { min-height: 0; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
+html.appshell:not([data-skin="book"]) nav.side { position: relative; top: 0; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 </style>
 </head>
 <body>

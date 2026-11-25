@@ -87,6 +87,8 @@ const PLATFORM = window.AndroidApp ? 'android' : (window.__PWA || (/iPad|iPhone|
 if (PLATFORM === 'apple' && (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))) document.documentElement.classList.add('ios-app');
 /* 主屏幕版更像原生 App：整页不再被双击放大、双指缩放；输入框获得焦点时也不会自动放大。
    知识结构图和机理图解（.zoomable）单独支持双指缩放、双击放大/还原，方便看清小字 */
+/* 主屏幕版和安卓 App 用「App 外壳」：只有内容区滚动（见样式表 appshell） */
+if (document.documentElement.classList.contains('ios-app') || window.AndroidApp) document.documentElement.classList.add('appshell');
 if (document.documentElement.classList.contains('ios-app')) {
   const vp = document.querySelector('meta[name=viewport]'); if (vp) vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
   const zoomBox = t => t && t.closest ? t.closest('.zoomable') : null;
@@ -582,6 +584,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.2.5', d: '2026-11-25', t: '回弹改进', items: [
+    '恢复滑到顶部或底部时的回弹手感，但改成只有内容区回弹：侧边栏、背景和顶栏都固定不动，不会再露出空白',
+    '手机上回弹时，顶栏和搜索栏不再跟着被拉动',
+    '这项改动只在 iPad / iPhone 主屏幕版和安卓 App 里生效，浏览器里打开时保持浏览器自己的滚动方式'] },
   { v: '2.2.4', d: '2026-11-25', t: '滑动体验修复', items: [
     'iPad 上页面滑到最上面或最下面时，不再回弹露出空白；即使系统仍有轻微回弹，露出的底色也和页面一致',
     '手机上顶栏和搜索栏现在一直固定在页面上方：之前滑过一屏后会跟着页面一起滚走'] },
