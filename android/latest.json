@@ -1,6 +1,6 @@
 {
-  "versionCode": 29,
-  "versionName": "2.2.29",
-  "apk": "FoodChemReview-v2.2.29.apk",
-  "notes": "2.2.5：滑动时只有内容区回弹，顶栏和搜索栏固定不动。直接覆盖安装，进度会保留。"
+  "versionCode": 30,
+  "versionName": "2.2.30",
+  "apk": "FoodChemReview-v2.2.30.apk",
+  "notes": "2.2.6：侧边栏只有功能列表滚动；内容少的页面也能回弹；「更多」面板的 beta 角标不再挤偏名字。直接覆盖安装，进度会保留。"
 }

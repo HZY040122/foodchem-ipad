@@ -584,6 +584,12 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.2.6', d: '2026-11-25', t: '侧边栏与回弹细节', items: [
+    '侧边栏改成只有中间的功能列表滚动和回弹，上面的标题和下面的同步状态固定不动',
+    'iPad 主屏幕版和安卓 App 的侧边栏去掉了「下载 App」，只在网页版保留',
+    '内容较少、不满一屏的页面（如知识点的绪论模块）也能回弹了',
+    '修复 iPhone 上书本风格的顶栏和搜索栏滑动后会收起、回弹不对的问题',
+    '修复「更多」面板里试验性功能的 beta 角标把名字挤得偏左的问题'] },
   { v: '2.2.5', d: '2026-11-25', t: '回弹改进', items: [
     '恢复滑到顶部或底部时的回弹手感，但改成只有内容区回弹：侧边栏、背景和顶栏都固定不动，不会再露出空白',
     '手机上回弹时，顶栏和搜索栏不再跟着被拉动',
@@ -806,8 +812,8 @@ const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '
 function navHTML() {
   syncPages();
   let cur = location.hash.slice(1) || 'today'; if (cur === 'changelog') cur = 'settings';
-  $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="toc" aria-hidden="true">目　录</div>` +
-    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg><div class="foot">${window.AndroidApp ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
+  $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="side-list"><div class="sl-in"><div class="toc" aria-hidden="true">目　录</div>` +
+    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg></div></div><div class="foot">${window.AndroidApp || window.__PWA || document.documentElement.classList.contains('ios-app') ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
   $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
   /* 底部导航栏（Material 3 和液态玻璃风格在窄屏上使用）：四个常用页面 + 「更多」 */

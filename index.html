@@ -1003,6 +1003,28 @@ html.appshell:not([data-skin="book"]) #topnav { flex: none; position: relative; 
 html.appshell:not([data-skin="book"]) .shell { flex: 1 1 auto; min-height: 0; height: auto; grid-template-rows: minmax(0, 1fr); }
 html.appshell:not([data-skin="book"]) .shell > main { min-height: 0; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
 html.appshell:not([data-skin="book"]) nav.side { position: relative; top: 0; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* 2.2.6：侧边栏三段式 —— 标题和底部固定，只有中间的功能列表滚动（和回弹） */
+nav.side { overflow: hidden; }
+.side-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -12px; padding: 0 12px; scrollbar-width: none; }
+.side-list::-webkit-scrollbar { display: none; }
+.sl-in { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+nav.side .foot { flex: none; margin-top: 0; }
+/* 列表不满一屏时也能回弹 */
+html.appshell .sl-in { min-height: calc(100% + 1px); }
+/* 内容不满一屏的页面也能回弹：内容区至少比可视高度多 1 像素 */
+html.appshell .shell > main > div { min-height: calc(100% + 1px); }
+/* iPhone 书本风格也用 App 外壳（宽屏的书本风格本来就是书页内滚动） */
+@media (max-width: 860px) {
+  html.appshell[data-skin="book"], html.appshell[data-skin="book"] body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  html.appshell[data-skin="book"] body { display: flex; flex-direction: column; }
+  html.appshell[data-skin="book"] #topnav { flex: none; position: relative; top: auto; }
+  html.appshell[data-skin="book"] .shell { flex: 1 1 auto; min-height: 0; height: auto; grid-template-rows: minmax(0, 1fr); }
+  html.appshell[data-skin="book"] .shell > main { min-height: 0; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
+}
+/* 「更多」面板：beta 角标浮在图标右上角，不占名字的位置，名字保持居中 */
+.sh-grid a { position: relative; }
+.sh-grid .beta { position: absolute; top: 8px; left: calc(50% + 10px); margin: 0; }
 </style>
 </head>
 <body>
