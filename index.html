@@ -40,7 +40,11 @@
   --c-green: #22331f; --c-green-b: #86c37a; --c-olive: #31311c; --c-olive-b: #c3c25e; --c-brown: #3a2b1f; --c-brown-b: #d39a68; --c-purple: #2f2737; --c-purple-b: #b79ad4; --c-pink: #3b252d; --c-pink-b: #e591b2;
   --shadow: 0 1px 2px rgba(0,0,0,.25), 0 8px 20px -12px rgba(0,0,0,.6); color-scheme: dark; }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; }
+/* body 不再固定为一屏高：固定高度时，手机顶栏（sticky）滚过一屏就会跟着滚走 */
+html { height: 100%; background: var(--bg); overscroll-behavior: none; }
+body { min-height: 100%; overscroll-behavior: none; }
+[data-skin="book"] body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15.5px; line-height: 1.7; }
 a { color: var(--accent); }
 /* --az：大屏自动放大系数（由脚本按窗口宽度计算），侧栏和内容一起等比放大 */
@@ -986,6 +990,10 @@ html.ios-app .gs-ov { padding-top: 40px; }
 .chlog-all span:first-child { flex: 1; }
 .chlog-all .chev { font-size: 20px; line-height: 1; }
 .sub-back { display: inline-block; margin: 0 0 6px; color: var(--accent); text-decoration: none; font-weight: 600; }
+
+/* 2.2.4：页面滑到顶或底时不再回弹露出空白；万一系统仍回弹，露出的底色也和页面一致 */
+:root[data-skin="glass"] { background: var(--wall); }
+:root[data-skin="book"] { background: var(--desk-2); }
 </style>
 </head>
 <body>

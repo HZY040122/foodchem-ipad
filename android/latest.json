@@ -1,6 +1,6 @@
 {
-  "versionCode": 27,
-  "versionName": "2.2.27",
-  "apk": "FoodChemReview-v2.2.27.apk",
-  "notes": "2.2.3：更新日志改为二级页面；名解闪卡、易混对比、答题框架在侧边栏排到每日自测下面。直接覆盖安装，进度会保留。"
+  "versionCode": 28,
+  "versionName": "2.2.28",
+  "apk": "FoodChemReview-v2.2.28.apk",
+  "notes": "2.2.4：顶栏和搜索栏始终固定在页面上方；滑到顶部或底部时不再露出空白。直接覆盖安装，进度会保留。"
 }
