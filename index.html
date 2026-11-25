@@ -904,6 +904,70 @@ td.cz.open { background: var(--accent-soft); }
 .fl-end { text-align: center; padding: 26px; }
 .fl-end b.ok { color: var(--ok); } .fl-end b.mid { color: var(--mid); } .fl-end b.bad { color: var(--bad); }
 @media (max-width: 520px) { .fl-term { font-size: 24px; } .fl-card { min-height: 260px; padding: 22px 18px; } table.cmpt th:first-child { width: 4.6em; } }
+
+/* ===== 2.2 试验性功能 ===== */
+/* 答题框架 */
+.frms { display: grid; gap: 14px; }
+.frm-n { font-size: 16px; }
+.frm-s { margin: 10px 0 6px; padding-left: 1.5em; line-height: 1.75; }
+.frm-s li { margin: 3px 0; }
+.frm-tip { margin: 6px 0 0; }
+.frm-ex { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.frm-p { margin-top: 10px; border: 1px dashed var(--accent); border-radius: 12px; padding: 10px 14px; background: var(--accent-soft); }
+.frm-p[hidden] { display: none; }
+.frm-h { display: flex; gap: 8px; align-items: baseline; }
+.frm-p .frm-s { margin: 6px 0 4px; }
+/* 模拟卷诊断 */
+.mdiag { margin-bottom: 18px; }
+.md-sum { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 12px; }
+.md-g { gap: 18px; }
+.md-t { margin-bottom: 6px; }
+.bar-row.wide { grid-template-columns: 7.5em 1fr 3.2em; margin: 5px 0; }
+.bar-row.wide .bt i { background: var(--bad); }
+.md-cl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+/* 考点趋势 */
+.chip.tr { font-size: 11.5px; padding: 1px 8px; border-color: transparent; }
+.chip.tr.hot { background: var(--hot-soft); color: var(--hot); }
+.chip.tr.gap { background: var(--mid-soft); color: var(--mid); }
+.chip.tr.new { background: var(--ok-soft); color: var(--ok); }
+/* 睡前回顾 */
+.card.night { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.card.night .nt-i { font-size: 26px; line-height: 1; }
+.card.night .nt-b { flex: 1; min-width: 0; }
+.card.night.late { border: 1px solid var(--accent); }
+@media (max-width: 520px) { .card.night { flex-wrap: wrap; } .card.night .btn { width: 100%; } }
+/* 悬浮搜索 */
+.gs-pill { position: fixed; top: 14px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 16px; border-radius: 21px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 14.5px; cursor: text; box-shadow: 0 6px 24px rgba(0,0,0,.08); text-align: left; }
+.gs-pill span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-pill kbd { font: 12px/1 var(--f-body); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; background: var(--surface2); }
+.gs-pill:hover { border-color: var(--accent); }
+.gs-ic { width: 18px; height: 18px; flex: none; }
+html.ios-app .gs-pill { top: 40px; }
+[data-skin="book"] .gs-pill { top: 26px; }
+[data-skin="glass"] .gs-pill { background: rgba(var(--pane), calc(var(--glass-a) + .2)); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%); backdrop-filter: blur(var(--glass-blur)) saturate(180%); border-color: rgba(255,255,255,.5); }
+[data-skin="md3"] .gs-pill { border: 0; border-radius: 28px; height: 48px; background: var(--surface2); box-shadow: none; }
+@media (min-width: 861px) {
+  html.gs main { padding-top: 76px; }
+  html.gs.ios-app main { padding-top: 100px; }
+  html.gs[data-skin="book"] main { padding-top: 84px; }
+}
+@media (max-width: 860px) { .gs-pill { display: none; } }
+.gs-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 18px; border: 0; background: transparent; color: var(--ink); cursor: pointer; margin-left: 4px; }
+.gs-btn svg { width: 20px; height: 20px; }
+.gs-ov { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+html.ios-app .gs-ov { padding-top: 40px; }
+.gs-box { width: min(760px, 100%); max-height: min(78vh, 900px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden; animation: gsIn .18s ease; }
+@keyframes gsIn { from { opacity: 0; transform: translateY(-8px) scale(.99); } to { opacity: 1; transform: none; } }
+.gs-in { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.gs-in input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--ink); padding: 6px 0; }
+.gs-res { overflow: auto; padding: 4px 16px 16px; -webkit-overflow-scrolling: touch; }
+.gs-res h2 { font-size: 15px; margin: 14px 0 6px; }
+.gs-hint { margin: 14px 0 4px; }
+[data-skin="glass"] .gs-box { background: rgba(var(--pane), calc(var(--glass-a) + .3)); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }
+
+/* 2.2：带 hidden 属性的元素一律隐藏（之前 .row、.btn 的 display 规则会把它们重新显示出来，例如对答案前就出现的打分行） */
+[hidden] { display: none !important; }
+.gs-in input[type="search"] { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; padding: 6px 0 !important; }
 </style>
 </head>
 <body>

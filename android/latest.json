@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "2.1.23",
-  "apk": "FoodChemReview-v2.1.23.apk",
-  "notes": "2.1.1：首页冲刺计划改为独立板块，排版更整齐。直接覆盖安装，进度会保留。"
+  "versionCode": 24,
+  "versionName": "2.2.24",
+  "apk": "FoodChemReview-v2.2.24.apk",
+  "notes": "复习站 2.2：新增答题框架库、模拟卷诊断报告、考点趋势提示、睡前五分钟回顾、悬浮搜索框（都在「试验性功能」里）；修复对答案前就显示打分按钮的问题。直接覆盖安装，进度会保留。"
 }
