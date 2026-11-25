@@ -937,7 +937,7 @@ td.cz.open { background: var(--accent-soft); }
 .card.night.late { border: 1px solid var(--accent); }
 @media (max-width: 520px) { .card.night { flex-wrap: wrap; } .card.night .btn { width: 100%; } }
 /* 悬浮搜索 */
-.gs-pill { position: fixed; top: 14px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 16px; border-radius: 21px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 14.5px; cursor: text; box-shadow: 0 6px 24px rgba(0,0,0,.08); text-align: left; }
+.gs-pill { position: fixed; top: 14px; transform: translateX(-50%); z-index: 45; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 16px; border-radius: 21px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 14.5px; cursor: text; box-shadow: 0 6px 24px rgba(0,0,0,.08); text-align: left; }
 .gs-pill span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gs-pill kbd { font: 12px/1 var(--f-body); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; background: var(--surface2); }
 .gs-pill:hover { border-color: var(--accent); }
@@ -952,6 +952,16 @@ html.ios-app .gs-pill { top: 40px; }
   html.gs[data-skin="book"] main { padding-top: 84px; }
 }
 @media (max-width: 860px) { .gs-pill { display: none; } }
+/* 弹出题卡等浮层时，顶部搜索框在遮罩下面，不再和弹窗重叠 */
+body:has(#modal > *) .gs-pill { visibility: hidden; }
+.gs-mpill { display: none; }
+@media (max-width: 860px) {
+  .gs-mpill { display: flex; align-items: center; gap: 10px; width: calc(100% - 24px); margin: 2px 12px 10px; height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: 14.5px; text-align: left; cursor: text; }
+  .gs-mpill span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  [data-skin="glass"] .gs-mpill { background: rgba(var(--pane), calc(var(--glass-a) + .25)); border-color: rgba(255,255,255,.55); }
+  [data-skin="md3"] .gs-mpill { border: 0; height: 48px; border-radius: 24px; background: var(--surface2); }
+  [data-skin="book"] .gs-mpill { border-radius: 6px; }
+}
 .gs-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 18px; border: 0; background: transparent; color: var(--ink); cursor: pointer; margin-left: 4px; }
 .gs-btn svg { width: 20px; height: 20px; }
 .gs-ov { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: flex-start; padding: 12px; }

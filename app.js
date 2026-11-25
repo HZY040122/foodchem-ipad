@@ -571,6 +571,10 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.2.1', d: '2026-11-25', t: '悬浮搜索框改进', items: [
+    '搜索浮层改为和顶部搜索框对齐，居中在内容区上方（之前按整个屏幕居中，看起来偏左）',
+    '弹出题卡时，顶部搜索框会退到遮罩下面，不再和弹窗重叠',
+    '手机上也改成悬浮搜索栏：顶栏下方一条整宽的搜索栏，随顶栏固定在页面上方'] },
   { v: '2.2', d: '2026-11-25', t: '复习站 2.2：答题框架、模拟卷诊断等五个新功能', items: [
     '答题框架库：影响因素、机理、区别、作用、控制措施、性质、情境分析、名解 8 类问法的写作框架和真题例子；题卡上可以一键查看这道题适用的框架',
     '模拟卷诊断报告：交卷打分后按模块、题型和考点分析丢分，一键重练低分题',
@@ -1660,8 +1664,9 @@ function gsMount() {
     pill.innerHTML = `${icon('search', 'gs-ic')}<span>搜索知识点、真题和答案</span><kbd>${mac ? '⌘' : 'Ctrl'} K</kbd>`;
     pill.onclick = gsOpen; document.body.append(pill);
   }
-  const bar = document.querySelector('#topnav .bar1');
-  if (bar && !document.getElementById('gsBtn')) { const b = document.createElement('button'); b.id = 'gsBtn'; b.type = 'button'; b.className = 'gs-btn'; b.setAttribute('aria-label', '搜索'); b.innerHTML = icon('search'); b.onclick = gsOpen; bar.insertBefore(b, bar.querySelector('.sp')); }
+  /* 手机：顶栏里放一条整宽的搜索栏，跟着顶栏悬浮在页面上方 */
+  const top = document.getElementById('topnav'), bar = top && top.querySelector('.bar1');
+  if (bar && !document.getElementById('gsBtn')) { const b = document.createElement('button'); b.id = 'gsBtn'; b.type = 'button'; b.className = 'gs-mpill'; b.innerHTML = `${icon('search', 'gs-ic')}<span>搜索知识点、真题和答案</span>`; b.onclick = gsOpen; bar.after(b); }
   gsPlace();
 }
 function gsPlace() {
@@ -1674,6 +1679,9 @@ function gsOpen() {
   const ov = document.createElement('div'); ov.className = 'gs-ov'; ov.id = 'gsOv';
   ov.innerHTML = `<div class="gs-box" role="dialog" aria-modal="true" aria-label="搜索"><div class="gs-in">${icon('search', 'gs-ic')}<input type="search" id="gsq" placeholder="搜索知识点、真题和答案，例如「亚硫酸」「0.33」「β′」" value="${esc(NAV.q || '')}" aria-label="搜索关键词" enterkeyhint="search"><button class="btn sm ghost" id="gsx">取消</button></div><div class="gs-res" id="gsr"><p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p></div></div>`;
   document.body.append(ov);
+  /* 宽屏：浮层和顶部搜索框对齐，居中在内容区上方（不算侧边栏） */
+  const pill = document.getElementById('gsPill');
+  if (pill && getComputedStyle(pill).display !== 'none') { const mr = document.getElementById('main').getBoundingClientRect(), pr = pill.getBoundingClientRect(); ov.style.paddingLeft = Math.max(12, mr.left) + 'px'; ov.style.paddingRight = Math.max(12, innerWidth - mr.right) + 'px'; ov.style.paddingTop = pr.top + 'px'; }
   const inp = $('#gsq'), res = $('#gsr'); let tm = null;
   const run = () => { const k = inp.value.trim(); NAV.q = k; res.innerHTML = k ? searchHTML(k) : '<p class="note gs-hint">输入关键词，结果会在下面实时显示。按 Esc 关闭。</p>'; };
   inp.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(run, 180); });
