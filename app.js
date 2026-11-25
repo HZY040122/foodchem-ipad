@@ -584,6 +584,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.4', d: '2026-11-25', t: '复习站 2.4：全新的设置窗口', items: [
+    '设置改成居中显示的大窗口：左边是分组（账号、个人资料、学习安排、外观、下载 App、备份与恢复、更新日志等），右边是对应的内容，点哪组看哪组',
+    '点侧边栏左下角的头像（手机上是顶栏右侧的头像）打开设置窗口；侧边栏不再单独放「设置」',
+    '登录、同步、退出登录和更换头像都在「账号」分组里；更新日志在窗口里直接显示全部版本',
+    '手机上设置窗口全屏显示：先是分组列表，点进去看详情，左上角返回'] },
   { v: '2.3.1', d: '2026-11-25', t: '头像与同步状态细节', items: [
     '上传头像后，头像右下角的相机小图标不再显示',
     '侧边栏名字下面的同步状态改为简短显示：已同步、x 分钟前同步、正在同步、离线等，不再跟着显示邮箱'] },
@@ -741,7 +746,7 @@ function showUpdate() {
     <div class="uh">${MARK}<div><div class="kick" style="margin:0">更新 · v${esc(c.v)} · ${esc(c.d)}</div><h3>${esc(c.t)}</h3></div></div>
     ${logItems(c)}
     <div class="row" style="margin-top:14px"><button class="btn" data-log>查看全部更新日志</button><span class="sp"></span><button class="btn pri" data-ok>开始复习</button></div></div></div>`;
-  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) location.hash = 'changelog'; };
+  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) openSettings('log'); };
   const k = e => { if (e.key === 'Escape') close(); };
   $('[data-ok]', m).onclick = () => close(); $('[data-log]', m).onclick = () => close(true);
   $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
@@ -812,14 +817,14 @@ function openDiagram(id) {
 function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y || '原创情境'} · ${TLABEL[q.t]}`, opt); }
 
 /* ---------- 导航 ---------- */
-const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试'], ['settings', '设置', '设']];
+const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度'], ['labs', '试验性功能', '试']];
 /* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
 let PAGES = PAGES_BASE.slice();
 function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(S.settings.labSearch && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
   syncPages();
-  let cur = location.hash.slice(1) || 'today'; if (cur === 'changelog') cur = 'settings';
+  let cur = location.hash.slice(1) || 'today'; 
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="side-list"><div class="sl-in"><div class="toc" aria-hidden="true">目　录</div>` +
     PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `</div></div><div class="foot"><svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg>${window.AndroidApp || window.__PWA || document.documentElement.classList.contains('ios-app') ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}${meBtnHTML()}</div>`;
   $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><button type="button" class="me-mini" data-me aria-label="账号">${avatarHTML()}</button></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
@@ -831,22 +836,28 @@ function navHTML() {
       + `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`;
     $('#bmore').onclick = openMoreSheet; }
   gsMount(); fitSide();
-  if (ME.open && ME.user !== !!CLOUD.user) meFill();
 }
 /* 「更多」：从底部弹出的全部页面列表 */
 function openMoreSheet() {
   const m = $('#modal'), cur = location.hash.slice(1) || 'today';
-  m.innerHTML = `<div class="modal sheet-wrap" role="dialog" aria-modal="true" aria-label="全部页面"><div class="sheet"><div class="grab" aria-hidden="true"></div><div class="sh-t">全部页面</div><div class="sh-grid">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span>${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span></a>`).join('')}</div></div></div>`;
+  m.innerHTML = `<div class="modal sheet-wrap" role="dialog" aria-modal="true" aria-label="全部页面"><div class="sheet"><div class="grab" aria-hidden="true"></div><div class="sh-t">全部页面</div><div class="sh-grid">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span>${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span></a>`).join('')}<a href="#settings"><span class="bi">${icon('settings')}</span><span>设置</span></a></div></div></div>`;
   const close = () => { m.innerHTML = ''; };
   $('.sheet-wrap', m).addEventListener('click', e => { if (e.target.classList.contains('sheet-wrap') || e.target.closest('a')) close(); });
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
-window.addEventListener('hashchange', () => { render(); toTop(); });
+window.addEventListener('hashchange', () => { if (SET.open && location.hash !== '#settings') closeSettings(); render(); toTop(); });
 /* 侧栏「下载 App」：跳到设置页的下载区 */
 document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
   if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 function render() {
+  if (location.hash === '#settings') {   /* 设置改成浮窗：打开窗口，背后留在原来的页面 */
+    const back = render.last && render.last !== 'settings' ? render.last : 'today';
+    history.replaceState(null, '', '#' + back);
+    const j = pSettings.jump; pSettings.jump = null;
+    openSettings(j === 'download' ? 'download' : (isPhone() ? null : SET.sec));
+    if (render.last) { navHTML(); return; }
+  }
   navHTML();
   const p = location.hash.slice(1) || 'today';
   applyLook();
@@ -857,6 +868,8 @@ function render() {
   if (changed) { const fwd = pi > render.lastIdx; m.className = (fwd ? 'turn ' : '') + 'pg-in ' + (fwd ? 'fwd' : 'back'); pageFlip(main, old, fwd); }
   render.last = p; render.lastIdx = pi;
   main.replaceChildren(m); f(m);
+  /* 设置窗口开着时，改动后同步刷新窗口里的内容（正在输入时不刷新，免得打断） */
+  if (SET.open) { const a = document.activeElement; if (!(a && a.closest && a.closest('.set-ov') && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) setFill(); }
 }
 /* 书本风格的翻页（两种方向都以书脊为轴，和真书一样）：
    往后翻：旧的一页放进一张浮在正文上的“纸”里，绕书脊掀起离开，新的一页在下面露出来；
@@ -1803,22 +1816,8 @@ function meSub() {
 }
 window.addEventListener('online', () => $$('.me-s').forEach(e => e.textContent = meSub()));
 window.addEventListener('offline', () => $$('.me-s').forEach(e => e.textContent = meSub()));
-function meBtnHTML() { return `<button type="button" class="me" data-me><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="me-s">${esc(meSub())}</span></span></button>`; }
+function meBtnHTML() { return `<button type="button" class="me" data-me title="账号与设置"><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="me-s">${esc(meSub())}</span></span><span class="me-gear" aria-hidden="true">${icon('settings')}</span></button>`; }
 const ME = { open: false, user: null };
-function meFill() {
-  const pop = document.getElementById('mePop'); if (!pop) return;
-  ME.user = !!CLOUD.user;
-  pop.innerHTML = `<div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true"${S.settings.avatar ? ' hidden' : ''}>${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
-    <div class="me-id"><input id="meName" value="${esc(S.settings.name || '')}" placeholder="你的名字" aria-label="名字" maxlength="20"><div class="note">${CLOUD.user ? esc(CLOUD.user.email || '') : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</div></div>
-    <button class="btn sm ghost me-x" data-mex aria-label="关闭">✕</button></div>
-    <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}</div>
-    ${accountSection(true)}`;
-  bindAccount(pop);
-  $('#avIn', pop).onchange = e => { const f = e.target.files && e.target.files[0]; if (f) setAvatar(f); };
-  const rm = $('[data-avrm]', pop); if (rm) rm.onclick = () => { delete S.settings.avatar; save(); navHTML(); meFill(); };
-  const nm = $('#meName', pop); nm.onchange = () => { S.settings.name = nm.value.trim(); save(); render(); meFill(); };
-  $('[data-mex]', pop).onclick = meClose;
-}
 /* 头像：裁成正方形、缩到 160 像素，存成 JPEG（十几 KB），会跟着账号同步到其他设备 */
 function setAvatar(file) {
   const r = new FileReader();
@@ -1840,7 +1839,7 @@ function meOpen(btn) {
   ov.addEventListener('click', e => { if (e.target === ov) meClose(); });
 }
 function meClose() { const o = document.getElementById('meOv'); if (o) o.remove(); ME.open = false; }
-document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) meOpen(b); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) { e.preventDefault(); openSettings('acct'); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ME.open) meClose(); });
 /* 侧边栏放不下全部功能时，自动收紧行距，尽量不用滚动 */
 function fitSide() {
@@ -1849,6 +1848,81 @@ function fitSide() {
   for (const c of ['fit1', 'fit2', 'fit3']) { if (sl.scrollHeight - sl.clientHeight <= 2) break; nv.classList.add(c); }
 }
 window.addEventListener('resize', () => fitSide());
+/* ========== 设置窗口（2.4）：像 Claude 在 iPad 上的设置那样——居中的大浮窗，左边分组，右边内容；手机上全屏，先列表后详情 ========== */
+const SET_SECS = [
+  ['acct', '账号', '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'],
+  ['profile', '个人资料', '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 16c.5-1.5 1.4-2.2 2.5-2.2s2 .7 2.5 2.2M14 10h4M14 13.5h3"/>'],
+  ['study', '学习安排', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M8 13h3M8 16.5h6"/>'],
+  ['look', '外观', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>'],
+  ['remind', '每日学习提醒', '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'],
+  ['update', 'App 更新', '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/>'],
+  ['download', '下载 App', '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>'],
+  ['backup', '备份与恢复', '<path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'],
+  ['log', '更新日志', '<path d="M7 4h10a1 1 0 0 1 1 1v15l-3-2-3 2-3-2-3 2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 12.5h6"/>']
+];
+const SET_H2 = { '个人资料': 'profile', '学习安排': 'study', '外观': 'look', '每日学习提醒': 'remind', 'App 更新': 'update', '下载 App': 'download', '更新日志': 'log', '备份与恢复': 'backup' };
+const SET = { open: false, sec: 'acct', view: 'list', has: new Set() };
+const isPhone = () => innerWidth <= 860;
+function openSettings(sec) {
+  if (sec) SET.sec = sec;
+  SET.view = sec ? 'sec' : (isPhone() ? 'list' : 'sec');
+  if (!SET.open) {
+    SET.open = true;
+    const ov = document.createElement('div'); ov.className = 'set-ov'; ov.id = 'setOv';
+    ov.innerHTML = `<div class="set-win" role="dialog" aria-modal="true" aria-label="设置"><aside class="set-nav"><div class="set-top"><b>设置</b><button class="btn sm ghost set-x" data-setx aria-label="关闭">✕</button></div><div class="set-me" id="setMe"></div><nav class="set-list" id="setList"></nav></aside>
+      <section class="set-pane"><header class="set-hd"><button class="btn sm ghost set-back" data-setback>‹ 设置</button><h2 id="setTitle"></h2><span class="sp"></span><button class="btn sm ghost set-x" data-setx aria-label="关闭">✕</button></header><div class="set-body" id="setBody"></div></section></div>`;
+    document.body.append(ov);
+    ov.addEventListener('click', e => {
+      if (e.target === ov || e.target.closest('[data-setx]')) return closeSettings();
+      if (e.target.closest('[data-setback]')) { SET.view = 'list'; setView(); return; }
+      const it = e.target.closest('[data-sec]'); if (it) { SET.sec = it.dataset.sec; SET.view = 'sec'; setView(); $('#setBody').scrollTop = 0; return; }
+      if (e.target.closest('[data-setme]')) { SET.sec = 'acct'; SET.view = 'sec'; setView(); }
+    });
+  }
+  setFill();
+}
+function closeSettings() { const o = document.getElementById('setOv'); if (o) o.remove(); SET.open = false; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && SET.open && !document.querySelector('#modal > *')) closeSettings(); });
+/* 把原来设置页的内容画进右边，按小标题拆成分组；账号分组放最前面 */
+function setFill() {
+  const body = document.getElementById('setBody'); if (!body) return;
+  const keep = body.scrollTop;
+  pSettings(body);
+  const groups = {}; let cur = null;
+  for (const n of [...body.children]) {
+    if (n.tagName === 'H2') { cur = SET_H2[n.textContent.trim()] || null; if (cur) groups[cur] = document.createElement('div'); n.remove(); continue; }
+    if (cur) groups[cur].append(n); else n.remove();
+  }
+  /* 更新日志在窗口里直接显示全部版本 */
+  if (groups.log) groups.log.innerHTML = `<div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}，共 ${CHANGELOG.length} 个版本。每次更新后第一次打开会弹出说明。</p>${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>`;
+  const acct = document.createElement('div');
+  acct.innerHTML = `<div class="card"><div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true"${S.settings.avatar ? ' hidden' : ''}>${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
+    <div class="me-id"><b class="set-nm">${esc(meName())}</b><div class="note">${CLOUD.user ? esc(meSub()) : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</div></div></div>
+    <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}<span class="note">名字在「个人资料」里修改</span></div></div>
+    <h3 class="set-sub">账号与同步</h3>${accountSection(true).replace('class="me-sec', 'class="card me-sec')}`;
+  groups.acct = acct;
+  body.innerHTML = '';
+  SET.has = new Set();
+  for (const [k] of SET_SECS) if (groups[k]) { const sec = document.createElement('div'); sec.className = 'set-sec'; sec.dataset.s = k; sec.append(...groups[k].childNodes); body.append(sec); SET.has.add(k); }
+  if (!SET.has.has(SET.sec)) SET.sec = 'acct';
+  bindAccount(body);
+  $('#avIn', body).onchange = e => { const f = e.target.files && e.target.files[0]; if (f) setAvatar(f); };
+  const rm = $('[data-avrm]', body); if (rm) rm.onclick = () => { delete S.settings.avatar; save(); navHTML(); setFill(); };
+  $('#setMe').innerHTML = `<button class="set-mebtn" data-setme><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="me-s">${esc(meSub())}</span></span></button>`;
+  $('#setList').innerHTML = SET_SECS.filter(([k]) => SET.has.has(k)).map(([k, n, ic]) => `<button class="set-it" data-sec="${k}">${SV(ic)}<span>${n}</span><span class="chev" aria-hidden="true">›</span></button>`).join('');
+  setView();
+  body.scrollTop = keep;
+}
+function setView() {
+  const win = document.querySelector('.set-win'); if (!win) return;
+  win.classList.toggle('v-list', SET.view === 'list'); win.classList.toggle('v-sec', SET.view !== 'list');
+  $$('.set-it', win).forEach(b => b.setAttribute('aria-current', b.dataset.sec === SET.sec ? 'true' : 'false'));
+  $$('.set-sec', win).forEach(s => s.hidden = s.dataset.s !== SET.sec);
+  const t = SET_SECS.find(x => x[0] === SET.sec); $('#setTitle').textContent = t ? t[1] : '设置';
+}
+/* 账号相关的刷新（登录、退出、上传头像后）统一走这里 */
+function meFill() { if (SET.open) setFill(); }
+
 function bindAccount(m) {
   if (!CLOUD.on) return;
   const msg = t => { const e = $('#acmsg'); if (e) e.textContent = t; };
@@ -1875,7 +1949,7 @@ function bindAccount(m) {
 function greet() { const h = new Date().getHours(); return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'; }
 /* ---------- 设置的二级页面：全部更新日志 ---------- */
 function pChangelog(m) {
-  m.innerHTML = `<a class="sub-back" href="#settings">‹ 设置</a><div class="kick">CHANGELOG · 更新日志</div><h1>更新日志</h1><p class="lead">当前版本 v${esc(APP_VERSION)}，共 ${CHANGELOG.length} 个版本。每次更新后第一次打开会弹出说明，以后都可以在这里翻看。</p>
+  m.innerHTML = `<a class="sub-back" href="#settings">‹ 打开设置</a><div class="kick">CHANGELOG · 更新日志</div><h1>更新日志</h1><p class="lead">当前版本 v${esc(APP_VERSION)}，共 ${CHANGELOG.length} 个版本。每次更新后第一次打开会弹出说明，以后都可以在这里翻看。</p>
   <div class="card">${CHANGELOG.map((c, i) => `<details class="chlog" ${i === 0 ? 'open' : ''}><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}</div>`;
 }
 function pSettings(m) {
@@ -1914,7 +1988,8 @@ function pSettings(m) {
     try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });
   if (location.hash === '#settings' && pSettings.jump) { const j = pSettings.jump; pSettings.jump = null; setTimeout(() => { const t = document.getElementById(j); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
   if (HAS_UPD) $('#chk').onclick = () => { updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); };
-  const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save(); });
+  const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save();
+    if (k === 'name') { navHTML(); document.querySelectorAll('.set-ov .me-t b, .set-ov .set-nm').forEach(b => b.textContent = meName()); } });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
   $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });
   $('#ex').onchange = e => { st.exam = e.target.value; save(); };
