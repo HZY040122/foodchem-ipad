@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "2.0.17",
-  "apk": "FoodChemReview-v2.0.17.apk",
-  "notes": "2.0.6：知识结构图和机理图解可以放大查看等小改进。直接覆盖安装，进度会保留。"
+  "versionCode": 18,
+  "versionName": "2.0.18",
+  "apk": "FoodChemReview-v2.0.18.apk",
+  "notes": "2.0.7：首页「本周」学习时长改为从这周一开始算。直接覆盖安装，进度会保留。"
 }

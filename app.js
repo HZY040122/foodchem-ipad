@@ -492,6 +492,8 @@ function openModal(node, title) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.0.7', d: '2026-11-25', t: '本周学习时长', items: [
+    '首页的「本周」学习时长改为从这周一开始算，每周一重新计；之前算的是最近 7 天，刚开始使用的几天里看起来就和总时长一样'] },
   { v: '2.0.6', d: '2026-11-24', t: '主屏幕版更像原生 App', items: [
     'iPad / iPhone 主屏幕版里，整页不会再被双击放大、双指缩放，点输入框时也不会自动放大',
     '知识结构图和机理图解保留缩放：双指捏合放大/缩小，双击放大到 2 倍或还原，放大后可以拖动查看',
@@ -742,7 +744,8 @@ function pToday(m) {
   const due = BANK.filter(q => isDue(q.id)).length;
   const wrong = BANK.filter(q => qs(q.id).w).length;
   const D = S.daily[today]; const dDone = D ? Object.keys(D.res).length : 0, dTot = D ? D.ids.length : (S.settings.dailyN || 12);
-  let week = 0; for (let i = 0; i < 7; i++) week += (S.log[dkey(Date.now() - i * DAY)] || {}).min || 0;
+  /* 本周 = 从这周一到今天（之前算的是最近 7 天，刚开始用的头几天看起来和总时长一样） */
+  const wd = (new Date().getDay() + 6) % 7; let week = pend; for (let i = 0; i <= wd; i++) week += (S.log[dkey(Date.now() - i * DAY)] || {}).min || 0;
   let cd = '';
   if (S.settings.exam) { const d = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY); if (d >= 0) cd = `距离考试还有 <b>${d}</b> 天。`; }
   const PL = planPath(); const rec = PL.c; const rc = CL[rec];
