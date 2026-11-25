@@ -584,6 +584,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.3', d: '2026-11-25', t: '复习站 2.3：头像与账号浮窗', items: [
+    '侧边栏左下角改为显示头像和名字，点一下弹出账号浮窗：没登录时直接在浮窗里登录或注册，登录后显示账号信息、立即同步和退出登录',
+    '头像可以上传图片自定义（自动裁成正方形），也可以在浮窗里直接改名字；头像和名字会跟着账号同步到其他设备',
+    '「账号与同步」从设置页移到了头像浮窗里；手机上头像在顶栏右侧',
+    '侧边栏底部的装饰图案改为固定，不再跟着功能列表滚动；功能较多、屏幕较矮时，列表会自动收紧行距，尽量一屏放下'] },
   { v: '2.2.6', d: '2026-11-25', t: '侧边栏与回弹细节', items: [
     '侧边栏改成只有中间的功能列表滚动和回弹，上面的标题和下面的同步状态固定不动',
     'iPad 主屏幕版和安卓 App 的侧边栏去掉了「下载 App」，只在网页版保留',
@@ -813,8 +818,8 @@ function navHTML() {
   syncPages();
   let cur = location.hash.slice(1) || 'today'; if (cur === 'changelog') cur = 'settings';
   $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="side-list"><div class="sl-in"><div class="toc" aria-hidden="true">目　录</div>` +
-    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `<svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg></div></div><div class="foot">${window.AndroidApp || window.__PWA || document.documentElement.classList.contains('ios-app') ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}<span class="sync">${esc(syncMsg)}</span></div>`;
-  $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><span class="sync">${esc(syncMsg)}</span></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
+    PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `</div></div><div class="foot"><svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg>${window.AndroidApp || window.__PWA || document.documentElement.classList.contains('ios-app') ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}${meBtnHTML()}</div>`;
+  $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><button type="button" class="me-mini" data-me aria-label="账号">${avatarHTML()}</button></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
   /* 底部导航栏（Material 3 和液态玻璃风格在窄屏上使用）：四个常用页面 + 「更多」 */
   const bn = document.getElementById('bnav');
@@ -822,7 +827,8 @@ function navHTML() {
     bn.innerHTML = main4.map(id => { const pg = PAGES.find(x => x[0] === id); return `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span class="bl">${id === 'daily' ? '自测' : id === 'path' ? '路径' : pg[1]}</span></a>`; }).join('')
       + `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`;
     $('#bmore').onclick = openMoreSheet; }
-  gsMount();
+  gsMount(); fitSide();
+  if (ME.open && ME.user !== !!CLOUD.user) meFill();
 }
 /* 「更多」：从底部弹出的全部页面列表 */
 function openMoreSheet() {
@@ -1761,18 +1767,73 @@ function pLabs(m) {
 }
 
 /* ---------- 设置 · 账号与同步 ---------- */
-function accountSection() {
-  if (!CLOUD.on) return `<h2>账号与同步</h2><div class="card"><p class="note" style="margin:0">在 Claude 里打开的这个版本，进度会同步到你的 Claude 账号。想和 iPad、安卓 App 同步，请用 GitHub Pages 网页版（<a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a>）或 App 登录同一个复习站账号。</p></div>`;
+function accountSection(pop) {
+  const H = pop ? '' : '<h2>账号与同步</h2>';
+  if (!CLOUD.on) return `${H}<div class="${pop ? 'me-sec' : 'card'}"><p class="note" style="margin:0">在 Claude 里打开的这个版本，进度会同步到你的 Claude 账号。想和 iPad、安卓 App 同步，请用 GitHub Pages 网页版（<a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a>）或 App 登录同一个复习站账号。</p></div>`;
   const u = CLOUD.user;
-  if (u) return `<h2>账号与同步</h2><div class="card acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div><span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button></div>
+  if (u) return `${H}<div class="${pop ? 'me-sec' : 'card'} acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div><span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button></div>
     <p class="note" style="margin:8px 0 0">做题记录、错题本、笔记、设置、学习时间会在网页版、iPad 和安卓 App 之间自动同步：改动后 20 秒内上传，打开或回到页面时下载。没网时照常使用，联网后自动补上。</p></div>`;
-  return `<h2>账号与同步</h2><div class="card acct form">
+  return `${H}<div class="${pop ? 'me-sec' : 'card'} acct form">
     <p class="note" style="margin:0">登录后，网页版、iPad 主屏幕版和安卓 App 的进度会自动同步。不登录也能用，进度只存在这台设备上。</p>
     <div class="row"><label for="acem">邮箱</label><input type="email" id="acem" autocomplete="email" placeholder="you@example.com" style="flex:1;min-width:200px"></div>
     <div class="row"><label for="acpw">密码</label><input type="password" id="acpw" autocomplete="current-password" placeholder="至少 6 位" style="flex:1;min-width:200px"></div>
     <div class="row"><button class="btn pri" id="acin">登录</button><button class="btn" id="acup">注册新账号</button><span class="sp"></span><button class="btn sm ghost" id="acrs">忘记密码</button></div>
     <p class="note" id="acmsg" style="margin:0"></p></div>`;
 }
+/* ---------- 头像与账号浮窗（2.3）：侧边栏左下角显示头像和名字，点开是登录 / 账号信息 ---------- */
+function meName() { return S.settings.name || (CLOUD.user && CLOUD.user.email ? CLOUD.user.email.split('@')[0] : '') || '我的复习站'; }
+function avatarHTML() {
+  if (S.settings.avatar) return `<img class="av-img" src="${esc(S.settings.avatar)}" alt="">`;
+  const n = (S.settings.name || (CLOUD.user && CLOUD.user.email) || '').trim();
+  return `<span class="av-ini">${n ? esc([...n][0].toUpperCase()) : SV('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>')}</span>`;
+}
+function meSub() { if (!CLOUD.on) return syncMsg; return CLOUD.user ? syncMsg : '未登录 · 点击登录同步'; }
+function meBtnHTML() { return `<button type="button" class="me" data-me><span class="av">${avatarHTML()}</span><span class="me-t"><b>${esc(meName())}</b><span class="${CLOUD.on && !CLOUD.user ? 'me-s' : 'sync me-s'}">${esc(meSub())}</span></span></button>`; }
+const ME = { open: false, user: null };
+function meFill() {
+  const pop = document.getElementById('mePop'); if (!pop) return;
+  ME.user = !!CLOUD.user;
+  pop.innerHTML = `<div class="me-h"><label class="av big" title="更换头像">${avatarHTML()}<input type="file" accept="image/*" id="avIn" hidden><span class="av-cam" aria-hidden="true">${SV('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}</span></label>
+    <div class="me-id"><input id="meName" value="${esc(S.settings.name || '')}" placeholder="你的名字" aria-label="名字" maxlength="20"><div class="note">${CLOUD.user ? esc(CLOUD.user.email || '') : CLOUD.on ? '还没登录' : '在 Claude 里使用'}</div></div>
+    <button class="btn sm ghost me-x" data-mex aria-label="关闭">✕</button></div>
+    <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}</div>
+    ${accountSection(true)}`;
+  bindAccount(pop);
+  $('#avIn', pop).onchange = e => { const f = e.target.files && e.target.files[0]; if (f) setAvatar(f); };
+  const rm = $('[data-avrm]', pop); if (rm) rm.onclick = () => { delete S.settings.avatar; save(); navHTML(); meFill(); };
+  const nm = $('#meName', pop); nm.onchange = () => { S.settings.name = nm.value.trim(); save(); render(); meFill(); };
+  $('[data-mex]', pop).onclick = meClose;
+}
+/* 头像：裁成正方形、缩到 160 像素，存成 JPEG（十几 KB），会跟着账号同步到其他设备 */
+function setAvatar(file) {
+  const r = new FileReader();
+  r.onload = () => { const img = new Image(); img.onload = () => {
+    const c = document.createElement('canvas'), n = 160; c.width = c.height = n; const g = c.getContext('2d');
+    const sz = Math.min(img.width, img.height); g.drawImage(img, (img.width - sz) / 2, (img.height - sz) / 2, sz, sz, 0, 0, n, n);
+    S.settings.avatar = c.toDataURL('image/jpeg', 0.85); save(); navHTML(); meFill(); toast('头像已更新');
+  }; img.onerror = () => toast('这张图片打不开，换一张试试'); img.src = r.result; };
+  r.readAsDataURL(file);
+}
+function meOpen(btn) {
+  if (ME.open) return meClose(); ME.open = true;
+  const ov = document.createElement('div'); ov.className = 'me-ov'; ov.id = 'meOv';
+  ov.innerHTML = '<div class="me-pop" id="mePop" role="dialog" aria-label="账号"></div>'; document.body.append(ov);
+  const pop = $('#mePop'), r = btn.getBoundingClientRect();
+  if (innerWidth > 860) { pop.style.left = Math.max(12, r.left) + 'px'; pop.style.bottom = Math.max(12, innerHeight - r.top + 8) + 'px'; }
+  else { pop.style.right = '12px'; pop.style.top = (r.bottom + 8) + 'px'; }
+  meFill();
+  ov.addEventListener('click', e => { if (e.target === ov) meClose(); });
+}
+function meClose() { const o = document.getElementById('meOv'); if (o) o.remove(); ME.open = false; }
+document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) meOpen(b); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ME.open) meClose(); });
+/* 侧边栏放不下全部功能时，自动收紧行距，尽量不用滚动 */
+function fitSide() {
+  const nv = document.getElementById('sidenav'), sl = nv && nv.querySelector('.side-list'); if (!sl || !sl.offsetParent) return;
+  nv.classList.remove('fit1', 'fit2', 'fit3');
+  for (const c of ['fit1', 'fit2', 'fit3']) { if (sl.scrollHeight - sl.clientHeight <= 2) break; nv.classList.add(c); }
+}
+window.addEventListener('resize', () => fitSide());
 function bindAccount(m) {
   if (!CLOUD.on) return;
   const msg = t => { const e = $('#acmsg'); if (e) e.textContent = t; };
@@ -1780,13 +1841,13 @@ function bindAccount(m) {
     const email = $('#acem').value.trim(), pw = $('#acpw').value;
     if (!email) return msg('请先填写邮箱');
     msg(label + '中……'); $$('#acin,#acup').forEach(b => b.disabled = true);
-    try { const j = await fbAuth(path, { email, password: pw, returnSecureToken: true }); setUser(j, email); msg('成功！正在把这台设备的进度和账号合并……'); await cloudSync(); render(); toast(path === 'accounts:signUp' ? '注册成功，已开始同步' : '登录成功，进度已同步'); }
+    try { const j = await fbAuth(path, { email, password: pw, returnSecureToken: true }); setUser(j, email); msg('成功！正在把这台设备的进度和账号合并……'); await cloudSync(); render(); meFill(); toast(path === 'accounts:signUp' ? '注册成功，已开始同步' : '登录成功，进度已同步'); }
     catch (e) { msg(authErr(e.message)); }
     finally { $$('#acin,#acup').forEach(b => b && (b.disabled = false)); }
   };
   if (CLOUD.user) {
     $('#acsync').onclick = async () => { $('#acst').textContent = '正在同步……'; await cloudSync(); const e = $('#acst'); if (e) e.textContent = CLOUD.err || '上次同步：' + agoText(CLOUD.lastOk); };
-    $('#acout').onclick = () => { const b = $('#acout'); if (!b.dataset.c) { b.dataset.c = 1; b.textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); toast('已退出登录，这台设备上的进度还保留着'); }); };
+    $('#acout').onclick = () => { const b = $('#acout'); if (!b.dataset.c) { b.dataset.c = 1; b.textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); meFill(); toast('已退出登录，这台设备上的进度还保留着'); }); };
     return;
   }
   $('#acin').onclick = () => go2('accounts:signInWithPassword', '登录');
@@ -1806,7 +1867,6 @@ function pSettings(m) {
   const st = S.settings;
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, n]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}">${n}</button>`).join('')}</div>`;
   m.innerHTML = `<div class="kick">SETTINGS</div><h1>设置</h1><p class="lead">个人信息、学习安排和外观都在这里，改完自动保存。</p>
-  ${accountSection()}
   <h2>个人资料</h2><div class="card form">
     <div class="row"><label for="nm">你的名字</label><input type="text" id="nm" maxlength="20" placeholder="例如：小林" value="${esc(st.name || '')}"><span class="note">填写后首页显示「${greet()}，${esc(st.name || 'xxx')}，欢迎回来」</span></div>
     <div class="row"><label for="gl">目标</label><input type="text" id="gl" maxlength="30" placeholder="例如：江南大学 食品科学" value="${esc(st.goal || '')}"><span class="note">显示在首页日期旁</span></div>
@@ -1839,7 +1899,6 @@ function pSettings(m) {
     try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });
   if (location.hash === '#settings' && pSettings.jump) { const j = pSettings.jump; pSettings.jump = null; setTimeout(() => { const t = document.getElementById(j); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
   if (HAS_UPD) $('#chk').onclick = () => { updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); };
-  bindAccount(m);
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save(); });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
   $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });
