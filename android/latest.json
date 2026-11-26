@@ -1,6 +1,6 @@
 {
-  "versionCode": 49,
-  "versionName": "2.10.2",
-  "apk": "FoodChemReview-v2.10.2.apk",
-  "notes": "推开式侧栏；直接覆盖安装，学习进度会保留"
+  "versionCode": 50,
+  "versionName": "2.10.3",
+  "apk": "FoodChemReview-v2.10.3.apk",
+  "notes": "推开式侧栏细节修正；直接覆盖安装，学习进度会保留"
 }
