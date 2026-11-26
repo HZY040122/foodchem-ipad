@@ -954,7 +954,8 @@ td.cz.open { background: var(--accent-soft); }
 .fl-prog { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
 .fl-bar { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin-bottom: 16px; }
 .fl-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
-.fl-stage { display: flex; justify-content: center; padding: 6px 0 14px; touch-action: pan-y; }
+.fl-stage { display: flex; justify-content: center; padding: 6px 0 14px; }
+.fl-card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .fl-card { position: relative; width: 100%; max-width: 620px; min-height: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; -webkit-user-select: none; transition: transform .22s ease, opacity .22s ease; touch-action: pan-y; }
 .fl-front { text-align: center; display: grid; gap: 14px; }
 .fl-front[hidden], .fl-back[hidden], .czt[hidden], .czb[hidden] { display: none; }
@@ -1749,6 +1750,30 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
 }
 .ios-grp.grp-cont { margin-top: 12px; }
 .sprint .sp-why { margin: -2px 0 10px; font-size: 12.5px; }
+
+/* 2.12 名解闪卡设置页：演示动画、每组张数 */
+.dm-fl { display: grid; justify-items: center; }
+.dmf-cnt { position: absolute; top: 12px; right: 18px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dmf-cnt .n { display: inline-grid; } .dmf-cnt .n b { grid-area: 1 / 1; color: var(--ink); }
+.dmf-cnt .c1 { animation: dmfC1 6.5s infinite; } .dmf-cnt .c2 { animation: dmfC2 6.5s infinite; }
+.dmf-st { position: relative; width: min(250px, 78%); height: 112px; margin-top: 14px; }
+.dmf-bk { position: absolute; inset: 8px -8px -8px 8px; border-radius: 16px; background: var(--surface2, rgba(0,0,0,.05)); box-shadow: 0 0 0 .5px var(--line); }
+.dmf-mv { position: absolute; inset: 0; perspective: 700px; animation: dmfMv 6.5s infinite cubic-bezier(.4,0,.2,1); }
+.dmf-cd { position: absolute; inset: 0; transform-style: preserve-3d; animation: dmfFlip 6.5s infinite cubic-bezier(.4,0,.2,1); }
+.dmf-f { position: absolute; inset: 0; border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 .5px var(--line), 0 6px 18px -8px rgba(0,0,0,.25); -webkit-backface-visibility: hidden; backface-visibility: hidden; display: grid; align-content: center; justify-items: center; gap: 4px; padding: 10px 14px; text-align: center; }
+.dmf-f.fr b { font-size: 18px; }
+.dmf-f.bk { transform: rotateY(180deg); justify-items: start; text-align: left; font-size: 12px; line-height: 1.45; }
+.dmf-f.bk b { font-size: 14px; color: var(--accent); }
+.dmf-ok { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border: 2px solid var(--ok); border-radius: 8px; color: var(--ok); font-weight: 700; font-size: 12px; transform: rotate(10deg); opacity: 0; animation: dmfOk 6.5s infinite; }
+@keyframes dmfFlip { 0%, 20% { transform: none; } 30%, 76.5% { transform: rotateY(180deg); } 77%, 100% { transform: none; } }
+@keyframes dmfMv { 0%, 62% { transform: none; opacity: 1; } 76% { transform: translateX(150%) rotate(14deg); opacity: 0; } 77% { transform: scale(.92); opacity: 0; } 86%, 100% { transform: none; opacity: 1; } }
+@keyframes dmfOk { 0%, 62% { opacity: 0; } 66%, 74% { opacity: 1; } 76%, 100% { opacity: 0; } }
+@keyframes dmfC1 { 0%, 76% { opacity: 1; } 77%, 100% { opacity: 0; } }
+@keyframes dmfC2 { 0%, 76% { opacity: 0; } 77%, 100% { opacity: 1; } }
+.fl-n { padding: 10px !important; }
+.fl-n .seg { display: flex; width: 100%; }
+.fl-n .seg button { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .dmf-cd, .dmf-mv, .dmf-ok, .dmf-cnt .c1, .dmf-cnt .c2 { animation: none; } .dmf-cnt .c2 { opacity: 0; } }
 </style>
 </head>
 <body>

@@ -589,6 +589,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.12', d: '2026-11-26', t: '复习站 2.12：名解闪卡转为正式功能，每组张数可调', items: [
+    '名解闪卡从试验性功能移出，成为正式功能，默认开启；设置 → 学习功能 → 名解闪卡里可以开关，关掉后侧边栏不显示',
+    '名解闪卡的设置页可以选每组张数：10、15、20、30 或 50 张（默认 20），从下一组开始生效',
+    '名解闪卡的设置页顶部加了演示动画：卡片翻面看定义，再右滑记住',
+    '修好了名解闪卡左右滑时容易变成页面上下滚动的问题：手指一动就锁定方向，偏横向时整个手势只滑卡片，页面不会跟着上下滚'] },
   { v: '2.11.1', d: '2026-11-26', t: '复习站 2.11.1：冲刺计划「考点过完」的判断修正', items: [
     '冲刺计划的「考点过完」改用和速查手册「已掌握」一样的标准：走完复习路径三步，或者考点里六成以上的题最近一次评了「掌握」。之前只要做过一半的题、平均分够高就算过完，没做的题不计入，会把还没练完的考点也算进去',
     '不同年份出的同一道题只算一题，以最近一次的自评为准；复习路径列表里的「掌握 x/y」也按这个算',
@@ -973,7 +978,7 @@ function openQ(id, opt) { const q = BY[id]; if (q) openModal(qcard(q), `${q.y ||
 const PAGES_BASE = [['today', '今日', '今'], ['map', '知识结构', '图'], ['learn', '知识点', '知'], ['path', '复习路径', '路'], ['practice', '专项练习', '练'], ['daily', '每日自测', '测'], ['wrong', '错题本', '错'], ['mock', '模拟卷', '卷'], ['search', '检索', '搜'], ['stats', '进度', '度']];
 /* 试验性功能打开后，对应的页面插到「试验性功能」前面 */
 let PAGES = PAGES_BASE.slice();
-function syncPages() { const ex = []; if (S.settings.labFlash) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(featOn('labSearch') && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
+function syncPages() { const ex = []; if (featOn('labFlash')) ex.push(['flash', '名解闪卡', '闪']); if (S.settings.labCompare) ex.push(['compare', '易混对比', '比']); if (S.settings.labFrame) ex.push(['frame', '答题框架', '框']); const base = PAGES_BASE.filter(x => !(featOn('labSearch') && x[0] === 'search')), at = base.findIndex(x => x[0] === 'daily') + 1; PAGES = base.slice(0, at).concat(ex, base.slice(at)); }
 const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '全部', m: 0, lv: 'all', y1: 2004, y2: 2026, order: 'new', c: '', ids: null, i: 0, showList: true }, mock: null, mapMod: null, q: '' };
 function navHTML() {
   syncPages();
@@ -1708,7 +1713,7 @@ function sprintHTML() {
   const chip = id => `<button class="chip cl" data-cl="${id}">${esc(CL[id].n)}</button>`;
   let body = '';
   if (days === 0) body = `<p class="sp-ph">今天考试，加油！</p><p class="note">不再刷新题。早点出门，带好证件和文具，考前翻一下错题本里的笔记就好。</p>`;
-  else if (days <= 2) body = `<p class="sp-ph">考前最后两天：只回顾，不做新题</p><ul class="chg"><li>把高频考点的要点过一遍：${all.slice(0, 8).map(chip).join('')}</li><li>${S.settings.labFlash ? '<a href="#flash">名解闪卡</a>' : '名词解释'}快速过一轮，只看「还不会」的</li><li>翻错题本里的笔记，早点睡</li></ul>`;
+  else if (days <= 2) body = `<p class="sp-ph">考前最后两天：只回顾，不做新题</p><ul class="chg"><li>把高频考点的要点过一遍：${all.slice(0, 8).map(chip).join('')}</li><li>${featOn('labFlash') ? '<a href="#flash">名解闪卡</a>' : '名词解释'}快速过一轮，只看「还不会」的</li><li>翻错题本里的笔记，早点睡</li></ul>`;
   else if (days <= 7) {
     const wrong = BANK.filter(q => qs(q.id).w).length, due = BANK.filter(q => isDue(q.id)).length;
     body = `<p class="sp-ph">最后一周：错题清零 + 模拟卷</p><ul class="chg"><li>错题本还有 <b>${wrong}</b> 题，今天到期 <b>${due}</b> 题 <button class="btn sm" data-go="due">去复习</button></li><li>${days % 2 === 1 ? '今天做一套模拟卷，严格按 3 小时计时 <button class="btn sm" data-go="mock">去做模拟卷</button>' : '今天不做整卷，把昨天模拟卷里丢分的题重新写一遍'}</li>${left.length ? `<li>还没过完、最常考的几个考点，挑一两个快速看要点：${left.slice(0, 4).map(chip).join('')}</li>` : ''}</ul>`;
@@ -1829,13 +1834,16 @@ function flashDeck() {
   const lv = g => Math.max(...g.map(q => qs(q.id).l || 0)), due = g => g.some(q => isDue(q.id));
   if (FL.flt === 'weak') list = list.filter(g => lv(g) < 3 || due(g));
   list.sort((a, b) => (lv(a) - lv(b)) || (due(b) - due(a)) || (Math.random() - 0.5));
-  return list.slice(0, 20);
+  return list.slice(0, flashN());
 }
+/* 一组闪卡的张数（设置 → 名解闪卡里调，默认 20） */
+const FLASH_NS = [10, 15, 20, 30, 50];
+function flashN() { const n = +S.settings.flashN; return FLASH_NS.includes(n) ? n : 20; }
 function pFlash(m) {
   if (!FL.deck) { FL.deck = flashDeck(); FL.i = 0; FL.res = []; }
   const D = FL.deck, g = D[FL.i];
   const ctl = `<div class="row" style="margin-bottom:12px"><div class="seg" id="flf"><button data-f="weak" aria-pressed="${FL.flt === 'weak'}">没掌握的优先</button><button data-f="all" aria-pressed="${FL.flt === 'all'}">全部</button></div><select id="flm" aria-label="模块"><option value="0">全部模块</option>${MODS.map(x => `<option value="${x.id}" ${FL.mod === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><span class="sp"></span><button class="btn sm ghost" id="flnew">换一组</button></div>`;
-  const head = `<div class="kick">FLASHCARDS · 名解闪卡</div><h1>名解闪卡</h1><p class="lead">看到名词先在心里说出定义，再点卡片翻面核对。右滑（或点「记住了」）算掌握，左滑算「还不会」，结果会记进你的做题记录。每组 20 张。</p>${ctl}`;
+  const head = `<div class="kick">FLASHCARDS · 名解闪卡</div><h1>名解闪卡</h1><p class="lead">看到名词先在心里说出定义，再点卡片翻面核对。右滑（或点「记住了」）算掌握，左滑算「还不会」，结果会记进你的做题记录。每组 ${flashN()} 张，可以在设置 → 名解闪卡里调。</p>${ctl}`;
   if (!D.length) { m.innerHTML = head + `<div class="card"><p style="margin:0">这个范围里的名词解释都掌握了 🎉 换成「全部」可以再过一遍。</p></div>`; bindFl(m); return; }
   if (!g) {
     const ok = FL.res.filter(x => x === 3).length, mid = FL.res.filter(x => x === 2).length, bad = FL.res.filter(x => x === 1).length;
@@ -1857,11 +1865,27 @@ function pFlash(m) {
   m.querySelector('.fl-btns').onclick = e => { const b = e.target.closest('[data-fl]'); if (b) commit(+b.dataset.fl); };
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipC(); } if (e.key === 'ArrowRight') commit(3); if (e.key === 'ArrowLeft') commit(1); });
   let sx = null, dx = 0, moved = false;
-  card.addEventListener('pointerdown', e => { sx = e.clientX; dx = 0; moved = false; card.setPointerCapture(e.pointerId); card.style.transition = 'none'; });
-  card.addEventListener('pointermove', e => { if (sx === null) return; dx = e.clientX - sx; if (Math.abs(dx) > 6) moved = true; card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; card.classList.toggle('to-r', dx > 60); card.classList.toggle('to-l', dx < -60); });
+  const drag = x => { dx = x; if (Math.abs(dx) > 6) moved = true; card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; card.classList.toggle('to-r', dx > 60); card.classList.toggle('to-l', dx < -60); };
   const end = () => { if (sx === null) return; sx = null; card.style.transition = ''; card.classList.remove('to-r', 'to-l');
     if (dx > 110) commit(3); else if (dx < -110) commit(1); else { card.style.transform = ''; if (!moved) flipC(); } };
-  card.addEventListener('pointerup', end); card.addEventListener('pointercancel', () => { sx = null; card.style.transition = ''; card.style.transform = ''; card.classList.remove('to-r', 'to-l'); });
+  const cancel = () => { sx = null; card.style.transition = ''; card.style.transform = ''; card.classList.remove('to-r', 'to-l'); };
+  /* 鼠标 / 触控笔：照旧用指针事件 */
+  card.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; sx = e.clientX; dx = 0; moved = false; card.setPointerCapture(e.pointerId); card.style.transition = 'none'; });
+  card.addEventListener('pointermove', e => { if (e.pointerType === 'touch' || sx === null) return; drag(e.clientX - sx); });
+  card.addEventListener('pointerup', e => { if (e.pointerType !== 'touch') end(); });
+  card.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') cancel(); });
+  /* 手指：先看第一下往哪边动来锁定方向——偏横向就锁成左右滑，整个手势都不让页面上下滚；偏竖向就交给页面滚动，卡片不动 */
+  card.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0], x0 = t.clientX, y0 = t.clientY; let dir = '';
+    sx = x0; dx = 0; moved = false; card.style.transition = 'none';
+    trackTouch(e, ev => {
+      const p = ev.touches[0], ddx = p.clientX - x0, ddy = p.clientY - y0;
+      if (!dir) { if (Math.abs(ddx) < 2 && Math.abs(ddy) < 2) return; dir = Math.abs(ddx) >= Math.abs(ddy) * .8 ? 'h' : 'v'; if (dir === 'v') { moved = true; sx = null; card.style.transition = ''; return; } }
+      if (dir !== 'h') return;
+      ev.preventDefault(); drag(ddx);
+    }, () => { if (dir === 'v') return; end(); });
+  }, { passive: true });
 }
 function bindFl(m) {
   $('#flf').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { FL.flt = b.dataset.f; FL.deck = null; render(); } };
@@ -1997,14 +2021,14 @@ document.addEventListener('keydown', e => {
   if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); gsOpen(); }
 });
 
-const STABLE = new Set(['labRecite', 'labSprint', 'labNight', 'labSearch', 'labTimer']);
+const STABLE = new Set(['labRecite', 'labSprint', 'labNight', 'labSearch', 'labTimer', 'labFlash']);
 const LABS = [
   { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
   { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' },
   { k: 'labScore', t: '关键词自动评分', d: '在输入框里写下答案后点「对答案」，自动对照参考答案里的关键词，告诉你写到了哪些、漏了哪些，并给出建议的掌握程度。', how: ['覆盖 70% 以上建议「掌握」，35% 以上建议「模糊」', '按要点列出没写到的关键词，写到大部分的要点打 ✓', '同时开着「按要点自评」时，会帮你把写到的要点先勾上'], where: '名解和大题的题卡，对完答案后' },
   { k: 'labTimer', t: '限时作答', d: '按考试节奏给名解和大题计时：名解 3 分钟、简答 8 分钟、论述和分析 15 分钟。开始写的时候自动计时，超时只变红提醒，不会打断你。', how: ['在输入框里打字或点进去就开始计时', '点「对答案」停止，显示这题用了多久', '用时会记在这道题上，下次做时能看到上次用时'], where: '题卡左上角的标签栏' },
   { k: 'labCompare', t: '易混概念对比', d: '把常被问「区别」的概念做成对照表：糊化和老化、结合水和自由水、酶促和非酶褐变、三种油脂氧化、三种酸败等 13 组。', how: ['「直接看」用来理解，「挖空练习」把表格盖住，点一格看一格', '可以按模块筛选', '打开后侧边栏多一个「易混对比」'], where: '侧边栏「易混对比」' },
-  { k: 'labFlash', t: '名解闪卡', d: '名词解释做成一张张卡片，先在心里说出定义，再翻面核对。右滑「记住了」、左滑「还不会」，适合碎片时间快速过一轮。', how: ['每组 20 张，没掌握和到期的排在前面', '同一个名词在不同年份考过，只出现一次，结果一起记', '打开后侧边栏多一个「名解闪卡」'], where: '侧边栏「名解闪卡」' },
+  { k: 'labFlash', t: '名解闪卡', d: '名词解释做成一张张卡片，先在心里说出定义，再翻面核对。右滑「记住了」、左滑「还不会」，适合碎片时间快速过一轮。', how: ['每组张数可以在下面调，默认 20 张；没掌握和到期的排在前面', '同一个名词在不同年份考过，只出现一次，结果一起记', '打开时侧边栏有「名解闪卡」，关掉就不显示'], where: '侧边栏「名解闪卡」' },
   { k: 'labSprint', t: '冲刺计划', d: '按设置里的考试日期倒推：把还没过完的考点按常考程度分到每一天，最后 7 天只安排错题和模拟卷，考前两天只回顾。', how: ['走完复习路径三步，或者考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」，就算过完、自动跳过', '计划每天按你的进度重新分配，落下了也不用补', '需要先在设置里填好考试日期'], where: '首页「今日计划」上方' },
   { k: 'labCause', t: '错因标签', d: '评「不会」或「模糊」时，顺手选一下错在哪里：概念不清、记混了、漏要点、审题错、会但写不出。进度页会统计你最常见的失分原因，并给出建议。', how: ['评为「掌握」后，这道题的错因自动清除', '错题本里会显示每道题的错因', '统计只算还没掌握的题'], where: '题卡打分按钮下方；进度页' },
   { k: 'labFrame', t: '答题框架库', d: '考研大题的问法很固定：影响因素、机理、区别、作用、控制措施、性质、情境分析……每一类都有可以套用的写作框架。遇到没见过的题，先认出问法，再按框架填内容。', how: ['新增「答题框架」页面：8 类问法的框架、小贴士和真题例子', '题卡上多一个「答题框架」按钮，按题目的问法自动匹配', '名解统一用「定义 + 本质或条件 + 意义」的写法'], where: '侧边栏「答题框架」；名解和大题的题卡上' },
@@ -2237,7 +2261,7 @@ function pWeekly(m) {
   };
 }
 /* —— 已转正功能的二级页面：开关 + 说明；搜索栏页面在悬浮搜索框和侧边栏「检索」之间切换 —— */
-const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight', timer: 'labTimer' };
+const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight', timer: 'labTimer', flash: 'labFlash' };
 /* —— 学习功能二级页面顶部的演示动画（纯 CSS 循环播放；系统开了「减弱动态效果」时只显示最后的画面） —— */
 function demoHTML(k) {
   if (k === 'labRecite') return `<div class="dm dm-rc" aria-hidden="true">
@@ -2257,6 +2281,9 @@ function demoHTML(k) {
     <div class="tm-bar"><i></i></div>
     <div class="tm-box"><span class="tl t1">1. 淀粉种类：直链淀粉含量高，糊化温度高</span><span class="tl t2">2. 水分含量：水分不足时难以完全糊化</span><span class="tl t3">3. 糖、盐、脂类：一般使糊化温度升高</span><span class="caret"></span></div>
     <div class="dm-cap">开始写答案时自动计时，超时只变红提醒</div></div>`;
+  if (k === 'labFlash') return `<div class="dm dm-fl" aria-hidden="true"><div class="dmf-cnt"><span class="n"><b class="c1">3</b><b class="c2">4</b></span> / 20</div>
+    <div class="dmf-st"><div class="dmf-bk"></div><div class="dmf-mv"><div class="dmf-cd"><div class="dmf-f fr"><span class="note">2021 · 名解</span><b>美拉德反应</b><span class="note">点一下翻面</span></div><div class="dmf-f bk"><b>美拉德反应</b><span>还原糖的羰基与氨基化合物的氨基之间发生的非酶褐变反应，产生类黑精和风味物质。</span><span class="dmf-ok">记住了</span></div></div></div></div>
+    <div class="dm-cap">先在心里说出定义，翻面核对；右滑记住，左滑还不会</div></div>`;
   if (k === 'labNight') return `<div class="dm dm-nt" aria-hidden="true"><i class="st s1"></i><i class="st s2"></i><i class="st s3"></i><i class="st s4"></i><span class="moon"></span>
     <div class="dm-stack">${[['不会', '美拉德反应的条件'], ['模糊', '淀粉的糊化与老化'], ['不会', '油脂自动氧化历程']].map(([l, t], i) => `<div class="nc n${i + 1}"><b class="${l === '不会' ? 'bad' : 'mid'}">${l}</b>${t}</div>`).join('')}</div>
     <div class="dm-timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18"/><circle class="arc" cx="22" cy="22" r="18"/></svg><span>5 分钟</span></div>
@@ -2276,6 +2303,7 @@ function featPageHTML(k) {
   const f = LABS.find(x => x.k === k), sec = SET_SECS.find(x => FEAT_PG[x[0]] === k);
   return `<div class="ios-grp dm-wrap">${demoHTML(k)}</div><div class="ios-grp" style="margin-top:14px"><div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(sec[2])}<span class="ios-n">${esc(sec[1])}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${esc(sec[1])}"><i></i></button></div></div>
     <p class="ios-note">出现在：${esc(f.where)}</p>
+    ${k === 'labFlash' ? `<p class="ios-lab">每组张数</p><div class="ios-grp fl-n"><div class="seg" role="radiogroup" aria-label="每组张数">${FLASH_NS.map(n => `<button data-fln="${n}" role="radio" aria-checked="${flashN() === n}" aria-pressed="${flashN() === n}">${n} 张</button>`).join('')}</div></div><p class="ios-note">改完后从下一组开始生效。一组张数多，一次过得多；碎片时间建议 10–20 张。</p>` : ''}
     <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>${esc(f.d)}</p><ul>${f.how.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
 }
 function searchPageHTML() {
@@ -2393,6 +2421,7 @@ const SET_SECS = [
   ['sprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
   ['night', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>'],
   ['haptic', '触感反馈', '<rect x="8" y="3.5" width="8" height="17" rx="2.2"/><path d="M11 17.5h2M4.5 9v6M19.5 9v6M2 10.5v3M22 10.5v3"/>'],
+  ['flash', '名解闪卡', '<rect x="3.5" y="6.5" width="13" height="14" rx="2"/><path d="M7.5 3.5h11a2 2 0 0 1 2 2v12"/><path d="M7 11.5h6M7 15h4"/>'],
   ['timer', '限时作答', '<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4l2.5 2M9.5 3.5h5M18.5 7l1.5-1.5"/>'],
   ['search', '搜索栏', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'],
   ['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
@@ -2434,6 +2463,7 @@ function openSettings(sec) {
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
       if (e.target.closest('[data-badge]')) return toggleBadge();
+      const fn = e.target.closest('[data-fln]'); if (fn) { S.settings.flashN = +fn.dataset.fln; save(); $$('[data-fln]').forEach(b => { const on = +b.dataset.fln === flashN(); b.setAttribute('aria-pressed', on); b.setAttribute('aria-checked', on); }); if (FL.deck && FL.i >= FL.deck.length) FL.deck = null; return; }
       if (e.target.closest('[data-hapt]')) { S.settings.haptic = !hapOn(); save(); $$('[data-hapt] .switch').forEach(x => x.setAttribute('aria-checked', hapOn())); if (hapOn()) haptic('tick'); return; }
       const ht = e.target.closest('[data-htry]'); if (ht) { haptic(ht.dataset.htry, true); ht.classList.remove('hit'); void ht.offsetWidth; ht.classList.add('hit'); return; }
       const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
@@ -2513,7 +2543,7 @@ function setFill() {
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
     <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}${row('haptic')}</div>
-    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('search')}</div>
+    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('flash')}${row('search')}</div>
     <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
     <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
     ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
