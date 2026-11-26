@@ -589,6 +589,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.5', d: '2026-11-26', t: '复习站 2.10.5：设置分组整理、iPad 设置弹出动画', items: [
+    '设置重新分组：我的备考（个人资料、学习安排、冲刺计划、学习周报）、做题与复习（大题背诵、限时作答、睡前回顾、速查手册）、外观与操作（风格、搜索栏）、通知与触感、数据与更新（备份、App 更新、试验性功能）',
+    'iPad 上的设置浮窗也改成从底部往上弹出，关闭时往下滑走',
+    '在设置顶部往下拉关闭时，窗口会跟着手指往下走，松手后滑出屏幕（之前是直接消失）；iPad 上也可以这样关'] },
   { v: '2.10.4', d: '2026-11-26', t: '复习站 2.10.4：设置从底部弹出，侧栏细节', items: [
     '手机上设置改成从屏幕底部往上滑出，关闭时往下滑走；从侧栏打开设置，关掉后侧栏仍然开着',
     '修好了从侧栏进入设置时闪两下的问题',
@@ -2413,7 +2417,7 @@ function setInfoOpen() {
 function setInfoClose() { const d = document.getElementById('setInfo'); if (!d) return; d.removeAttribute('id'); d.classList.add('out'); setTimeout(() => d.remove(), 160); }
 function closeSettings(now) {
   const o = document.getElementById('setOv'); SET.open = false; if (!o) return;
-  if (now === true || innerWidth > 860 || matchMedia('(prefers-reduced-motion: reduce)').matches) { o.remove(); return; }
+  if (now === true || matchMedia('(prefers-reduced-motion: reduce)').matches) { o.remove(); return; }
   o.removeAttribute('id'); o.classList.add('out'); setTimeout(() => o.remove(), 340);
 }
 function setGo(k) {
@@ -2467,14 +2471,17 @@ function setFill() {
   /* 首页 */
   const row = k => { const s = SET_SECS.find(x => x[0] === k); if (!s || !SET.has.has(k)) return '';
     return `<button class="ios-row" data-go="${k}">${SV(s[2])}<span class="ios-n">${s[1]}</span>${SVG_CHEV}</button>`; };
+  /* 分组：一组里一个选项都没有就整组不显示；label 为空时紧接上一组 */
+  const grp = (label, keys) => { const h = keys.map(k => k === 'labs' ? row(k).replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV) : row(k)).join(''); if (!h) return '';
+    return (label ? `<p class="ios-lab">${label}</p>` : '') + `<div class="ios-grp${label ? '' : ' grp-cont'}">${h}</div>`; };
   const root = document.createElement('div'); root.className = 'set-pg'; root.dataset.p = 'root';
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
-    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}${row('haptic')}</div>
-    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('search')}</div>
-    <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
-    <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
-    ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
+    ${grp('我的备考', ['profile', 'study', 'sprint', 'weekly'])}
+    ${grp('做题与复习', ['recite', 'timer', 'night', 'handbook'])}
+    ${look ? `<p class="ios-lab">外观与操作</p><div class="ios-grp set-look"></div>${grp('', ['search'])}` : grp('外观与操作', ['search'])}
+    ${grp(SET.has.has('haptic') ? '通知与触感' : '通知', ['notify', 'haptic'])}
+    ${grp('数据与更新', ['backup', 'update', 'labs'])}
     ${CLOUD.user ? `<div class="ios-grp" style="margin-top:22px"><button class="ios-row red" data-rout>${SV('<path d="M10 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h4M14.5 8l4 4-4 4M9.5 12h9"/>')}<span class="ios-n">退出登录</span></button></div>` : ''}`;
   if (look) { const c = look.querySelector(':scope > .card'); $('.set-look', root).append(...(c ? c.childNodes : look.childNodes)); }
   body.append(root, ...Object.values(pages));
@@ -2697,10 +2704,10 @@ document.addEventListener('touchstart', e => {
     });
     return;
   }
-  /* 浮窗下滑关闭（手机） */
-  if (innerWidth > 860) return;
+  /* 浮窗下滑关闭（手机；设置窗口在 iPad 上也可以） */
   const el = e.target; if (el.closest('input, textarea, select, .seg, .dm-days, .zoomable, .sheet-wrap')) return;
-  let tgt = el.closest('#modal .modal:not(.push) > .card'), close = null;
+  if (innerWidth > 860 && !el.closest('.set-win')) return;
+  let tgt = innerWidth > 860 ? null : el.closest('#modal .modal:not(.push) > .card'), close = null;
   if (tgt) close = () => { const x = document.querySelector('#modal [data-x]'); if (x) x.click(); else document.getElementById('modal').innerHTML = ''; };
   else if ((tgt = el.closest('.set-win'))) close = () => closeSettings(true);
   if (!tgt) return;
@@ -2709,12 +2716,19 @@ document.addEventListener('touchstart', e => {
     const p = ev.touches[0], dy = p.clientY - s.y0, dx = p.clientX - s.x0;
     if (!s.on) { if (s.dead) return; if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) { s.dead = true; return; } if (dy > 8 && (!sc || sc.scrollTop <= 0)) s.on = true; else { if (Math.abs(dy) > 8) s.dead = true; return; } }
     ev.preventDefault(); s.dy = Math.max(0, dy - 8);
-    tgt.style.transition = 'none'; tgt.style.transform = `translateY(${s.dy}px)`;
+    /* 用 translate 而不是 transform：弹出动画停在最后一帧时会一直占着 transform，写 transform 会没有效果 */
+    tgt.style.transition = 'none'; tgt.style.translate = `0 ${s.dy}px`;
+    const ov = tgt.closest('.set-ov'); if (ov) ov.style.backgroundColor = `rgba(10,15,20,${(.3 * Math.max(0, 1 - s.dy / innerHeight)).toFixed(3)})`;
   }, () => {
     if (!s.on) return;
-    const v = s.dy / Math.max(1, Date.now() - s.t0);
-    if (s.dy > 120 || (v > .6 && s.dy > 40)) { tgt.style.transition = 'transform .22s ease-in'; tgt.style.transform = `translateY(${innerHeight}px)`; setTimeout(close, 200); }
-    else { tgt.style.transition = 'transform .3s cubic-bezier(.2,.9,.3,1.1)'; tgt.style.transform = ''; setTimeout(() => { tgt.style.transition = ''; }, 320); }
+    const v = s.dy / Math.max(1, Date.now() - s.t0), ov = tgt.closest('.set-ov');
+    if (s.dy > 120 || (v > .6 && s.dy > 40)) {
+      const rest = innerHeight - tgt.getBoundingClientRect().top + 20, dur = Math.max(.16, Math.min(.32, rest / Math.max(1.2, v * 1000) )) ;
+      tgt.style.transition = `translate ${dur}s cubic-bezier(.3,.6,.6,1)`; tgt.style.translate = `0 ${s.dy + rest}px`;
+      if (ov) { ov.style.transition = `background-color ${dur}s ease`; ov.style.backgroundColor = 'rgba(10,15,20,0)'; ov.style.pointerEvents = 'none'; }
+      setTimeout(close, dur * 1000);
+    }
+    else { tgt.style.transition = 'translate .3s cubic-bezier(.2,.9,.3,1.1)'; tgt.style.translate = ''; if (ov) { ov.style.transition = 'background-color .3s'; ov.style.backgroundColor = ''; } setTimeout(() => { tgt.style.transition = ''; }, 320); }
   });
 }, { passive: true });
 

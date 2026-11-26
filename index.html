@@ -1723,7 +1723,7 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
 }
 
 /* ===== 2.10.4 手机上设置从底部弹出 ===== */
-@media (max-width: 860px) and (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) {
   .set-ov { animation: setFade .3s ease; }
   .set-win { animation: setUp .46s cubic-bezier(.2,.9,.25,1) both; }
   .set-ov.out { animation: setFadeOut .32s ease both; pointer-events: none; }
@@ -1733,6 +1733,15 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
   @keyframes setFadeOut { to { background-color: rgba(10,15,20,0); } }
   [data-skin="glass"] .set-ov { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* 2.10.5 iPad：设置浮窗从屏幕底部弹上来（居中浮窗要多走一段距离才从屏幕外进来） */
+@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
+  .set-win { animation-name: setUpFar; }
+  .set-ov.out .set-win { animation-name: setDownFar; }
+  @keyframes setUpFar { from { transform: translateY(calc(50vh + 50%)); } to { transform: none; } }
+  @keyframes setDownFar { from { transform: none; } to { transform: translateY(calc(50vh + 50%)); } }
+}
+.ios-grp.grp-cont { margin-top: 12px; }
 </style>
 </head>
 <body>
