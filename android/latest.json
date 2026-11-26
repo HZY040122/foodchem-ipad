@@ -1,6 +1,6 @@
 {
-  "versionCode": 46,
-  "versionName": "2.9.5",
-  "apk": "FoodChemReview-v2.9.5.apk",
-  "notes": "首页问候去掉逗号；设置 ⓘ 弹窗点别处或滑动自动收起；直接覆盖安装，学习进度会保留"
+  "versionCode": 47,
+  "versionName": "2.10",
+  "apk": "FoodChemReview-v2.10.apk",
+  "notes": "新增触感反馈、推入式详情页、错题本左滑操作；直接覆盖安装，学习进度会保留"
 }
