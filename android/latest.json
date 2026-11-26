@@ -1,6 +1,6 @@
 {
-  "versionCode": 47,
-  "versionName": "2.10",
-  "apk": "FoodChemReview-v2.10.apk",
-  "notes": "新增触感反馈、推入式详情页、错题本左滑操作；直接覆盖安装，学习进度会保留"
+  "versionCode": 48,
+  "versionName": "2.10.1",
+  "apk": "FoodChemReview-v2.10.1.apk",
+  "notes": "错题本点题展开、iOS 风格左滑按钮；直接覆盖安装，学习进度会保留"
 }
