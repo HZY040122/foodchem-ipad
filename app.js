@@ -589,6 +589,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.2', d: '2026-11-26', t: '复习站 2.10.2：推开式侧栏、启动画面字体修正', items: [
+    '主屏幕 App（手机）的侧栏改成像 Claude App 那样：整页带圆角往右推开，侧栏露在下面；从屏幕左边缘往右拉可以跟手拉开，往左拉或点右边露出的页面收回',
+    '启动画面上「食品化学复习站」的「复」字大小不一致的问题修好了（之前用了日文字形）'] },
   { v: '2.10.1', d: '2026-11-26', t: '复习站 2.10.1：错题本改为点题展开、iOS 风格左滑按钮，顶栏标题修正', items: [
     '错题本去掉「展开」「移出」按钮：点题目就展开或收起（右边的 › 会转向下）；移出只能左滑',
     '错题本左滑改成 iOS 风格：整张卡片滑开，后面露出绿色「掌握」和红色「移出」两个圆形按钮，跟着手指逐渐放大浮现；一直滑到底时「移出」拉长成胶囊，松手直接移出',
@@ -965,12 +968,36 @@ function navHTML() {
   $('#tnSearch').onclick = () => featOn('labSearch') ? gsOpen() : go('search');
   gsMount(); const pk = PAGES.map(x => x[0]).join(); if (pk !== navHTML.pk) { navHTML.pk = pk; requestAnimationFrame(fitSide); }
 }
+/* 推开式侧栏只用在主屏幕 App（整页是一个滚动容器）的手机液态玻璃风格 */
+function drPush() { const de = document.documentElement; return de.classList.contains('appshell') && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860; }
+/* 跟手拖动：closing=false 从左边缘拉开，true 在打开状态往左推回 */
+function drDrag(e, t, closing) {
+  const de = document.documentElement, X = Math.min(innerWidth - 64, 380);
+  const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), x: closing ? X : 0, on: false };
+  trackTouch(e, ev => {
+    const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
+    if (!s.on) { if (s.dead) return; if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (closing ? dx > -8 : dx < 8) return; s.on = true; de.classList.add('dr-drag', 'dr-on'); }
+    ev.preventDefault();
+    let x = (closing ? X : 0) + dx; if (x > X) x = X + (x - X) * .2; if (x < 0) x = 0;
+    s.x = x; de.style.setProperty('--dx', x.toFixed(1) + 'px');
+  }, () => {
+    if (!s.on) return;
+    const v = (s.x - (closing ? X : 0)) / Math.max(1, Date.now() - s.t0);
+    const open = closing ? !(s.x < X * .75 || v < -.4) : (s.x > X * .35 || v > .4);
+    de.style.removeProperty('--dx'); de.classList.remove('dr-drag');
+    if (open === de.classList.contains('drawer')) { if (!open) drawer.t = setTimeout(() => { if (!de.classList.contains('drawer')) de.classList.remove('dr-on'); }, 420); }
+    else drawer(open);
+  });
+}
 /* 手机上的液态玻璃风格：顶栏左边的「三条杠」拉出和 iPad 一样的侧栏 */
 function drawer(open) {
   const h = document.documentElement; if (open === h.classList.contains('drawer')) return;
   let sc = document.getElementById('drScrim');
   if (!sc) { sc = document.createElement('div'); sc.id = 'drScrim'; sc.className = 'dr-scrim'; sc.onclick = () => drawer(false); document.body.append(sc); }
   h.classList.toggle('drawer', open);
+  /* 主屏幕 App（手机）：像 Claude App 一样，整页往右推开，侧栏露在下面 */
+  if (open) h.classList.add('dr-on');
+  else { clearTimeout(drawer.t); drawer.t = setTimeout(() => { if (!h.classList.contains('drawer') && !h.classList.contains('dr-drag')) h.classList.remove('dr-on'); }, 420); }
   const sn = document.getElementById('sidenav'); if (sn) { sn.setAttribute('aria-modal', open ? 'true' : 'false'); if (open) { fitSide(); const a = sn.querySelector('a[aria-current]') || sn.querySelector('a'); a && a.focus({ preventScroll: true }); } }
 }
 document.addEventListener('click', e => { if (document.documentElement.classList.contains('drawer') && e.target.closest('#sidenav a, #sidenav [data-me]')) drawer(false); });
@@ -2599,6 +2626,7 @@ document.addEventListener('touchstart', e => {
     /* 返回交给系统自带的边缘右滑；只有在没有上一页可回时，右滑拉出侧栏 */
     const canBack = false, canDrawer = (NAV_REPLACE ? history.length <= 1 : navStack.length <= 1 && history.length <= 1) && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
     if (!canDrawer) return;
+    if (drPush()) return drDrag(e, t, false);
     const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
     trackTouch(e, ev => {
       const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
@@ -2615,6 +2643,7 @@ document.addEventListener('touchstart', e => {
     return;
   }
   /* 手机侧栏：向左划收回 */
+  if (de.classList.contains('drawer') && drPush() && e.target.closest('#sidenav, #drScrim')) return drDrag(e, t, true);
   if (de.classList.contains('drawer') && e.target.closest('#sidenav')) {
     const nv = document.getElementById('sidenav'), sc = document.getElementById('drScrim'), s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
     trackTouch(e, ev => {

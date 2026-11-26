@@ -1693,6 +1693,30 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
 @keyframes hpPh { 0%, 4%, 36%, 40%, 80%, 84%, 100% { transform: none; } 1%, 37%, 81% { transform: translateX(-2px) rotate(-2deg); } 2.5%, 38.5%, 82.5% { transform: translateX(2px) rotate(2deg); } }
 @keyframes hpW { 0%, 36%, 80% { opacity: 0; transform: scale(.8); } 1%, 37%, 81% { opacity: 1; } 7%, 35%, 43%, 79%, 87%, 100% { opacity: 0; transform: scale(1.25); } }
 @media (prefers-reduced-motion: reduce) { .hp-sc .c1 { opacity: 1; } }
+
+/* ===== 2.10.2 推开式侧栏（主屏幕 App · 手机 · iPadOS 风格）：像 Claude App 那样整页往右推开，侧栏露在下面 ===== */
+@media (max-width: 860px) {
+  html.appshell[data-skin="glass"] { --drw: min(calc(100vw - 64px), 380px); }
+  html.appshell.drawer[data-skin="glass"] { --dx: var(--drw); }
+  html.appshell[data-skin="glass"] .shell > nav.side { width: var(--drw); transform: none; border-radius: 0; z-index: 0; box-shadow: none !important;
+    background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none;
+    translate: calc((var(--dx, 0px) - var(--drw)) * .3) 0; visibility: hidden; transition: translate .42s cubic-bezier(.2,.9,.25,1); }
+  html.appshell.dr-on[data-skin="glass"] .shell > nav.side { visibility: visible; transition: translate .42s cubic-bezier(.2,.9,.25,1); }
+  html.appshell[data-skin="glass"] .shell > main { position: relative; z-index: 1; }
+  html.appshell[data-skin="glass"] #topnav, html.appshell[data-skin="glass"] .shell > main, html.appshell[data-skin="glass"] #bnav, html.appshell[data-skin="glass"] #drScrim, html.appshell[data-skin="glass"] .ptr {
+    translate: var(--dx, 0px) 0; transition: translate .42s cubic-bezier(.2,.9,.25,1), border-radius .42s ease, box-shadow .42s ease; }
+  html.appshell.dr-drag[data-skin="glass"] #topnav, html.appshell.dr-drag[data-skin="glass"] .shell > main, html.appshell.dr-drag[data-skin="glass"] #bnav,
+  html.appshell.dr-drag[data-skin="glass"] #drScrim, html.appshell.dr-drag[data-skin="glass"] .ptr, html.appshell.dr-drag[data-skin="glass"] .shell > nav.side { transition: none; }
+  html.appshell.dr-on[data-skin="glass"] .shell > main { border-radius: 44px; background: var(--wall); box-shadow: 0 0 0 .5px var(--edge), -10px 0 44px rgba(0,0,0,.16); }
+  html.appshell.dr-on[data-skin="glass"] #topnav::before { border-radius: 44px 0 0 0; }
+  html.appshell[data-skin="glass"] #drScrim { z-index: 84; background: rgba(0,0,0,.04); border-radius: 44px; opacity: 0; pointer-events: none; transition: translate .42s cubic-bezier(.2,.9,.25,1), opacity .3s; }
+  html.appshell.dr-on[data-skin="glass"] #drScrim { opacity: 1; }
+  html.appshell.drawer[data-skin="glass"] #drScrim { pointer-events: auto; }
+  html.appshell[data-skin="glass"] .shell > nav.side { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  html.appshell[data-skin="glass"] #topnav, html.appshell[data-skin="glass"] .shell > main, html.appshell[data-skin="glass"] #bnav, html.appshell[data-skin="glass"] .shell > nav.side { transition-duration: .01s; }
+}
 </style>
 </head>
 <body>
