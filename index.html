@@ -1591,6 +1591,87 @@ body:has(.set-ov) .modal { z-index: 97; }
 .tm-pill .tm-over { position: static; left: auto; }
 .tm-pill { max-width: 52%; }
 .tm-tx > b { overflow: hidden; text-overflow: ellipsis; }
+
+/* ===== 2.10 原生体验：大标题、推入式详情页、错题本左滑、触感反馈设置页 ===== */
+/* 大标题（手机 · iPadOS 风格）：页面标题放大；滚到顶栏下面之前，顶栏中间不显示名字 */
+@media (max-width: 860px) {
+  [data-skin="glass"] #main > div > h1 { font-size: 32px; font-weight: 800; line-height: 1.15; letter-spacing: .2px; margin: 2px 0 8px; }
+  [data-skin="glass"] .lt { transform-origin: left center; }
+  [data-skin="glass"] #topnav .tn-title { transition: opacity .2s ease, transform .25s ease; }
+  html.lt-off[data-skin="glass"] #topnav .tn-title { opacity: 0; transform: translateY(5px); }
+}
+/* 推入式详情页（手机） */
+@media (max-width: 860px) {
+  .modal.push { display: block; padding: 0 !important; overflow: hidden; background: rgba(0,0,0, calc(.14 * (1 - var(--mp, 0)))); -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .modal.push > .card { position: absolute; inset: 0; width: auto; max-width: none; margin: 0; border: 0 !important; border-radius: 0 !important; padding: 0 16px calc(28px + env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    background: var(--bg) !important; box-shadow: -12px 0 40px rgba(0,0,0,.16) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  [data-skin="glass"] .modal.push > .card { background: var(--wall) !important; }
+  .push-hd { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; margin: 0 -16px 10px; padding: calc(8px + env(safe-area-inset-top)) 16px 10px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); }
+  [data-skin="glass"] .push-hd { background: linear-gradient(to bottom, rgba(var(--pane), .6), rgba(var(--pane), .3)); }
+  [data-skin="md3"] .push-hd { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .push-hd h3 { margin: 0; text-align: center; font-size: 16px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .push-hd .ios-cb .ico { width: 22px; height: 22px; }
+  [data-skin="glass"] .push-hd .ios-cb { background: rgba(var(--pane), calc(var(--glass-a) + .3)); -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%); box-shadow: 0 1px 0 var(--hl) inset, 0 0 0 .5px var(--edge) inset, 0 4px 14px rgba(0,0,0,.1); }
+  .modal.push > .card > .mb > .card, .modal.push > .card > .mb > .q { box-shadow: none; }
+  html:has(#modal .modal.push:not(.gone)) #main > div { translate: calc(-26% * (1 - var(--mp, 0))) 0; }
+  #main > div { transition: translate .42s cubic-bezier(.2,.9,.25,1); }
+  html.mp-drag #main > div { transition: none; }
+  html:has(#modal .modal.push.out) #main > div { transition-duration: .3s; transition-timing-function: cubic-bezier(.3,.7,.3,1); }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: no-preference) {
+  .modal.push > .card { animation: mpIn .42s cubic-bezier(.2,.9,.25,1) both; }
+  .modal.push { animation: mpShade .42s ease both; }
+  .modal.push.out:not(.gone) > .card { animation: mpOut .3s cubic-bezier(.3,.7,.3,1) both; }
+  .modal.push.out { animation: mpShadeOut .3s ease both; }
+  @keyframes mpIn { from { transform: translateX(100%); } to { transform: none; } }
+  @keyframes mpOut { from { transform: none; } to { transform: translateX(100%); } }
+  @keyframes mpShade { from { background-color: rgba(0,0,0,0); } }
+  @keyframes mpShadeOut { to { background-color: rgba(0,0,0,0); } }
+}
+/* 错题本左滑 */
+#wl > .li { position: relative; overflow: hidden; touch-action: pan-y; }
+#wl > .li.swp > :not(.sw-acts) { translate: var(--sx, 0px) 0; }
+#wl > .li.sw-anim > :not(.sw-acts) { transition: translate .28s cubic-bezier(.2,.9,.3,1); }
+.sw-acts { position: absolute; top: 0; right: 0; bottom: 0; width: calc(-1 * var(--sx, 0px)); display: flex; overflow: hidden; }
+.li.sw-anim .sw-acts { transition: width .28s cubic-bezier(.2,.9,.3,1); }
+.sw-acts button { flex: 1 1 50%; min-width: 0; border: 0; padding: 0 6px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; cursor: pointer; transition: flex-grow .22s ease; }
+.sw-acts [data-swa="ok"] { background: var(--ok); }
+.sw-acts [data-swa="rm"] { background: var(--bad); }
+.li.sw-full .sw-acts [data-swa="ok"] { flex-grow: 0; flex-basis: 0; padding: 0; }
+.li.sw-full .sw-acts [data-swa="rm"] { flex-grow: 1; }
+.li.sw-gone { transition: height .3s ease, opacity .3s ease, margin .3s ease, padding .3s ease; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; border-width: 0 !important; }
+/* 触感反馈设置页 */
+.hp-try { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 6px !important; }
+.hp-b { display: grid; justify-items: center; gap: 4px; padding: 12px 4px; border: 0; border-radius: 14px; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+.hp-b .ico { width: 24px; height: 24px; color: var(--accent); }
+.hp-b:active { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.hp-b.hit .ico { animation: hpShake .35s ease; }
+@keyframes hpShake { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+.dm-hp { display: grid; grid-template-columns: 92px 1fr; gap: 16px; align-items: center; padding: 10px 6px; }
+.hp-ph { position: relative; width: 58px; height: 104px; margin: 0 auto; }
+.hp-sc { position: absolute; inset: 0; border-radius: 14px; border: 2.5px solid var(--ink); background: var(--surface); display: grid; place-items: center; animation: hpPh 6s infinite; }
+.hp-sc b { grid-area: 1 / 1; font-size: 11px; font-weight: 700; opacity: 0; white-space: nowrap; }
+.hp-sc .c1 { color: var(--ok); animation: hpC1 6s infinite; } .hp-sc .c2 { color: var(--bad); animation: hpC2 6s infinite; } .hp-sc .c3 { animation: hpC3 6s infinite; }
+.hp-sw { display: inline-block; width: 30px; height: 18px; border-radius: 9px; background: #34c759; position: relative; }
+.hp-sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; animation: hpSw 6s infinite; }
+.hp-ph .w { position: absolute; top: 50%; width: 10px; height: 26px; margin-top: -13px; border: 2px solid var(--accent); border-radius: 50%; opacity: 0; }
+.hp-ph .l1 { left: -12px; border-right-color: transparent; border-top-color: transparent; border-bottom-color: transparent; } .hp-ph .l2 { left: -21px; height: 38px; margin-top: -19px; border-right-color: transparent; border-top-color: transparent; border-bottom-color: transparent; }
+.hp-ph .r1 { right: -12px; border-left-color: transparent; border-top-color: transparent; border-bottom-color: transparent; } .hp-ph .r2 { right: -21px; height: 38px; margin-top: -19px; border-left-color: transparent; border-top-color: transparent; border-bottom-color: transparent; }
+.hp-ph .w { animation: hpW 6s infinite; } .hp-ph .l2, .hp-ph .r2 { animation-delay: .08s; }
+.hp-ls { display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+.hp-ls span { padding-left: 12px; border-left: 3px solid transparent; transition: color .3s; }
+.hp-ls .c1 { animation: hpL1 6s infinite; } .hp-ls .c2 { animation: hpL2 6s infinite; } .hp-ls .c3 { animation: hpL3 6s infinite; }
+@keyframes hpC1 { 0%, 30% { opacity: 1; } 33%, 100% { opacity: 0; } }
+@keyframes hpC2 { 0%, 33% { opacity: 0; } 36%, 63% { opacity: 1; } 66%, 100% { opacity: 0; } }
+@keyframes hpC3 { 0%, 66% { opacity: 0; } 69%, 97% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hpSw { 0%, 75% { transform: none; } 80%, 100% { transform: translateX(12px); } }
+@keyframes hpL1 { 0%, 30% { color: var(--ink); border-color: var(--ok); } 33%, 100% { color: var(--muted); border-color: transparent; } }
+@keyframes hpL2 { 0%, 33% { color: var(--muted); border-color: transparent; } 36%, 63% { color: var(--ink); border-color: var(--bad); } 66%, 100% { color: var(--muted); border-color: transparent; } }
+@keyframes hpL3 { 0%, 66% { color: var(--muted); border-color: transparent; } 69%, 97% { color: var(--ink); border-color: var(--accent); } 100% { color: var(--muted); border-color: transparent; } }
+@keyframes hpPh { 0%, 4%, 36%, 40%, 80%, 84%, 100% { transform: none; } 1%, 37%, 81% { transform: translateX(-2px) rotate(-2deg); } 2.5%, 38.5%, 82.5% { transform: translateX(2px) rotate(2deg); } }
+@keyframes hpW { 0%, 36%, 80% { opacity: 0; transform: scale(.8); } 1%, 37%, 81% { opacity: 1; } 7%, 35%, 43%, 79%, 87%, 100% { opacity: 0; transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .hp-sc .c1 { opacity: 1; } }
 </style>
 </head>
 <body>

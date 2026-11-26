@@ -78,7 +78,7 @@ let S = blank();
 try { const r = localStorage.getItem(LS); if (r) S = Object.assign(blank(), JSON.parse(r)); } catch (e) { }
 /* 同步用：本机编号（学习时长按设备分别记，合并时相加）；只属于本机的设置（风格、字号等不同设备各自独立） */
 let DEV = ''; try { DEV = localStorage.getItem('fcsite.dev') || ''; if (!DEV) { DEV = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem('fcsite.dev', DEV); } } catch (e) { DEV = 'd0'; }
-const LOCAL_SET = ['skin', 'glassA', 'md3Dyn', 'zoom', 'theme', 'seenVer', 'autoTime', 'badge'];
+const LOCAL_SET = ['skin', 'glassA', 'md3Dyn', 'zoom', 'theme', 'seenVer', 'autoTime', 'badge', 'haptic'];
 let SET_SNAP = {};
 function snapSettings() { SET_SNAP = {}; for (const [k, v] of Object.entries(S.settings || {})) if (k !== '_t') SET_SNAP[k] = JSON.stringify(v); }
 snapSettings();
@@ -299,6 +299,7 @@ function rate(id, l) {
   else if (l === 2) { s.c = 0; s.d = sod() + DAY; s.w = 1; }
   else { s.c = (s.c || 0) + 1; s.d = sod() + [2, 4, 7, 15, 30][Math.min(s.c - 1, 4)] * DAY; if (s.c >= 2) s.w = 0; }
   S.q[id] = s; logDone(); save(); refreshRows(id);
+  haptic(l === 3 ? 'confirm' : l === 1 ? 'reject' : 'tap');
 }
 /* 打分后，页面上同一道题的列表行（色条、掌握状态）马上跟着更新，不用重新进页面 */
 function refreshRows(id) {
@@ -575,6 +576,7 @@ function placeOverlay(ov) {
 }
 function openModal(node, title, opt = {}) {
   const m = $('#modal');
+  if (pushMode()) return openPush(m, node, title, opt);
   m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title || '')}"><div class="card"><div class="row mhd" style="margin-bottom:8px">${opt.back ? `<button class="btn sm ghost mback" data-back>‹ ${esc(opt.backLabel || '返回')}</button>` : ''}<h3 style="margin:0">${esc(title || '')}</h3><span class="sp"></span><button class="btn sm" data-x>关闭</button></div><div class="mb"></div></div></div>`;
   $('.mb', m).append(node);
   placeOverlay($('.modal', m));
@@ -587,6 +589,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10', d: '2026-11-26', t: '复习站 2.10：触感反馈、大标题、推入式详情页、错题本左滑', items: [
+    '新增触感反馈（设置 → 学习 → 触感反馈，每台设备单独开关）：评为掌握或答对轻震两下，评为不会或答错连震三下，拨动开关、下拉同步拉到位、底栏按住滑动换标签时轻震一下；iPhone 需要 iOS 18 或更新，iPad 没有触感马达所以不显示这一项',
+    '手机上的 iPadOS 风格：每页的标题变成大标题，往上滑到顶栏下面时，顶栏中间才出现页面名字；在页面顶部继续下拉时大标题会轻微放大',
+    '手机上打开题目、机理图解等详情时，整页从右边推进来，背后的页面往左让开；点左上角的返回或从屏幕左边缘往右滑（跟手）退出',
+    '错题本可以左滑：露出「掌握」和「移出」两个按钮；一直滑到底直接移出'] },
   { v: '2.9.5', d: '2026-11-26', t: '复习站 2.9.5：首页问候去掉逗号，ⓘ 弹窗自动收起', items: [
     '首页问候不再用逗号：第一行是问候语和名字（名字用强调色），第二行「欢迎回来」作为副标题；iPad 和电脑上也统一成这个样式',
     '设置右上角 ⓘ 弹出的窗口，按到别处或者开始滑动就会自动收起',
@@ -1000,6 +1007,7 @@ function render() {
   /* 设置窗口开着时，改动后同步刷新窗口里的内容（正在输入时不刷新，免得打断） */
   if (typeof syncBadge === 'function') syncBadge();
   if (SET.open) { const a = document.activeElement; if (!(a && a.closest && a.closest('.set-ov') && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) setFill(); }
+  requestAnimationFrame(ltUpdate);
 }
 /* 书本风格的翻页（两种方向都以书脊为轴，和真书一样）：
    往后翻：旧的一页放进一张浮在正文上的“纸”里，绕书脊掀起离开，新的一页在下面露出来；
@@ -2266,6 +2274,7 @@ const SET_SECS = [
   ['recite', '大题背诵模式', '<path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8z"/><path d="M12 6.3v13"/>'],
   ['sprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
   ['night', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>'],
+  ['haptic', '触感反馈', '<rect x="8" y="3.5" width="8" height="17" rx="2.2"/><path d="M11 17.5h2M4.5 9v6M19.5 9v6M2 10.5v3M22 10.5v3"/>'],
   ['timer', '限时作答', '<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4l2.5 2M9.5 3.5h5M18.5 7l1.5-1.5"/>'],
   ['search', '搜索栏', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'],
   ['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
@@ -2307,6 +2316,8 @@ function openSettings(sec) {
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
       if (e.target.closest('[data-badge]')) return toggleBadge();
+      if (e.target.closest('[data-hapt]')) { S.settings.haptic = !hapOn(); save(); $$('[data-hapt] .switch').forEach(x => x.setAttribute('aria-checked', hapOn())); if (hapOn()) haptic('tick'); return; }
+      const ht = e.target.closest('[data-htry]'); if (ht) { haptic(ht.dataset.htry, true); ht.classList.remove('hit'); void ht.offsetWidth; ht.classList.add('hit'); return; }
       const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
     });
     $('#setBody').addEventListener('scroll', e => { if (document.getElementById('setInfo')) setInfoClose(); const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
@@ -2367,6 +2378,7 @@ function setFill() {
   const pages = {};
   for (const [k, f] of Object.entries(FEAT_PG)) { const d = document.createElement('div'); d.innerHTML = featPageHTML(f); groups[k] = d; }
   { const d = document.createElement('div'); d.innerHTML = searchPageHTML(); groups.search = d; }
+  if (HAP_OK) { const d = document.createElement('div'); d.innerHTML = hapticPageHTML(); groups.haptic = d; }
   { const d = document.createElement('div'); d.innerHTML = notifyHTML(); if (groups.remind) { const l = document.createElement('p'); l.className = 'ios-lab'; l.textContent = '每日学习提醒'; d.append(l, ...groups.remind.childNodes); delete groups.remind; } if (BADGE_OK || HAS_REM) groups.notify = d; }
   for (const k of ['handbook', 'weekly']) { const d = document.createElement('div'); d.innerHTML = '<div class="lz"></div>'; groups[k] = d; }
   { const lp = document.createElement('div'); pLabs(lp); $$('.kick, h1', lp).forEach(x => x.remove()); const ld = $('.lead', lp); if (ld) ld.className = 'ios-note';
@@ -2378,7 +2390,7 @@ function setFill() {
   const root = document.createElement('div'); root.className = 'set-pg'; root.dataset.p = 'root';
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
-    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}</div>
+    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}${row('haptic')}</div>
     <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('search')}</div>
     <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
     <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
@@ -2605,7 +2617,7 @@ document.addEventListener('touchstart', e => {
   /* 浮窗下滑关闭（手机） */
   if (innerWidth > 860) return;
   const el = e.target; if (el.closest('input, textarea, select, .seg, .dm-days, .zoomable, .sheet-wrap')) return;
-  let tgt = el.closest('#modal .modal > .card'), close = null;
+  let tgt = el.closest('#modal .modal:not(.push) > .card'), close = null;
   if (tgt) close = () => { const x = document.querySelector('#modal [data-x]'); if (x) x.click(); else document.getElementById('modal').innerHTML = ''; };
   else if ((tgt = el.closest('.set-win'))) close = () => closeSettings();
   if (!tgt) return;
@@ -2640,7 +2652,7 @@ document.addEventListener('touchstart', e => {
     if (!touching || busy || !CLOUD.user || (location.hash.slice(1) || 'today') !== 'today') return;
     const y = getScroll(); if (y >= -4) { hide(); armed = false; return; }
     const d = -y; ensure(); el.classList.remove('done', 'fail'); el.classList.add('on'); el.style.opacity = Math.min(1, d / 60);
-    armed = d > 72; el.classList.toggle('arm', armed); el.querySelector('.ptr-t').textContent = armed ? '松开同步' : '下拉同步';
+    if ((d > 72) !== armed && d > 72) haptic('tick'); armed = d > 72; el.classList.toggle('arm', armed); el.querySelector('.ptr-t').textContent = armed ? '松开同步' : '下拉同步';
     el.querySelector('.ptr-ic').style.transform = `rotate(${Math.min(d, 72) * 4}deg)`;
   };
   document.addEventListener('touchstart', () => { touching = true; }, { passive: true });
@@ -2678,7 +2690,7 @@ document.addEventListener('touchstart', e => {
     try { bn.setPointerCapture(e.pointerId); } catch (_) { }
     place(e.clientX); requestAnimationFrame(() => { if (st) { st.sc = 1; lens.classList.add('on'); place(e.clientX); } });
   });
-  document.addEventListener('pointermove', e => { if (!st || e.pointerId !== st.id) return; if (Math.abs(e.clientX - st.x0) > 6) st.moved = true; place(e.clientX); }, { passive: true });
+  document.addEventListener('pointermove', e => { if (!st || e.pointerId !== st.id) return; if (Math.abs(e.clientX - st.x0) > 6) st.moved = true; place(e.clientX); const n = nearest(st.bn, e.clientX); if (st.moved && n !== st.cur) { if (st.cur) haptic('tick'); } st.cur = n; }, { passive: true });
   const finish = (e, go) => {
     if (!st || (e && e.pointerId !== st.id)) return; const s = st; st = null;
     const it = go ? nearest(s.bn, e.clientX) : null;
@@ -2744,6 +2756,140 @@ function notifyHTML() {
 /* —— 分屏、台前调度：窗口宽度跨过手机 / 平板布局的分界时重新排版 —— */
 let wideNow = innerWidth > 860;
 window.addEventListener('resize', () => { const w = innerWidth > 860; if (w !== wideNow) { wideNow = w; if (!w) { } else drawer(false); const y = getScroll(); render(); setScroll(y); syncStatusBar(); } });
+
+
+/* ===================== 2.10：触感反馈、大标题、推入式详情页、错题本左滑 ===================== */
+/* —— 触感反馈 ——
+   iPhone（iOS 18 起）：网页没有直接的震动接口，借用系统开关控件自带的触感——点一下隐藏的开关，手机就会轻震一下；
+   安卓 App：调用系统的触感反馈（跟随系统的触感强度）；安卓浏览器：短振动 */
+var IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent);
+var HAP_OK = IS_IPHONE || !!(window.AndroidApp && window.AndroidApp.haptic) || (!!navigator.vibrate && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches));
+function hapOn() { return S.settings.haptic !== false; }
+function iosTap() {
+  try { const l = document.createElement('label'), i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); l.setAttribute('aria-hidden', 'true'); l.style.display = 'none'; l.append(i); document.head.append(l); l.click(); l.remove(); } catch (e) { }
+}
+function haptic(kind = 'tap', force) {
+  if (!HAP_OK || (!force && !hapOn())) return;
+  try {
+    if (window.AndroidApp && window.AndroidApp.haptic) return window.AndroidApp.haptic(kind);
+    if (IS_IPHONE) { const n = kind === 'reject' ? 3 : kind === 'confirm' ? 2 : 1; iosTap(); for (let i = 1; i < n; i++) setTimeout(iosTap, i * 110); return; }
+    if (navigator.vibrate) navigator.vibrate(kind === 'reject' ? [28, 60, 28, 60, 28] : kind === 'confirm' ? [14, 60, 14] : kind === 'tick' ? 6 : 10);
+  } catch (e) { }
+}
+/* 开关类控件拨动时轻震 */
+document.addEventListener('click', e => { if (e.target.closest('[data-feat], [data-badge], [data-sw], [data-srch], .seg > button, .rem-seg button')) haptic('tick'); }, true);
+function hapticPageHTML() {
+  const tries = [['tap', '轻点', '<circle cx="12" cy="12" r="3"/><path d="M12 4.5v2M12 17.5v2M4.5 12h2M17.5 12h2"/>'], ['confirm', '成功', '<path d="M5.5 12.5l4 4 9-9"/>'], ['reject', '失败', '<path d="M7 7l10 10M17 7 7 17"/>']];
+  return `<div class="ios-grp dm-wrap"><div class="dm dm-hp" aria-hidden="true"><div class="hp-ph"><i class="w l1"></i><i class="w l2"></i><span class="hp-sc"><b class="c1">掌握 ✓</b><b class="c2">不会 ✗</b><b class="c3"><span class="hp-sw"><i></i></span></b></span><i class="w r1"></i><i class="w r2"></i></div>
+    <div class="hp-ls"><span class="c1">评为「掌握」或答对：轻震两下</span><span class="c2">评为「不会」或答错：连震三下</span><span class="c3">拨动开关、松开下拉同步：轻震一下</span></div></div></div>
+    <div class="ios-grp" style="margin-top:14px"><div class="ios-row ios-tog" data-hapt role="button">${SV(SET_SECS.find(x => x[0] === 'haptic')[2])}<span class="ios-n">触感反馈</span><button class="switch" role="switch" aria-checked="${hapOn()}" aria-label="触感反馈"><i></i></button></div></div>
+    <p class="ios-note">只在这台设备上生效。${IS_IPHONE ? '需要 iOS 18 或更新的系统；如果感觉不到，请确认 iPhone「设置 → 声音与触感 → 系统触感反馈」已打开。' : '跟随手机系统的触感强度设置。'}</p>
+    <p class="ios-lab">试一试</p><div class="ios-grp hp-try">${tries.map(([k, n, ic]) => `<button class="hp-b" data-htry="${k}">${SV(ic)}<span>${n}</span></button>`).join('')}</div>
+    <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>做题和操作时手机会轻轻震一下，不用看屏幕也知道操作成功了，用起来更像原生 App。</p><ul><li>自评或自动判分：掌握轻震两下，不会连震三下，模糊轻震一下</li><li>拨动设置里的开关、切换选项时轻震</li><li>下拉同步拉到位、底栏按住滑动切换标签时轻震</li><li>错题本左滑到可以操作的位置时轻震</li></ul></div>`;
+}
+
+/* —— 大标题：手机上每页最上面的标题是大号字，往上滑到顶栏下面时，顶栏中间才出现页面名字（和 iOS 一样） —— */
+var ltRaf = 0;
+function ltUpdate() {
+  ltRaf = 0;
+  const de = document.documentElement, tn = document.getElementById('topnav');
+  if (innerWidth > 860 || de.getAttribute('data-skin') !== 'glass' || !tn) { de.classList.remove('lt-off'); return; }
+  const h = document.querySelector('#main > div > h1, #main > div > .hero h1');
+  if (!h) { de.classList.remove('lt-off'); return; }
+  h.classList.add('lt');
+  const hr = h.getBoundingClientRect(), tr = tn.getBoundingClientRect();
+  de.classList.toggle('lt-off', hr.bottom > tr.bottom - 6);
+  const y = getScroll(); h.style.transform = y < 0 ? `scale(${(1 + Math.min(-y, 140) / 1100).toFixed(4)})` : '';
+}
+const ltQueue = () => { if (!ltRaf) ltRaf = requestAnimationFrame(ltUpdate); };
+window.addEventListener('scroll', ltQueue, { passive: true });
+document.addEventListener('scroll', e => { if (e.target && e.target.id === 'main') ltQueue(); }, { passive: true, capture: true });
+addEventListener('resize', ltQueue);
+
+/* —— 推入式详情页：手机上打开题目、图解等详情时，整页从右边推进来，背后的页面往左让一点；
+   点左上角返回或从左边缘往右滑（跟手）退出 —— */
+function pushMode() {
+  if (innerWidth > 860 || (document.documentElement.getAttribute('data-skin') || '') === 'book') return false;
+  return true;
+}
+function openPush(m, node, title, opt) {
+  m.innerHTML = `<div class="modal push" role="dialog" aria-modal="true" aria-label="${esc(title || '')}"><div class="card"><div class="push-hd"><button class="ios-cb" data-x aria-label="${esc(opt.backLabel || '返回')}">${SV(SVG_BACK)}</button><h3>${esc(title || '')}</h3><span></span></div><div class="mb"></div></div></div>`;
+  $('.mb', m).append(node);
+  const md = $('.modal', m), card = $('.card', md);
+  const done = () => { document.removeEventListener('keydown', k); if (m.contains(md)) m.innerHTML = ''; document.documentElement.style.removeProperty('--mp'); };
+  const close = (then) => {
+    if (md.classList.contains('out')) return; md.classList.add('out'); document.removeEventListener('keydown', k);
+    const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => { done(); then && then(); }, rm ? 0 : 300);
+  };
+  md._close = close; md._back = opt.back;
+  function k(e) { if (e.key === 'Escape') close(); }
+  $('[data-x]', md).onclick = () => close(opt.back);
+  document.addEventListener('keydown', k);
+  card.focus && card.setAttribute('tabindex', '-1');
+}
+/* 左边缘右滑退出推入的详情页 */
+document.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  const md = document.querySelector('#modal .modal.push:not(.out)'); if (!md) return;
+  const t = e.touches[0]; if (t.clientX > 28) return;
+  const card = md.querySelector(':scope > .card'), de = document.documentElement, W = innerWidth;
+  const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
+  trackTouch(e, ev => {
+    const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
+    if (!s.on) { if (s.dead) return; if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (dx < 6) return; s.on = true; de.classList.add('mp-drag'); }
+    ev.preventDefault(); s.dx = Math.max(0, dx);
+    card.style.translate = s.dx + 'px 0'; de.style.setProperty('--mp', (s.dx / W).toFixed(4));
+  }, () => {
+    if (!s.on) return;
+    de.classList.remove('mp-drag');
+    const v = s.dx / Math.max(1, Date.now() - s.t0), go = s.dx > W * .35 || (v > .45 && s.dx > 30);
+    card.style.transition = 'translate .26s cubic-bezier(.2,.8,.3,1)';
+    if (go) { card.style.translate = W + 'px 0'; de.style.setProperty('--mp', 1); md.classList.add('gone'); setTimeout(() => { md.classList.remove('out'); if (md._close) md._close(md._back); }, 0); }
+    else { card.style.translate = '0px 0'; de.style.removeProperty('--mp'); setTimeout(() => { card.style.transition = ''; }, 280); }
+  });
+}, { passive: true });
+
+/* —— 错题本左滑：露出「掌握」和「移出」；一直滑到底直接移出 —— */
+(function () {
+  const AW = 156;
+  let open = null;
+  const set = (row, x, anim) => { row.style.setProperty('--sx', x + 'px'); row.classList.toggle('sw-anim', !!anim); };
+  const shut = (row, anim = true) => { if (!row) return; set(row, 0, anim); if (open === row) open = null; setTimeout(() => { if (row.style.getPropertyValue('--sx') === '0px') { row.classList.remove('swp'); const a = row.querySelector(':scope > .sw-acts'); if (a) a.remove(); } }, anim ? 300 : 0); };
+  const collapse = row => { const h = row.offsetHeight; row.style.height = h + 'px'; row.classList.add('sw-gone'); void row.offsetWidth; row.style.height = '0px'; setTimeout(() => { const nx = row.nextElementSibling; if (nx && nx.classList.contains('q')) nx.remove(); row.remove(); }, 320); };
+  const act = (row, a) => {
+    const id = row.dataset.q;
+    if (a === 'rm') { const s = Object.assign({}, S.q[id]); s.w = 0; s.t = Date.now(); S.q[id] = s; save(); haptic('confirm'); set(row, -row.offsetWidth, true); setTimeout(() => collapse(row), 200); open = null; return; }
+    if (a === 'ok') { rate(id, 3); if (!qs(id).w) { set(row, -row.offsetWidth, true); setTimeout(() => collapse(row), 200); open = null; } else { shut(row); toast('已记为掌握 · 再评一次掌握会自动移出'); } }
+  };
+  const ensure = row => { if (row.querySelector(':scope > .sw-acts')) return; row.classList.add('swp'); const d = document.createElement('div'); d.className = 'sw-acts'; d.innerHTML = '<button data-swa="ok">掌握</button><button data-swa="rm">移出</button>'; row.append(d); };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.sw-acts [data-swa]'); if (b) { e.stopPropagation(); e.preventDefault(); act(b.closest('.li'), b.dataset.swa); return; }
+    if (open && !e.target.closest('.li.swp')) { shut(open); }
+    else if (open && e.target.closest('.li.swp') === open) { e.stopPropagation(); e.preventDefault(); shut(open); }
+  }, true);
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    const row = e.target.closest('#wl > .li'); if (!row || e.target.closest('.sw-acts, input, textarea, select')) { if (open && !row) shut(open); return; }
+    if (open && open !== row) shut(open);
+    const t = e.touches[0], base = row === open ? -AW : 0, W = row.offsetWidth;
+    const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), x: base, on: false, past: false };
+    trackTouch(e, ev => {
+      const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
+      if (!s.on) { if (s.dead) return; if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (Math.abs(dx) < 8 || (base === 0 && dx > 0)) return; s.on = true; ensure(row); }
+      ev.preventDefault();
+      let x = Math.min(0, base + dx); if (x < -W * .55) x = -W * .55 + (x + W * .55) * .35;
+      s.x = x; set(row, x);
+      const past = -x > W * .5; if (past !== s.past) { s.past = past; row.classList.toggle('sw-full', past); haptic('tick'); }
+    }, () => {
+      if (!s.on) return;
+      const v = (s.x - base) / Math.max(1, Date.now() - s.t0);
+      if (s.past) return act(row, 'rm');
+      if (-s.x > AW * .45 || v < -.5) { set(row, -AW, true); open = row; } else shut(row);
+    });
+  }, { passive: true });
+  window.addEventListener('hashchange', () => { open = null; });
+})();
 
 await Promise.race([syncReady, new Promise(r => setTimeout(r, 4000))]);
 render();
