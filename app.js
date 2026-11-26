@@ -587,6 +587,12 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9.1', d: '2026-11-26', t: '复习站 2.9.1：独立的注册和找回密码页面', items: [
+    '注册账号和找回密码改成单独的页面：在设置的账号页点「注册新账号」或「忘记密码？」进入；注册时要输入两次密码',
+    'iPhone 状态栏恢复之前的样式，去掉打开侧栏时出现的亮线；滚动边缘的渐隐保留',
+    '去掉复习站自己的边缘右滑返回，避免和系统的右滑返回冲突；只有在没有上一页时，右滑会拉出侧栏',
+    '手机上的侧栏可以向左划收回',
+    '下拉同步只在「今日」页面使用'] },
   { v: '2.9', d: '2026-11-26', t: '复习站 2.9：更像原生 App', items: [
     '从屏幕左边缘往右滑返回上一页；题卡和设置窗口在顶部时往下滑就能关掉',
     '点顶栏回到页面顶部；从标签栏或侧栏切换页面时回到上次看到的位置，再点一次当前标签回到顶部',
@@ -2142,18 +2148,31 @@ function searchPageHTML() {
 }
 
 /* ---------- 设置 · 账号与同步 ---------- */
-function accountSection(pop) {
+const ACCT = { email: '', sent: false };
+function accountSection(pop, mode = 'login') {
   const H = pop ? '' : '<h2>账号与同步</h2>';
   if (!CLOUD.on) return `${H}<div class="${pop ? 'me-sec' : 'card'}"><p class="note" style="margin:0">在 Claude 里打开的这个版本，进度会同步到你的 Claude 账号。想和 iPad、安卓 App 同步，请用 GitHub Pages 网页版（<a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a>）或 App 登录同一个复习站账号。</p></div>`;
   const u = CLOUD.user;
   if (u) return `${H}<div class="${pop ? 'me-sec' : 'card'} acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div><span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button></div>
     <p class="note" style="margin:8px 0 0">做题记录、错题本、笔记、设置、学习时间会在网页版、iPad 和安卓 App 之间自动同步：改动后 20 秒内上传，打开或回到页面时下载。没网时照常使用，联网后自动补上。</p></div>`;
-  return `${H}<div class="${pop ? 'me-sec' : 'card'} acct form">
-    <p class="note" style="margin:0">登录后，网页版、iPad 主屏幕版和安卓 App 的进度会自动同步。不登录也能用，进度只存在这台设备上。</p>
-    <div class="row"><label for="acem">邮箱</label><input type="email" id="acem" autocomplete="email" placeholder="you@example.com" style="flex:1;min-width:200px"></div>
-    <div class="row"><label for="acpw">密码</label><input type="password" id="acpw" autocomplete="current-password" placeholder="至少 6 位" style="flex:1;min-width:200px"></div>
-    <div class="row"><button class="btn pri" id="acin">登录</button><button class="btn" id="acup">注册新账号</button><span class="sp"></span><button class="btn sm ghost" id="acrs">忘记密码</button></div>
-    <p class="note" id="acmsg" style="margin:0"></p></div>`;
+  const em = id => `<div class="af-f"><label for="${id}">邮箱</label><input type="email" id="${id}" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(ACCT.email)}"></div>`;
+  if (mode === 'signup') return `<div class="${pop ? 'me-sec' : 'card'} acct af">
+    <p class="note af-lead">注册一个复习站账号，网页版、iPad、iPhone 和安卓 App 的进度就能自动同步。这台设备上已有的进度会一起带进新账号。</p>
+    ${em('suem')}
+    <div class="af-f"><label for="supw">密码</label><input type="password" id="supw" autocomplete="new-password" placeholder="至少 6 位"></div>
+    <div class="af-f"><label for="supw2">确认密码</label><input type="password" id="supw2" autocomplete="new-password" placeholder="再输入一次"></div>
+    <button class="btn pri af-go" id="suup">注册并开始同步</button><p class="note af-msg" id="sumsg"></p></div>
+    <p class="af-alt">已经有账号？<button class="lnk" data-go="acct">去登录</button></p>`;
+  if (mode === 'reset') return `<div class="${pop ? 'me-sec' : 'card'} acct af">
+    ${ACCT.sent ? `<div class="af-done"><b>邮件已发送</b><p class="note">重置密码的邮件已发到 <b>${esc(ACCT.email)}</b>。打开邮件里的链接设置新密码，再回来用新密码登录。没收到的话，看看垃圾邮件。</p></div><button class="btn pri af-go" data-go="acct">返回登录</button><button class="lnk af-again" id="rsagain">换个邮箱重新发送</button>`
+    : `<p class="note af-lead">输入注册时用的邮箱，我们会发一封重置密码的邮件，按邮件里的链接设置新密码。</p>${em('rsem')}<button class="btn pri af-go" id="rsgo">发送重置邮件</button><p class="note af-msg" id="rsmsg"></p>`}</div>
+    <p class="af-alt">想起密码了？<button class="lnk" data-go="acct">去登录</button></p>`;
+  return `${H}<div class="${pop ? 'me-sec' : 'card'} acct af">
+    <p class="note af-lead">登录后，网页版、iPad、iPhone 和安卓 App 的进度会自动同步。不登录也能用，进度只存在这台设备上。</p>
+    ${em('acem')}
+    <div class="af-f"><label for="acpw">密码</label><input type="password" id="acpw" autocomplete="current-password" placeholder="输入密码"></div>
+    <button class="btn pri af-go" id="acin">登录</button><p class="note af-msg" id="acmsg"></p>
+    <div class="af-links"><button class="lnk" ${pop ? 'data-go="reset"' : 'id="acrs"'}>忘记密码？</button><button class="lnk" ${pop ? 'data-go="signup"' : 'id="acup"'}>注册新账号</button></div></div>`;
 }
 /* ---------- 头像与账号浮窗（2.3）：侧边栏左下角显示头像和名字，点开是登录 / 账号信息 ---------- */
 function meName() { return S.settings.name || (CLOUD.user && CLOUD.user.email ? CLOUD.user.email.split('@')[0] : '') || '我的复习站'; }
@@ -2225,6 +2244,8 @@ const SET_SECS = [
   ['search', '搜索栏', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'],
   ['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
   ['weekly', '学习周报', '<path d="M4.5 20V4M4.5 20h15"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>'],
+  ['signup', '注册账号', '<circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 20c.8-3.6 3.3-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.3M18 13v6M15 16h6"/>'],
+  ['reset', '找回密码', '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.5v2"/>'],
   ['labs', '试验性功能', '<path d="M9.5 3.5h5M10.5 3.5v5.2L5.3 18.2a1.5 1.5 0 0 0 1.3 2.3h10.8a1.5 1.5 0 0 0 1.3-2.3L13.5 8.7V3.5"/><path d="M7.4 15h9.2"/>']
 ];
 
@@ -2296,6 +2317,7 @@ function setFill() {
     <div class="me-avb"><label class="btn sm" for="avIn">更换头像</label>${S.settings.avatar ? '<button class="btn sm ghost" data-avrm>移除头像</button>' : ''}</div></div>
     <p class="ios-lab">账号与同步</p>${accountSection(true).replace('class="me-sec', 'class="card me-sec')}`;
   groups.acct = acct;
+  if (CLOUD.on && !CLOUD.user) for (const k of ['signup', 'reset']) { const d = document.createElement('div'); d.innerHTML = accountSection(true, k).replace('class="me-sec', 'class="card me-sec'); groups[k] = d; }
   /* 外观：风格四宫格 + 浅色/深色/系统三宫格 */
   const look = groups.look; delete groups.look;
   if (look) {
@@ -2343,6 +2365,7 @@ function setFill() {
 function setView(anim) {
   const win = document.querySelector('.set-win'); if (!win) return;
   const root = SET.sec === 'root';
+  { const ie = win.querySelector(`.set-pg[data-p="${SET.sec}"] input[type=email]`); if (ie && !ie.value && ACCT.email) ie.value = ACCT.email; }   /* 登录页填过的邮箱带到注册、找回密码页 */
   const lz = { handbook: pHandbook, weekly: pWeekly }[SET.sec]; if (lz) { const w = win.querySelector(`.set-pg[data-p="${SET.sec}"] .lz`); if (w && !w.dataset.ok) { w.dataset.ok = 1; lz(w); } }
   $$('.set-pg', win).forEach(p => { p.hidden = p.dataset.p !== SET.sec; p.classList.remove('push', 'pop'); if (!p.hidden && anim) { void p.offsetWidth; p.classList.add(anim); } });
   const t = SET_SECS.find(x => x[0] === SET.sec); $('#setTitle').textContent = root ? '设置' : t ? t[1] : '设置';
@@ -2354,24 +2377,55 @@ function meFill() { if (SET.open) setFill(); }
 
 function bindAccount(m) {
   if (!CLOUD.on) return;
-  const msg = t => { const e = $('#acmsg'); if (e) e.textContent = t; };
-  const go2 = async (path, label) => {
-    const email = $('#acem').value.trim(), pw = $('#acpw').value;
-    if (!email) return msg('请先填写邮箱');
-    msg(label + '中……'); $$('#acin,#acup').forEach(b => b.disabled = true);
-    try { const j = await fbAuth(path, { email, password: pw, returnSecureToken: true }); setUser(j, email); msg('成功！正在把这台设备的进度和账号合并……'); await cloudSync(); render(); meFill(); toast(path === 'accounts:signUp' ? '注册成功，已开始同步' : '登录成功，进度已同步'); }
-    catch (e) { msg(authErr(e.message)); }
-    finally { $$('#acin,#acup').forEach(b => b && (b.disabled = false)); }
-  };
+  const ok = (j, email, signup) => { setUser(j, email); ACCT.sent = false; if (SET.open) SET.sec = 'acct'; return cloudSync().then(() => { render(); meFill(); toast(signup ? '注册成功，已开始同步' : '登录成功，进度已同步'); }); };
   if (CLOUD.user) {
-    $('#acsync').onclick = async () => { $('#acst').textContent = '正在同步……'; await cloudSync(); const e = $('#acst'); if (e) e.textContent = CLOUD.err || '上次同步：' + agoText(CLOUD.lastOk); };
-    $('#acout').onclick = () => { const b = $('#acout'); if (!b.dataset.c) { b.dataset.c = 1; b.textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); meFill(); toast('已退出登录，这台设备上的进度还保留着'); }); };
+    const sy = $('#acsync', m), out = $('#acout', m);
+    if (sy) sy.onclick = async () => { $('#acst').textContent = '正在同步……'; await cloudSync(); const e = $('#acst'); if (e) e.textContent = CLOUD.err || '上次同步：' + agoText(CLOUD.lastOk); };
+    if (out) out.onclick = () => { if (!out.dataset.c) { out.dataset.c = 1; out.textContent = '再点一次确认退出'; return; } cloudSync({ quiet: true }).finally(() => { cloudSignOut(); render(); meFill(); toast('已退出登录，这台设备上的进度还保留着'); }); };
     return;
   }
-  $('#acin').onclick = () => go2('accounts:signInWithPassword', '登录');
-  $('#acup').onclick = () => go2('accounts:signUp', '注册');
-  $('#acpw').onkeydown = e => { if (e.key === 'Enter') go2('accounts:signInWithPassword', '登录'); };
-  $('#acrs').onclick = async () => { const email = $('#acem').value.trim(); if (!email) return msg('先在上面填好邮箱，再点「忘记密码」'); msg('正在发送……'); try { await fbAuth('accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email }); msg('重置密码的邮件已发到 ' + email + '，没收到的话看看垃圾邮件'); } catch (e) { msg(authErr(e.message)); } };
+  $$('#acem, #suem, #rsem', m).forEach(i => i.addEventListener('input', () => { ACCT.email = i.value.trim(); }));
+  /* 登录 */
+  const inB = $('#acin', m);
+  if (inB) {
+    const msg = t => { const e = $('#acmsg', m); if (e) e.textContent = t; };
+    const go = async () => {
+      const email = $('#acem', m).value.trim(), pw = $('#acpw', m).value;
+      if (!email) return msg('请先填写邮箱'); if (!pw) return msg('请输入密码');
+      msg('登录中……'); inB.disabled = true;
+      try { const j = await fbAuth('accounts:signInWithPassword', { email, password: pw, returnSecureToken: true }); msg('登录成功，正在同步……'); await ok(j, email); }
+      catch (e) { msg(authErr(e.message)); } finally { inB.disabled = false; }
+    };
+    inB.onclick = go; $('#acpw', m).onkeydown = e => { if (e.key === 'Enter') go(); };
+    const up = $('#acup', m), rs = $('#acrs', m);   /* 不在设置窗口里时，打开设置里的对应页面 */
+    if (up) up.onclick = () => openSettings('signup'); if (rs) rs.onclick = () => openSettings('reset');
+  }
+  /* 注册 */
+  const suB = $('#suup', m);
+  if (suB) {
+    const msg = t => { const e = $('#sumsg', m); if (e) e.textContent = t; };
+    const go = async () => {
+      const email = $('#suem', m).value.trim(), pw = $('#supw', m).value, pw2 = $('#supw2', m).value;
+      if (!email) return msg('请先填写邮箱'); if (pw.length < 6) return msg('密码至少要 6 位'); if (pw !== pw2) return msg('两次输入的密码不一样');
+      msg('注册中……'); suB.disabled = true;
+      try { const j = await fbAuth('accounts:signUp', { email, password: pw, returnSecureToken: true }); msg('注册成功，正在把这台设备的进度带进新账号……'); await ok(j, email, true); }
+      catch (e) { msg(authErr(e.message)); } finally { suB.disabled = false; }
+    };
+    suB.onclick = go; $('#supw2', m).onkeydown = e => { if (e.key === 'Enter') go(); };
+  }
+  /* 找回密码 */
+  const rsB = $('#rsgo', m);
+  if (rsB) {
+    const msg = t => { const e = $('#rsmsg', m); if (e) e.textContent = t; };
+    const go = async () => {
+      const email = $('#rsem', m).value.trim(); if (!email) return msg('请先填写邮箱');
+      msg('正在发送……'); rsB.disabled = true;
+      try { await fbAuth('accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email }); ACCT.email = email; ACCT.sent = true; meFill(); }
+      catch (e) { msg(authErr(e.message)); } finally { rsB.disabled = false; }
+    };
+    rsB.onclick = go; $('#rsem', m).onkeydown = e => { if (e.key === 'Enter') go(); };
+  }
+  const ag = $('#rsagain', m); if (ag) ag.onclick = () => { ACCT.sent = false; meFill(); };
 }
 
 /* ---------- 设置 ---------- */
@@ -2478,8 +2532,9 @@ document.addEventListener('touchstart', e => {
   /* 左边缘右滑 */
   if (t.clientX <= 22 && !document.querySelector('#modal > *, .set-ov, .upd-ov, .gs-ov') && !de.classList.contains('drawer')) {
     const pg = document.querySelector('#main > div'); if (!pg) return;
-    const canBack = navStack.length > 1, canDrawer = !canBack && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
-    if (!canBack && !canDrawer) return;
+    /* 返回交给系统自带的边缘右滑；只有在没有上一页可回时，右滑拉出侧栏 */
+    const canBack = false, canDrawer = navStack.length <= 1 && history.length <= 1 && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
+    if (!canDrawer) return;
     const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
     trackTouch(e, ev => {
       const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
@@ -2492,6 +2547,22 @@ document.addEventListener('touchstart', e => {
       const v = s.dx / Math.max(1, Date.now() - s.t0);
       if (s.dx > 90 || (v > .5 && s.dx > 30)) { pg.style.transition = 'transform .18s ease-out'; pg.style.transform = `translateX(${innerWidth}px)`; setTimeout(() => history.back(), 170); }
       else { pg.style.transition = 'transform .28s cubic-bezier(.2,.9,.3,1.1)'; pg.style.transform = ''; setTimeout(() => { pg.style.boxShadow = ''; pg.style.transition = ''; }, 300); }
+    });
+    return;
+  }
+  /* 手机侧栏：向左划收回 */
+  if (de.classList.contains('drawer') && e.target.closest('#sidenav')) {
+    const nv = document.getElementById('sidenav'), sc = document.getElementById('drScrim'), s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
+    trackTouch(e, ev => {
+      const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
+      if (!s.on) { if (s.dead) return; if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (dx > -8) return; s.on = true; }
+      ev.preventDefault(); s.dx = Math.min(0, dx);
+      nv.style.transition = 'none'; nv.style.transform = `translateX(${s.dx}px)`; if (sc) { sc.style.transition = 'none'; sc.style.opacity = Math.max(0, 1 + s.dx / nv.offsetWidth); }
+    }, () => {
+      if (!s.on) return;
+      const v = -s.dx / Math.max(1, Date.now() - s.t0), close = -s.dx > 80 || (v > .5 && -s.dx > 24);
+      nv.style.transition = ''; nv.style.transform = ''; if (sc) { sc.style.transition = ''; sc.style.opacity = ''; }
+      if (close) drawer(false);
     });
     return;
   }
@@ -2522,7 +2593,7 @@ document.addEventListener('touchstart', e => {
   const ensure = () => { if (!el) { el = document.createElement('div'); el.id = 'ptr'; el.className = 'ptr'; el.innerHTML = '<span class="ptr-ic"></span><span class="ptr-t"></span>'; document.body.append(el); } const tn = document.getElementById('topnav'); const r = tn && tn.getBoundingClientRect(); el.style.top = ((r && r.height && innerWidth <= 860) ? r.bottom + 6 : 12) + 'px'; return el; };
   const hide = () => { if (el && !busy) { el.classList.remove('on', 'arm'); el.style.opacity = 0; } };
   const onScroll = () => {
-    if (!touching || busy || !CLOUD.user) return;
+    if (!touching || busy || !CLOUD.user || (location.hash.slice(1) || 'today') !== 'today') return;
     const y = getScroll(); if (y >= -4) { hide(); armed = false; return; }
     const d = -y; ensure(); el.classList.add('on'); el.style.opacity = Math.min(1, d / 60);
     armed = d > 72; el.classList.toggle('arm', armed); el.querySelector('.ptr-t').textContent = armed ? '松开同步' : '下拉同步';
@@ -2596,15 +2667,9 @@ function syncStatusBar() {
   let ms = document.querySelectorAll('meta[name="theme-color"]');
   if (!ms.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); ms = [m]; }
   ms.forEach(m => { m.setAttribute('content', c); m.removeAttribute('media'); });
-  if (de.classList.contains('iphone')) { const o = document.getElementById('sbTint'); if (o) o.remove(); const t = document.createElement('div'); t.id = 'sbTint'; t.style.background = c; document.body.append(t); }
 }
 const _applyLook = applyLook; applyLook = function () { _applyLook(); syncStatusBar(); };
 if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncStatusBar);
-if (document.documentElement.classList.contains('iphone')) {   /* 浮窗（题卡、设置、更新提示、搜索）关掉后重新取色 */
-  let tm = 0; const kick = () => { clearTimeout(tm); tm = setTimeout(syncStatusBar, 60); };
-  new MutationObserver(ms => { if (ms.some(m => [...m.removedNodes].some(n => n.nodeType === 1 && n.id !== 'sbTint' && /set-ov|upd-ov|gs-ov|modal/.test(n.className || '')))) kick(); }).observe(document.body, { childList: true });
-  const md = document.getElementById('modal'); if (md) new MutationObserver(() => { if (!md.children.length) kick(); }).observe(md, { childList: true });
-}
 syncStatusBar();
 
 /* —— App 图标角标：显示今天到期的复习题数（需要 iOS 16.4 以上的主屏幕 App，并允许通知） —— */
