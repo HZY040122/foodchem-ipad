@@ -1,6 +1,6 @@
 {
-  "versionCode": 39,
-  "versionName": "2.8.1",
-  "apk": "FoodChemReview-v2.8.1.apk",
-  "notes": "学习功能的设置页加入演示动画；修复 iPhone 主屏幕 App 的显示问题；直接覆盖安装，学习进度会保留"
+  "versionCode": 40,
+  "versionName": "2.8.2",
+  "apk": "FoodChemReview-v2.8.2.apk",
+  "notes": "iPhone 状态栏适配；手机液态玻璃更流畅；直接覆盖安装，学习进度会保留"
 }
