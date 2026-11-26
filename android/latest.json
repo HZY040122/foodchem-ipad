@@ -1,6 +1,6 @@
 {
-  "versionCode": 54,
-  "versionName": "2.11",
-  "apk": "FoodChemReview-v2.11.apk",
-  "notes": "试验性功能新增「展开一题自动收起上一题」；直接覆盖安装，学习进度会保留"
+  "versionCode": 55,
+  "versionName": "2.11.1",
+  "apk": "FoodChemReview-v2.11.1.apk",
+  "notes": "冲刺计划考点过完判断修正；直接覆盖安装，学习进度会保留"
 }
