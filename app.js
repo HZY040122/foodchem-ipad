@@ -587,6 +587,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9.2', d: '2026-11-26', t: '复习站 2.9.2：修复 iPhone 右滑时出现旧页面截图', items: [
+    'iPhone / iPad 上切换页面不再新增浏览记录，各页面像原生 App 的标签页一样并列：系统的边缘右滑不会再退到旧页面的截图（比如侧栏还开着的画面）；从左边缘右滑改为拉出侧栏',
+    'iPhone 顶栏两个按钮和状态栏的距离恢复到之前的样子'] },
   { v: '2.9.1', d: '2026-11-26', t: '复习站 2.9.1：独立的注册和找回密码页面', items: [
     '注册账号和找回密码改成单独的页面：在设置的账号页点「注册新账号」或「忘记密码？」进入；注册时要输入两次密码',
     'iPhone 状态栏恢复之前的样式，去掉打开侧栏时出现的亮线；滚动边缘的渐隐保留',
@@ -954,7 +957,11 @@ function openMoreSheet() {
   $('.sheet-wrap', m).addEventListener('click', e => { if (e.target.classList.contains('sheet-wrap') || e.target.closest('a')) close(); });
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
-function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
+/* iPhone / iPad：切换页面时替换当前历史记录，不新增。各页面像原生 App 的标签页一样并列，
+   系统的边缘右滑返回就不会退到旧页面的截图（之前会看到侧栏还开着的旧画面） */
+const NAV_REPLACE = PLATFORM === 'apple';
+const goHash = h => { if (NAV_REPLACE) location.replace('#' + h); else location.hash = h; };
+function go(page) { if (location.hash.slice(1) === page) render(); else goHash(page); }
 /* 侧栏「下载 App」：跳到设置页的下载区 */
 document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
   if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
@@ -2513,9 +2520,12 @@ window.addEventListener('hashchange', () => {
   navTab = false;
 });
 document.addEventListener('click', e => {
-  const a = e.target.closest('#bnav a, #sidenav a[href^="#"], #topnav nav a'); if (!a || a.dataset.jump) return;
-  const h = a.getAttribute('href').slice(1);
-  if (h === (location.hash.slice(1) || 'today')) { e.preventDefault(); scrollTopSmooth(); } else navTab = true;
+  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  const a = e.target.closest('a[href^="#"]'); if (!a || a.target === '_blank') return;
+  const h = a.getAttribute('href').slice(1), cur = location.hash.slice(1) || 'today', tab = a.matches('#bnav a, #sidenav a, #topnav nav a');
+  if (tab && !a.dataset.jump && h === cur) { e.preventDefault(); scrollTopSmooth(); return; }
+  if (tab) navTab = true;
+  if (NAV_REPLACE && h && h !== cur && !a.dataset.jump) { e.preventDefault(); goHash(h); }
 }, true);
 /* 点顶栏（按钮以外的地方）回到顶部，代替系统「点状态栏回顶部」 */
 document.addEventListener('click', e => { const b = e.target.closest('#topnav .bar1'); if (b && !e.target.closest('button, a, input')) scrollTopSmooth(); });
@@ -2533,7 +2543,7 @@ document.addEventListener('touchstart', e => {
   if (t.clientX <= 22 && !document.querySelector('#modal > *, .set-ov, .upd-ov, .gs-ov') && !de.classList.contains('drawer')) {
     const pg = document.querySelector('#main > div'); if (!pg) return;
     /* 返回交给系统自带的边缘右滑；只有在没有上一页可回时，右滑拉出侧栏 */
-    const canBack = false, canDrawer = navStack.length <= 1 && history.length <= 1 && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
+    const canBack = false, canDrawer = (NAV_REPLACE ? history.length <= 1 : navStack.length <= 1 && history.length <= 1) && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
     if (!canDrawer) return;
     const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
     trackTouch(e, ev => {
@@ -2643,7 +2653,7 @@ document.addEventListener('touchstart', e => {
     setTimeout(() => { s.lens.remove(); s.bn.classList.remove('lensing'); }, 220);
     if (!it) return;
     swallow = Date.now();
-    if (it.tagName === 'A') { const h = it.getAttribute('href').slice(1); if (h === (location.hash.slice(1) || 'today')) scrollTopSmooth(); else { navTab = true; location.hash = h; } }
+    if (it.tagName === 'A') { const h = it.getAttribute('href').slice(1); if (h === (location.hash.slice(1) || 'today')) scrollTopSmooth(); else { navTab = true; goHash(h); } }
     else it.click();
   };
   document.addEventListener('pointerup', e => finish(e, true));

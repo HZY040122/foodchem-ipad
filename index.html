@@ -1482,9 +1482,6 @@ body:has(.set-ov) .modal { z-index: 97; }
 
 /* ===== 2.9 iPhone：状态栏取色条、更紧凑的顶栏 ===== */
 @media (max-width: 860px) {
-  html.iphone[data-skin="glass"] .top .bar1 { padding: 2px 12px 6px; min-height: 52px; }
-  html.iphone.appshell[data-skin="glass"] .shell > main { padding-top: calc(60px + env(safe-area-inset-top)); scroll-padding-top: calc(60px + env(safe-area-inset-top)); }
-  html.iphone[data-skin="glass"] #topnav::before { height: calc(84px + env(safe-area-inset-top)); }
   [data-skin="glass"] #topnav .tn-title { pointer-events: auto; cursor: default; }
 }
 /* ===== 2.9 液态玻璃标签栏：高度和位置贴近系统 App ===== */
