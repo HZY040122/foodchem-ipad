@@ -585,6 +585,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.8.1', d: '2026-11-26', t: '复习站 2.8.1：修复 iPhone 主屏幕 App 的显示问题', items: [
+    '修复：iPhone 主屏幕 App 里，液态玻璃风格的顶栏仍有一条背景，内容滚不到按钮下面',
+    '修复：iPhone 主屏幕 App 里，点「三条杠」拉出的侧栏被截断，收起后顶部还残留一截',
+    '设置的「学习功能」里，背诵模式、冲刺计划、睡前回顾和搜索栏的页面顶部各加了一段演示动画，直观展示功能的作用'] },
   { v: '2.8', d: '2026-11-26', t: '复习站 2.8：新顶栏、检查更新、统一版本号', items: [
     'iPhone 液态玻璃风格：顶栏只留左边的「三条杠」和右边的搜索按钮，两个按钮是液态玻璃质感，中间显示当前页面名称，去掉了顶栏的底框；点「三条杠」从左边拉出和 iPad 一样的侧栏',
     '液态玻璃风格的底部标签栏去掉「更多」，只留今日、自测、路径、错题本，其他页面从侧栏进入',
@@ -2073,15 +2077,44 @@ function pWeekly(m) {
 }
 /* —— 已转正功能的二级页面：开关 + 说明；搜索栏页面在悬浮搜索框和侧边栏「检索」之间切换 —— */
 const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight' };
+/* —— 学习功能二级页面顶部的演示动画（纯 CSS 循环播放；系统开了「减弱动态效果」时只显示最后的画面） —— */
+function demoHTML(k) {
+  if (k === 'labRecite') return `<div class="dm dm-rc" aria-hidden="true">
+    <div class="dm-top"><span class="dm-q">影响美拉德反应的因素？</span><span class="dm-seg"><i>要点</i><i class="on">挖空</i><i>全文</i></span></div>
+    <div class="dm-l"><i>1.</i><b class="k k1">温度</b><span>：温度越高，反应越快</span></div>
+    <div class="dm-l"><i>2.</i><b class="k k2">pH</b><span>：碱性条件下更容易发生</span></div>
+    <div class="dm-l"><i>3.</i><b class="k k3">水分活度</b><span>：中等水分活度时最快</span></div>
+    <div class="dm-cap">点挖空处逐个揭开，背完可以全部收起再来一遍</div></div>`;
+  if (k === 'labSprint') {
+    const cols = [['今天', ['水分', '糖类']], ['明天', ['脂质', '蛋白质']], ['后天', ['色素', '酶']], ['…', ['…']], ['最后 7 天', ['错题', '模拟卷']], ['考前 2 天', ['回顾']]];
+    let n = 0;
+    return `<div class="dm dm-sp" aria-hidden="true"><div class="dm-sph"><span>离考试 <b>23</b> 天</span><span class="dm-bar"><i></i></span><span class="dm-flag">考试</span></div>
+      <div class="dm-days">${cols.map(([d, cs], ci) => `<div class="dm-day${ci >= 4 ? ' end' : ''}"><span>${d}</span>${cs.map(c => `<b style="--d:${(n++) * .35}s">${c}</b>`).join('')}</div>`).join('')}</div></div>`;
+  }
+  if (k === 'labNight') return `<div class="dm dm-nt" aria-hidden="true"><i class="st s1"></i><i class="st s2"></i><i class="st s3"></i><i class="st s4"></i><span class="moon"></span>
+    <div class="dm-stack">${[['不会', '美拉德反应的条件'], ['模糊', '淀粉的糊化与老化'], ['不会', '油脂自动氧化历程']].map(([l, t], i) => `<div class="nc n${i + 1}"><b class="${l === '不会' ? 'bad' : 'mid'}">${l}</b>${t}</div>`).join('')}</div>
+    <div class="dm-timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18"/><circle class="arc" cx="22" cy="22" r="18"/></svg><span>5 分钟</span></div>
+    <div class="dm-ntcap">今天没掌握的题，睡前集中过一遍</div></div>`;
+  return '';
+}
+function searchDemoHTML(float) {
+  const res = ['<b>亚硫酸</b>盐的护色原理', '2019 · 名解 · <b>亚硫酸</b>盐', '酶促褐变的抑制方法'];
+  const typed = `<span class="ty"><i>亚</i><i>硫</i><i>酸</i></span>`;
+  return float ? `<div class="dm dm-sr" aria-hidden="true"><div class="dm-sk"><i></i><i></i><i></i><i></i></div>
+      <div class="dm-pill"><span class="mg"></span>${typed}<span class="caret"></span></div>
+      <div class="dm-res">${res.map((r, i) => `<div style="--d:${2.2 + i * .25}s">${r}</div>`).join('')}</div></div>`
+    : `<div class="dm dm-sr side" aria-hidden="true"><div class="dm-sb"><i>今日</i><i>知识点</i><i>每日自测</i><i class="on">检索</i><i>进度</i></div>
+      <div class="dm-pg"><div class="dm-in"><span class="mg"></span>${typed}<span class="caret"></span></div><div class="dm-res in">${res.map((r, i) => `<div style="--d:${2.2 + i * .25}s">${r}</div>`).join('')}</div></div></div>`;
+}
 function featPageHTML(k) {
   const f = LABS.find(x => x.k === k), sec = SET_SECS.find(x => FEAT_PG[x[0]] === k);
-  return `<div class="ios-grp"><div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(sec[2])}<span class="ios-n">${esc(sec[1])}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${esc(sec[1])}"><i></i></button></div></div>
+  return `<div class="ios-grp dm-wrap">${demoHTML(k)}</div><div class="ios-grp" style="margin-top:14px"><div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(sec[2])}<span class="ios-n">${esc(sec[1])}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${esc(sec[1])}"><i></i></button></div></div>
     <p class="ios-note">出现在：${esc(f.where)}</p>
     <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>${esc(f.d)}</p><ul>${f.how.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
 }
 function searchPageHTML() {
   const fl = featOn('labSearch'), ck = '<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  return `<div class="ios-grp" role="radiogroup" aria-label="搜索方式">
+  return `<div class="ios-grp dm-wrap">${searchDemoHTML(fl)}</div><div class="ios-grp" role="radiogroup" aria-label="搜索方式" style="margin-top:14px">
       <button class="ios-row" data-srch="float" role="radio" aria-checked="${fl}">${SV('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7.5 9h9"/>')}<span class="ios-n">悬浮搜索框</span>${fl ? ck : ''}</button>
       <button class="ios-row" data-srch="side" role="radio" aria-checked="${!fl}">${SV('<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9 4.5v15"/>')}<span class="ios-n">侧边栏「检索」</span>${!fl ? ck : ''}</button></div>
     <p class="ios-note">悬浮搜索框：页面顶部常驻一个搜索框，任何页面都能随手搜，点题目直接弹出题卡，手机上在顶栏右侧的放大镜。侧边栏「检索」：在侧边栏里单独放一个「检索」页面，搜索结果占满整页。</p>`;

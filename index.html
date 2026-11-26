@@ -1306,6 +1306,109 @@ body:has(.set-ov) .modal { z-index: 97; }
   [data-theme="dark"][data-skin="glass"] .tn-ic { background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06)); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.18), 0 6px 18px rgba(0,0,0,.35); }
 }
 @media (max-width: 860px) and (prefers-color-scheme: dark) { :root[data-skin="glass"]:not([data-theme="light"]) .tn-ic { background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06)); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.18), 0 6px 18px rgba(0,0,0,.35); } }
+
+/* ===== 2.8.1 主屏幕 App（App 外壳）里的 iPhone 液态玻璃：顶栏浮在内容上方，侧栏铺满整个屏幕 ===== */
+@media (max-width: 860px) {
+  html.appshell[data-skin="glass"] #topnav { position: absolute; top: 0; left: 0; right: 0; z-index: 30; pointer-events: none; background: transparent !important; }
+  html.appshell[data-skin="glass"] #topnav .tn-ic { pointer-events: auto; }
+  html.appshell[data-skin="glass"] .shell { flex: 1 1 auto; }
+  html.appshell[data-skin="glass"] .shell > main { padding-top: 76px; scroll-padding-top: 76px; }
+  html.appshell[data-skin="glass"] nav.side { position: fixed; top: 0; bottom: 0; left: 0; height: auto; min-height: 0; overflow: hidden; z-index: 85; }
+}
+/* ===== 2.8.1 学习功能演示动画 ===== */
+.dm-wrap { overflow: hidden; }
+.dm { position: relative; height: 178px; overflow: hidden; padding: 14px 18px; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.dm-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dm-q { font-weight: 650; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 7%, transparent); font-size: 11.5px; flex: none; }
+.dm-seg i { font-style: normal; padding: 2px 8px; border-radius: 7px; color: var(--muted); }
+.dm-seg i.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.dm-l { display: flex; gap: 6px; align-items: baseline; margin: 8px 0; white-space: nowrap; }
+.dm-l > i { font-style: normal; color: var(--muted); }
+.dm-l span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.dm-rc .k { position: relative; color: var(--accent); font-weight: 650; }
+.dm-rc .k::after { content: ''; position: absolute; inset: -2px -4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 20%, var(--surface)); border-bottom: 2px solid var(--accent); opacity: 0; animation: dmC1 7s infinite both; }
+.dm-rc .k::before { content: ''; position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 35%, transparent); opacity: 0; z-index: 1; animation: dmT1 7s infinite both; }
+.dm-rc .k2::after { animation-name: dmC2; } .dm-rc .k2::before { animation-name: dmT2; }
+.dm-rc .k3::after { animation-name: dmC3; } .dm-rc .k3::before { animation-name: dmT3; }
+@keyframes dmC1 { 0%, 14% { opacity: 1; } 18%, 86% { opacity: 0; } 92%, 100% { opacity: 1; } }
+@keyframes dmC2 { 0%, 34% { opacity: 1; } 38%, 86% { opacity: 0; } 92%, 100% { opacity: 1; } }
+@keyframes dmC3 { 0%, 54% { opacity: 1; } 58%, 86% { opacity: 0; } 92%, 100% { opacity: 1; } }
+@keyframes dmT1 { 0%, 10% { opacity: 0; transform: scale(.4); } 13% { opacity: 1; transform: scale(1); } 19%, 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes dmT2 { 0%, 30% { opacity: 0; transform: scale(.4); } 33% { opacity: 1; transform: scale(1); } 39%, 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes dmT3 { 0%, 50% { opacity: 0; transform: scale(.4); } 53% { opacity: 1; transform: scale(1); } 59%, 100% { opacity: 0; transform: scale(1.6); } }
+.dm-cap, .dm-ntcap { position: absolute; left: 18px; right: 18px; bottom: 12px; font-size: 12px; color: var(--muted); }
+/* 冲刺计划 */
+.dm-sph { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.dm-sph b { color: var(--ink); font-size: 15px; }
+.dm-bar { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; }
+.dm-bar i { display: block; height: 100%; width: 100%; border-radius: 3px; background: var(--ok); transform-origin: left; animation: dmBar 7s infinite both; }
+@keyframes dmBar { 0% { transform: scaleX(.08); } 80%, 92% { transform: scaleX(1); } 100% { transform: scaleX(.08); } }
+.dm-flag { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--accent); color: #fff; }
+.dm-days { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; height: 118px; }
+.dm-day { display: flex; flex-direction: column; gap: 5px; padding: 6px 4px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 4%, transparent); min-width: 0; }
+.dm-day > span { font-size: 10.5px; color: var(--muted); text-align: center; white-space: nowrap; }
+.dm-day.end { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dm-day b { font-weight: 500; font-size: 11.5px; text-align: center; padding: 3px 2px; border-radius: 6px; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.08); white-space: nowrap; overflow: hidden; animation: dmDrop 7s infinite both; animation-delay: var(--d); }
+.dm-day.end b { background: var(--accent); color: #fff; }
+@keyframes dmDrop { 0% { opacity: 0; transform: translateY(-16px); } 6% { opacity: 1; transform: none; } 78% { opacity: 1; } 86%, 100% { opacity: 0; } }
+/* 睡前回顾 */
+.dm-nt { background: linear-gradient(160deg, #1d2440, #3a2f55 70%, #4b3557); color: #f3efe6; }
+.dm-nt .moon { position: absolute; right: 22px; top: 16px; width: 30px; height: 30px; border-radius: 50%; box-shadow: -7px 4px 0 0 #f6e7b8; transform: rotate(-12deg); animation: dmMoon 7s ease-in-out infinite; }
+@keyframes dmMoon { 0%, 100% { transform: translateY(2px) rotate(-12deg); } 50% { transform: translateY(-3px) rotate(-12deg); } }
+.dm-nt .st { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .5; animation: dmStar 2.6s infinite; }
+.dm-nt .s1 { left: 58%; top: 18px; } .dm-nt .s2 { left: 72%; top: 52px; animation-delay: .8s; } .dm-nt .s3 { left: 46%; top: 40px; animation-delay: 1.5s; } .dm-nt .s4 { left: 88%; top: 66px; animation-delay: 2s; }
+@keyframes dmStar { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.dm-stack { position: absolute; left: 18px; top: 18px; width: 62%; height: 110px; }
+.dm-nt .nc { position: absolute; left: 0; right: 0; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.12); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border: .5px solid rgba(255,255,255,.25); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: dmCard 7s infinite both; }
+.dm-nt .nc b { font-weight: 600; font-size: 10.5px; padding: 0 6px; border-radius: 99px; margin-right: 6px; }
+.dm-nt .nc b.bad { background: #e06b5a; } .dm-nt .nc b.mid { background: #d9a441; color: #2a2210; }
+.dm-nt .n1 { top: 0; } .dm-nt .n2 { top: 36px; animation-delay: .5s; } .dm-nt .n3 { top: 72px; animation-delay: 1s; }
+@keyframes dmCard { 0% { opacity: 0; transform: translateX(60px); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 90%, 100% { opacity: 0; transform: translateY(-6px); } }
+.dm-timer { position: absolute; right: 18px; bottom: 34px; width: 64px; text-align: center; font-size: 11px; color: #f6e7b8; }
+.dm-timer svg { width: 46px; height: 46px; display: block; margin: 0 auto 2px; transform: rotate(-90deg); }
+.dm-timer circle { fill: none; stroke: rgba(255,255,255,.18); stroke-width: 4; }
+.dm-timer circle.arc { stroke: #f6e7b8; stroke-linecap: round; stroke-dasharray: 113; stroke-dashoffset: 0; animation: dmArc 7s infinite both; }
+@keyframes dmArc { 0%, 20% { stroke-dashoffset: 113; } 85%, 100% { stroke-dashoffset: 0; } }
+.dm-nt .dm-ntcap { color: rgba(243,239,230,.75); }
+/* 搜索栏 */
+.dm-sr { background: color-mix(in srgb, var(--ink) 3%, var(--surface)); }
+.dm-sk { position: absolute; left: 18px; right: 18px; top: 62px; display: grid; gap: 10px; }
+.dm-sk i { height: 9px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dm-sk i:nth-child(2) { width: 80%; } .dm-sk i:nth-child(4) { width: 60%; }
+.dm-pill, .dm-in { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: 72%; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border-radius: 16px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.1), 0 0 0 .5px var(--line); font-size: 13px; }
+.dm-sr .mg { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--muted); margin-right: 6px; position: relative; flex: none; }
+.dm-sr .mg::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--muted); right: -6px; bottom: -3px; transform: rotate(45deg); }
+.dm-sr .ty i { font-style: normal; opacity: 0; animation: dmType 7s infinite both; }
+.dm-sr .ty i:nth-child(2) { animation-delay: .4s; } .dm-sr .ty i:nth-child(3) { animation-delay: .8s; }
+@keyframes dmType { 0%, 10% { opacity: 0; } 12%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.dm-sr .caret { width: 1.5px; height: 15px; background: var(--accent); animation: dmBlink 1s steps(1) infinite; }
+@keyframes dmBlink { 50% { opacity: 0; } }
+.dm-res { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); width: 72%; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: 0 10px 26px rgba(0,0,0,.14), 0 0 0 .5px var(--line); display: grid; gap: 2px; }
+.dm-res div { padding: 5px 8px; border-radius: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: dmRes 7s infinite both; animation-delay: var(--d); }
+.dm-res div:first-child { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dm-res b { color: var(--accent); font-weight: 600; }
+@keyframes dmRes { 0% { opacity: 0; transform: translateY(-6px); } 5% { opacity: 1; transform: none; } 55% { opacity: 1; } 62%, 100% { opacity: 0; } }
+.dm-sr.side { display: grid; grid-template-columns: 30% 1fr; padding: 0; }
+.dm-sb { padding: 14px 8px; display: grid; align-content: start; gap: 4px; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.dm-sb i { font-style: normal; font-size: 12px; padding: 5px 8px; border-radius: 8px; color: var(--muted); }
+.dm-sb i.on { background: var(--accent); color: #fff; animation: dmPick 7s infinite both; }
+@keyframes dmPick { 0%, 6% { background: transparent; color: var(--muted); } 10%, 100% { background: var(--accent); color: #fff; } }
+.dm-pg { position: relative; }
+.dm-sr.side .dm-in { left: 14px; right: 14px; transform: none; width: auto; box-shadow: 0 0 0 1px var(--line); }
+.dm-sr.side .dm-res.in { left: 14px; right: 14px; transform: none; width: auto; box-shadow: none; background: transparent; padding: 0; }
+[data-skin="book"] .dm-day b, [data-skin="book"] .dm-pill, [data-skin="book"] .dm-res { border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .dm *, .dm *::before, .dm *::after { animation: none !important; } .dm-rc .k::after { opacity: 0; } }
+
+/* 2.8.1：iPhone 液态玻璃顶栏下方的「滚动边缘」柔和渐隐（没有底框和分界线，内容滚上来时文字不会和标题打架） */
+@media (max-width: 860px) {
+  [data-skin="glass"] #topnav::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 100px; z-index: -1; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(var(--pane), .55), rgba(var(--pane), 0));
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent); mask-image: linear-gradient(to bottom, #000 45%, transparent); }
+  [data-skin="glass"] #topnav { isolation: isolate; }
+}
+.dm-l .k + span { margin-left: -3px; }
 </style>
 </head>
 <body>
