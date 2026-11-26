@@ -1569,6 +1569,28 @@ body:has(.set-ov) .modal { z-index: 97; }
 @keyframes tmLine { 0%, 4% { opacity: 0; transform: translateY(3px); } 8%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
 .tm-box .caret { position: absolute; right: 12px; bottom: 9px; width: 1.5px; height: 14px; background: var(--accent); animation: dmBlink 1s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .tm-box .tl { opacity: 1; } .tm-pill .tm-over { opacity: 0; } }
+
+/* ===== 2.9.4 ===== */
+/* 首页问候：「早上好，名字」一行，「欢迎回来」作为副标题，手机上不再在名字后面突兀换行 */
+.hero h1.hi .hi-2::before { content: '，'; }
+@media (max-width: 860px) {
+  .hero h1.hi { display: grid; gap: 6px; line-height: 1.2; }
+  .hero h1.hi .hi-1 { word-break: keep-all; overflow-wrap: anywhere; }
+  .hero h1.hi .hi-nm { color: var(--accent); }
+  .hero h1.hi .hi-2 { font-size: .58em; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .hero h1.hi .hi-2::before { content: none; }
+  [data-skin="md3"] .hero h1.hi .hi-2 { color: inherit; opacity: .75; }
+}
+/* 下拉同步：对勾和叉用 SVG 画，保证在圆里居中 */
+.ptr.done .ptr-ic::after, .ptr.fail .ptr-ic::before, .ptr.fail .ptr-ic::after { content: none !important; }
+.ptr.done .ptr-ic { background: var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.4 8.3l2.4 2.4 4.8-5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
+.ptr.fail .ptr-ic { background: var(--bad) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
+/* 限时作答演示：两种状态的文字叠在同一格里，标签宽度按较长的那句算，不会超出卡片 */
+.tm-tx { display: grid; }
+.tm-tx > b { grid-area: 1 / 1; }
+.tm-pill .tm-over { position: static; left: auto; }
+.tm-pill { max-width: 52%; }
+.tm-tx > b { overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>

@@ -587,6 +587,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9.4', d: '2026-11-26', t: '复习站 2.9.4：首页问候排版、下拉同步位置和演示动画修正', items: [
+    '手机上首页问候改为两行：「早上好，名字」一行（名字用强调色），「欢迎回来」作为副标题，不再在名字后面突兀换行',
+    'iPhone 下拉同步的提示往下移，不再压在顶栏的模糊渐隐上；完成时的对勾和失败时的叉在圆里居中',
+    '限时作答演示动画里的计时标签不再超出卡片'] },
   { v: '2.9.3', d: '2026-11-26', t: '复习站 2.9.3：限时作答转正，下拉同步完成后显示对勾', items: [
     '限时作答转为正式功能，默认开启：在设置的「学习功能」里开关，页面顶部有演示动画',
     '下拉同步完成后显示绿色的对勾（失败显示红色的叉），不再一直转圈',
@@ -1053,7 +1057,7 @@ function pToday(m) {
   const dur = S.settings.dur || 90;
   const plan = { 60: [30, 20, 10, 0], 90: [40, 25, 15, 10], 120: [50, 30, 25, 15] }[dur];
   const realQ = BANK.filter(q => !q.scen); const mast = realQ.filter(q => qs(q.id).l === 3).length; const pct = mast / realQ.length; const R = 46, CC = 2 * Math.PI * R;
-  m.innerHTML = `<section class="hero">${MOL}<div><div class="kick">${today}${S.settings.goal ? ' · 目标：' + esc(S.settings.goal) : ''}</div><h1>${S.settings.name ? greet() + '，' + esc(S.settings.name) + '，欢迎回来' : '今天的复习'}</h1><p class="lead">${cd} ${S.settings.motto ? esc(S.settings.motto) : '按"复习路径 → 每日自测 → 错题回顾 → 知识点图解"的顺序，每天 1–2 小时，稳扎稳打。'}</p></div>
+  m.innerHTML = `<section class="hero">${MOL}<div><div class="kick">${today}${S.settings.goal ? ' · 目标：' + esc(S.settings.goal) : ''}</div><h1 class="${S.settings.name ? 'hi' : ''}">${S.settings.name ? `<span class="hi-1">${greet()}，<span class="hi-nm">${esc(S.settings.name)}</span></span><span class="hi-2">欢迎回来</span>` : '今天的复习'}</h1><p class="lead">${cd} ${S.settings.motto ? esc(S.settings.motto) : '按"复习路径 → 每日自测 → 错题回顾 → 知识点图解"的顺序，每天 1–2 小时，稳扎稳打。'}</p></div>
   <div class="ring" title="真题掌握进度"><svg viewBox="0 0 112 112"><circle cx="56" cy="56" r="${R}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="56" cy="56" r="${R}" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="${pct ? 'round' : 'butt'}" stroke-dasharray="${(CC * pct).toFixed(1)} ${CC.toFixed(1)}"/></svg><div class="rv"><b>${Math.round(pct * 100)}%</b><span>真题已掌握</span><span>${mast}/${realQ.length}</span></div></div></section>
   <div class="grid g4">
     <div class="card tile">${icon('today', 'ti')}<b>${due}</b><span>到期复习题</span></div>
@@ -2131,7 +2135,7 @@ function demoHTML(k) {
       <div class="dm-days">${cols.map(([d, cs], ci) => `<div class="dm-day${ci >= 4 ? ' end' : ''}"><span>${d}</span>${cs.map(c => `<b style="--d:${(n++) * .35}s">${c}</b>`).join('')}</div>`).join('')}</div></div>`;
   }
   if (k === 'labTimer') return `<div class="dm dm-tm" aria-hidden="true">
-    <div class="dm-top"><span class="dm-q">简述影响淀粉糊化的因素</span><span class="tm-pill"><i class="tm-dot"></i><b class="tm-run">计时中 · 建议 8 分钟</b><b class="tm-over">已超时 · 只提醒不打断</b></span></div>
+    <div class="dm-top"><span class="dm-q">简述影响淀粉糊化的因素</span><span class="tm-pill"><i class="tm-dot"></i><span class="tm-tx"><b class="tm-run">计时中 · 8 分钟</b><b class="tm-over">已超时 · 仅提醒</b></span></span></div>
     <div class="tm-bar"><i></i></div>
     <div class="tm-box"><span class="tl t1">1. 淀粉种类：直链淀粉含量高，糊化温度高</span><span class="tl t2">2. 水分含量：水分不足时难以完全糊化</span><span class="tl t3">3. 糖、盐、脂类：一般使糊化温度升高</span><span class="caret"></span></div>
     <div class="dm-cap">开始写答案时自动计时，超时只变红提醒</div></div>`;
@@ -2616,7 +2620,7 @@ document.addEventListener('touchstart', e => {
     const mm = document.getElementById('main'), mr = mm && mm.getBoundingClientRect(), tn = document.getElementById('topnav'), tr = tn && tn.getBoundingClientRect();
     const gp = document.getElementById('gsPill'), gr = gp && getComputedStyle(gp).display !== 'none' ? gp.getBoundingClientRect() : null;
     let top = 12, left = innerWidth / 2;
-    if (innerWidth <= 860) { if (tr && tr.height) top = tr.bottom + 6; }
+    if (innerWidth <= 860) { if (tr && tr.height) { const fh = parseFloat(getComputedStyle(tn, '::before').height); top = Math.max(tr.bottom + 16, fh ? tr.top + fh - 14 : 0); } }
     else { if (mr) left = mr.left + mr.width / 2; top = gr && gr.height ? gr.bottom + 10 : (mr ? mr.top + 12 : 12); }
     el.style.top = top + 'px'; el.style.left = left + 'px'; return el;
   };
