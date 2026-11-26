@@ -589,6 +589,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.11', d: '2026-11-26', t: '复习站 2.11：新的试验性功能「展开一题自动收起上一题」', items: [
+    '试验性功能新增「展开一题自动收起上一题」（默认关闭）：在错题本和复习路径「往年问法」的题目列表里点开一道新题时，之前展开的题会自动收起',
+    '收起上面的题时，刚点开的这道题会停在原来的位置，不会往上跳'] },
   { v: '2.10.6', d: '2026-11-26', t: '复习站 2.10.6：设置分组恢复、iPad 设置闪烁和启动画面修正', items: [
     '设置的分组恢复成 2.10.4 的样子（学习、学习功能、复习工具、应用程序、外观）',
     '修好了 iPad 上设置浮窗弹出后闪一下的问题：背后的遮罩改为只渐变颜色，浮窗的毛玻璃从一开始就能透出后面的页面',
@@ -1289,7 +1292,7 @@ function pPath(m) {
     sb.append(doneBtn(1));
   } else if (NAV.pathStep === 2) {
     sb.innerHTML = `<div class="warnbox">往年问法按题型排列，相同或几乎相同的题合并成一组，标出全部年份。重复出现的题更要背熟。</div><div class="list" id="old" style="margin-top:10px">${g2.map(g => { const q = g[0], l = qs(q.id).l; return `<div class="li" data-q="${q.id}" style="cursor:pointer"><div class="stripe l${l}"></div><div class="main"><div class="t">${esc(q.q.split('\n')[0].slice(0, 90))}</div><div class="s"><span class="chip">${TLABEL[q.t]}</span><span>${g.map(x => x.y).join('、')}</span>${g.length > 1 ? `<span class="chip hot">考过 ${g.length} 次</span>` : ''}<span class="lv l${l}"><i></i>${LVL[l]}</span></div></div></div>`; }).join('') || '<p class="empty">这个考点只有一年考过。</p>'}</div>`;
-    $('#old').onclick = e => { const r = e.target.closest('[data-q]'); if (!r) return; const nx = r.nextElementSibling; if (nx && nx.classList.contains('q')) { nx.remove(); return; } r.after(qcard(BY[r.dataset.q], { onRated: () => { } })); };
+    $('#old').onclick = e => { const r = e.target.closest('[data-q]'); if (!r) return; const nx = r.nextElementSibling; if (nx && nx.classList.contains('q')) { nx.remove(); return; } accordionCollapse($('#old'), r); r.after(qcard(BY[r.dataset.q], { onRated: () => { } })); };
     sb.append(doneBtn(2));
   } else {
     const terms = [...new Set(s.qs.filter(q => q.t === '名解').map(q => q.q))];
@@ -1426,6 +1429,7 @@ function pWrong(m) {
     const host = row.parentElement.classList.contains('sw-wrap') ? row.parentElement : row;
     const nx = host.nextElementSibling;
     if (nx && nx.classList.contains('q')) { nx.remove(); row.classList.remove('open'); row.setAttribute('aria-expanded', 'false'); return; }
+    accordionCollapse($('#wl'), row);
     const c = qcard(BY[row.dataset.q]); $('.nt', c).hidden = false; host.after(c); row.classList.add('open'); row.setAttribute('aria-expanded', 'true');
   };
   $$('#wl .li[data-q]').forEach(r => { r.setAttribute('role', 'button'); r.setAttribute('aria-expanded', 'false'); r.tabIndex = 0; });
@@ -1988,8 +1992,18 @@ const LABS = [
   { k: 'labMockDiag', t: '模拟卷诊断报告', d: '模拟卷交卷并打完分后，按模块、题型和考点分析丢分，指出丢分最多的地方，一键重练低分题。', how: ['按模块、按题型显示丢了多少分', '列出丢分最多的考点，点一下走复习路径', '得分率低于 60% 的题可以一键重练（打低分的题会自动进入错题本）'], where: '模拟卷交卷后，试卷顶部' },
   { k: 'labTrend', t: '考点趋势提示', d: '根据历年真题的出现规律，在考点上标出：连续 3 年都考、高频但近两年没考、近年新出现。帮你在最后阶段判断复习的轻重。', how: ['「连续 3 年都考」：最近三年每年都出现', '「高频 · 近两年没考」：出现过 6 年以上，但最近两年没出现', '「近年新出现」：最近五年才开始考，出现不超过 3 次', '这只是历年规律的参考，不是押题'], where: '首页高频考点、复习路径列表' },
   { k: 'labNight', t: '睡前五分钟回顾', d: '把今天评了「不会」「模糊」的题集中起来，睡前快速过一遍答案要点。睡眠期间大脑会巩固睡前接触的内容，花的时间少、效果好。', how: ['今天有评「不会」「模糊」的题时，首页出现回顾卡片', '晚上 7 点以后卡片会更醒目', '安卓 App 的每日提醒会顺带提示睡前回顾的题数'], where: '首页' },
-  { k: 'labSearch', t: '悬浮搜索框', d: '把「检索」从侧边栏移到页面上方的悬浮搜索框，在任何页面都能随手搜，不用离开当前页面。', how: ['点页面顶部的搜索框，或按 ⌘K / Ctrl K、/ 键打开', '边输入边出结果，点题目直接弹出题卡', '手机上在顶栏右侧的放大镜图标'], where: '页面顶部；手机在顶栏' }
+  { k: 'labSearch', t: '悬浮搜索框', d: '把「检索」从侧边栏移到页面上方的悬浮搜索框，在任何页面都能随手搜，不用离开当前页面。', how: ['点页面顶部的搜索框，或按 ⌘K / Ctrl K、/ 键打开', '边输入边出结果，点题目直接弹出题卡', '手机上在顶栏右侧的放大镜图标'], where: '页面顶部；手机在顶栏' },
+  { k: 'labAccordion', t: '展开一题自动收起上一题', d: '在题目列表里点开一道新题时，之前展开的那道题会自动收起来，列表不会越拉越长，当前这道题也会留在原来的位置，不会因为上面的题收起而跳走。', how: ['错题本：点题目展开时，收起其他已展开的题', '复习路径第 2 步「往年问法」：同样只保留一道展开', '再点一次已展开的题，照常收起'], where: '错题本、复习路径「往年问法」的题目列表' }
 ];
+/* 试验性功能「展开一题自动收起上一题」：收起同一列表里其他展开的题卡，并保持刚点的那一行在屏幕上的位置不动 */
+function accordionCollapse(list, row) {
+  if (!S.settings.labAccordion || !list) return;
+  const host = r => (r.parentElement && r.parentElement.classList.contains('sw-wrap')) ? r.parentElement : r;
+  const y0 = row.getBoundingClientRect().top;
+  let any = false;
+  list.querySelectorAll(':scope > .q').forEach(c => { if (c.previousElementSibling !== host(row)) { const pr = c.previousElementSibling, r = pr && (pr.matches('.li') ? pr : pr.querySelector(':scope > .li')); if (r) { r.classList.remove('open'); r.setAttribute('aria-expanded', 'false'); } c.remove(); any = true; } });
+  if (any) { const dy = row.getBoundingClientRect().top - y0; if (Math.abs(dy) > 1) setScroll(getScroll() + dy); }
+}
 function pLabs(m) {
   const st = S.settings; const LABS2 = LABS.filter(f => !STABLE.has(f.k));
   m.innerHTML = `<div class="kick">LABS · 试验性功能</div><h1>试验性功能 <sup class="beta lg">beta</sup></h1><p class="lead">这里放的是还在打磨的新功能，默认都是关闭的。打开后，对应的按钮才会出现在刷题界面里；觉得用不惯，随时关掉，学习记录不受影响。</p>
