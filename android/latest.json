@@ -1,6 +1,6 @@
 {
-  "versionCode": 42,
-  "versionName": "2.9.1",
-  "apk": "FoodChemReview-v2.9.1.apk",
-  "notes": "注册账号和找回密码改成单独的页面；下拉同步只在今日页面；直接覆盖安装，学习进度会保留"
+  "versionCode": 43,
+  "versionName": "2.9.2",
+  "apk": "FoodChemReview-v2.9.2.apk",
+  "notes": "版本号与 iPhone、iPad 保持一致；直接覆盖安装，学习进度会保留"
 }
