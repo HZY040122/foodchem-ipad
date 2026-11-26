@@ -1,6 +1,6 @@
 {
-  "versionCode": 43,
-  "versionName": "2.9.2",
-  "apk": "FoodChemReview-v2.9.2.apk",
-  "notes": "版本号与 iPhone、iPad 保持一致；直接覆盖安装，学习进度会保留"
+  "versionCode": 44,
+  "versionName": "2.9.3",
+  "apk": "FoodChemReview-v2.9.3.apk",
+  "notes": "限时作答转为正式功能；下拉同步完成后显示对勾；直接覆盖安装，学习进度会保留"
 }
