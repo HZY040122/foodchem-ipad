@@ -585,6 +585,13 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.8', d: '2026-11-26', t: '复习站 2.8：新顶栏、检查更新、统一版本号', items: [
+    'iPhone 液态玻璃风格：顶栏只留左边的「三条杠」和右边的搜索按钮，两个按钮是液态玻璃质感，中间显示当前页面名称，去掉了顶栏的底框；点「三条杠」从左边拉出和 iPad 一样的侧栏',
+    '液态玻璃风格的底部标签栏去掉「更多」，只留今日、自测、路径、错题本，其他页面从侧栏进入',
+    'iPad 和 iPhone 的主屏幕 App 新增检查更新：设置里的「App 更新」和右上角 ⓘ 都能手动检查；从后台切回来时也会自动检查，不用再划掉重开',
+    '所有平台的更新提示改为居中的大浮窗，写明新版本更新了什么',
+    '安卓、iPad、iPhone 和网页版的版本号从这一版起保持一致',
+    '侧边栏去掉「2004–2026 真题 · 11 模块」这一行；冲刺计划标题旁的「试验」标签也去掉了'] },
   { v: '2.7', d: '2026-11-25', t: '复习站 2.7：速查手册和周报放进设置，搜索栏转正', items: [
     '考前速查手册和学习周报改为设置窗口里的二级页面，不再跳出设置',
     '速查手册的 PDF 改为由复习站自己生成：点「生成 PDF」，完成后点「分享 / 保存 PDF」。iPad 和 iPhone 上可以存到「文件」或直接打印，安卓 App 打开系统打印界面，可另存为 PDF',
@@ -758,50 +765,95 @@ const APP_VERSION = CHANGELOG[0].v;
 function logItems(c) { return `<ul class="chg">${c.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`; }
 function showUpdate() {
   if (S.settings.seenVer === APP_VERSION) return;
-  const c = CHANGELOG[0], m = $('#modal');
-  m.innerHTML = `<div class="modal upd" role="dialog" aria-modal="true" aria-label="更新说明"><div class="card">
-    <div class="uh">${MARK}<div><div class="kick" style="margin:0">更新 · v${esc(c.v)} · ${esc(c.d)}</div><h3>${esc(c.t)}</h3></div></div>
-    ${logItems(c)}
-    <div class="row" style="margin-top:14px"><button class="btn" data-log>查看全部更新日志</button><span class="sp"></span><button class="btn pri" data-ok>开始复习</button></div></div></div>`;
-  const close = go => { m.innerHTML = ''; S.settings.seenVer = APP_VERSION; save(); document.removeEventListener('keydown', k); if (go) openSettings('log'); };
-  const k = e => { if (e.key === 'Escape') close(); };
-  $('[data-ok]', m).onclick = () => close(); $('[data-log]', m).onclick = () => close(true);
-  $('.modal', m).addEventListener('click', e => { if (e.target.classList.contains('modal')) close(); });
-  document.addEventListener('keydown', k);
-  $('[data-ok]', m).focus();
+  const c = CHANGELOG[0], close = go => { updDlg(null); S.settings.seenVer = APP_VERSION; save(); if (go) openSettings('log'); };
+  updDlg({ kick: `已更新到 v${c.v} · ${c.d}`, title: c.t, notes: c.items, actions: [['log', '全部更新日志'], ['ok', '开始复习', 'pri']], on: { ok: () => close(), log: () => close(true), x: () => close() } });
+}
+/* ---------- 统一的更新弹窗：安卓、主屏幕 App、网页都用这个居中的大浮窗 ---------- */
+function updDlg(o) {
+  let d = document.getElementById('updDlg');
+  if (!o) { if (d) d.remove(); UPD.on = null; return; }
+  if (!d) {
+    d = document.createElement('div'); d.id = 'updDlg'; d.className = 'upd-ov'; d.innerHTML = '<div class="upd-win" role="dialog" aria-modal="true" aria-labelledby="updT"></div>'; document.body.append(d);
+    d.addEventListener('click', e => { const b = e.target.closest('[data-u]'); if (b) return updAct(b.dataset.u); if (e.target === d && !UPD.busy) updAct('x'); });
+  }
+  UPD.on = o.on || null;
+  d.querySelector('.upd-win').innerHTML = `<div class="upd-hero">${MARK}<div><div class="upd-k">${esc(o.kick || '')}</div><h3 id="updT">${esc(o.title)}</h3></div></div>
+    ${o.notes && o.notes.length ? `<ul class="chg">${o.notes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${o.text ? `<p class="upd-tx">${esc(o.text)}</p>` : ''}
+    ${o.status ? `<p class="upd-st">${o.spin ? '<span class="upd-spin" aria-hidden="true"></span>' : ''}${esc(o.status)}</p>` : ''}
+    ${o.actions && o.actions.length ? `<div class="upd-act">${o.actions.map(([k, l, c]) => `<button class="btn ${c || ''}" data-u="${k}">${esc(l)}</button>`).join('')}</div>` : ''}`;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('updDlg') && !UPD.busy) updAct('x'); });
+function updAct(a) {
+  if (UPD.on && UPD.on[a]) return UPD.on[a]();
+  if (a === 'x' || a === 'later') { if (a === 'later' && UPD.offer) UPD.skip = UPD.offer; return updDlg(null); }
+  if (a === 'go' && UPD.info) return window.AndroidApp.download(UPD.info.url, UPD.info.name || '');
+  if (a === 'web' && UPD.info) return window.AndroidApp.openUrl(UPD.info.page || UPD.info.url);
+  if (a === 'pwa') return pwaApply();
+  if (a === 'reload') return location.reload();
 }
 /* ---------- 安卓 App：联网时检查 GitHub 上的新版本，可在 App 里直接下载安装 ---------- */
-const HAS_UPD = !!(window.AndroidApp && window.AndroidApp.checkUpdate);
-let updInfo = null;
-function updBar(html) {
-  let b = document.getElementById('app-upd');
-  if (!html) { if (b) b.remove(); return; }
-  if (!b) { b = document.createElement('div'); b.id = 'app-upd'; b.className = 'app-upd'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
-  b.innerHTML = html;
-  b.onclick = e => { const t = e.target.closest('[data-u]'); if (!t) return; const a = t.dataset.u;
-    if (a === 'go' && updInfo) window.AndroidApp.download(updInfo.url, updInfo.name || '');
-    if (a === 'web' && updInfo) window.AndroidApp.openUrl(updInfo.page || updInfo.url);
-    if (a === 'x') updBar(''); };
-}
+const UPD = { info: null, offer: null, skip: null, busy: false, ready: false, manual: false, last: 0, on: null, pwa: !!(window.__PWA && 'serviceWorker' in navigator && !window.AndroidApp) };
+const IS_APK = !!(window.AndroidApp && window.AndroidApp.checkUpdate);
+const HAS_UPD = IS_APK || UPD.pwa;
+const vNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; } return false; };
 function updStatus(t) { const e = document.getElementById('ust'); if (e) e.textContent = t; }
+/* 手动检查：设置里的「检查更新」和 ⓘ 菜单都走这里 */
+function appCheck(manual) {
+  UPD.manual = !!manual; UPD.last = Date.now(); if (manual) updStatus('正在检查……');
+  if (IS_APK) { try { window.AndroidApp.checkUpdate(!!manual); } catch (e) { } } else if (UPD.pwa) pwaCheck(manual);
+}
+const updLatest = cur => { updStatus(`已经是最新版本（v${cur}）`); if (UPD.manual) updDlg({ kick: '检查更新', title: '已经是最新版本', text: `当前 v${cur}`, actions: [['x', '好', 'pri']] }); UPD.manual = false; };
+const updError = () => { updStatus('检查失败：请确认已联网，稍后再试'); if (UPD.manual) updDlg({ kick: '检查更新', title: '暂时无法检查更新', text: '请确认已联网，稍后再试。', actions: [['x', '好', 'pri']] }); UPD.manual = false; };
 window.onAppUpdate = raw => {
   let o; try { o = JSON.parse(raw); } catch (e) { return; }
-  if (o.url) updInfo = o;
-  if (o.latest) o.latest = 'v' + String(o.latest).replace(/^\D*/, '');
-  const web = '<button class="btn sm" data-u="web">用浏览器下载</button>';
+  if (o.url) UPD.info = o;
+  const lv = o.latest ? String(o.latest).replace(/^\D*/, '') : '', cur = String(o.current || APP_VERSION).replace(/^\D*/, '');
+  const notes = o.notes ? String(o.notes).split(/[；;\n]+/).map(x => x.trim()).filter(Boolean) : [];
+  const offer = st => updDlg({ kick: '发现新版本', title: `复习站 v${lv} 可以更新了`, notes, text: `当前 v${cur} · 直接覆盖安装，学习进度不会丢失`, status: st, actions: [['later', '稍后'], ['go', '下载并安装', 'pri']] });
   switch (o.status) {
-    case 'available':
-      updStatus(`发现新版本 ${o.latest}（当前 v${o.current}）`);
-      updBar(`<span><b>发现新版本 ${esc(o.latest)}</b><small>当前 v${esc(o.current)} · 进度不会丢失</small></span><button class="btn pri sm" data-u="go">下载并安装</button><button class="btn sm ghost" data-u="x" aria-label="稍后">稍后</button>`); break;
-    case 'latest': updStatus(`已经是最新版本（v${o.current}）`); break;
-    case 'error': updStatus('检查失败：请确认手机已联网，稍后再试'); break;
-    case 'downloading': updStatus('正在下载新版本……'); updBar('<span><b>正在下载新版本</b><small>通知栏可以看进度，下载完会自动打开安装界面</small></span>'); break;
-    case 'downloaded': updStatus('下载完成'); updBar(`<span><b>下载完成，正在打开安装界面</b><small>没有弹出来的话，可以改用浏览器下载</small></span>${web}<button class="btn sm ghost" data-u="x">关闭</button>`); break;
-    case 'permission': updBar('<span><b>请允许「安装未知应用」</b><small>在刚打开的设置里打开开关，返回后会自动继续安装</small></span><button class="btn sm ghost" data-u="x">关闭</button>'); break;
-    case 'failed': updStatus('下载或安装没有成功'); updBar(`<span><b>更新没有成功</b><small>可以改用浏览器下载新版本，再手动安装</small></span>${web}<button class="btn sm ghost" data-u="x">关闭</button>`); break;
+    case 'available': updStatus(`发现新版本 v${lv}（当前 v${cur}）`); UPD.offer = lv; if (o.manual || UPD.manual || UPD.skip !== lv) offer(); UPD.manual = false; break;
+    case 'latest': updLatest(cur); break;
+    case 'error': updError(); break;
+    case 'downloading': updStatus('正在下载新版本……'); updDlg({ kick: '正在更新', title: `下载复习站 v${lv || UPD.offer || ''}`, status: '正在下载新版本，通知栏可以看进度，下载完会自动打开安装界面', spin: true, actions: [['x', '在后台继续']] }); break;
+    case 'downloaded': updStatus('下载完成'); updDlg({ kick: '正在更新', title: '下载完成', text: '正在打开安装界面；没有弹出来的话，可以改用浏览器下载。', actions: [['web', '用浏览器下载'], ['x', '关闭', 'pri']] }); break;
+    case 'permission': updDlg({ kick: '需要一个权限', title: '请允许「安装未知应用」', text: '在刚打开的设置里打开开关，返回后会自动继续安装。', actions: [['x', '好', 'pri']] }); break;
+    case 'failed': updStatus('下载或安装没有成功'); updDlg({ kick: '更新没有成功', title: '可以改用浏览器下载', text: '用浏览器下载新版本安装包，再手动安装，学习进度不会丢失。', actions: [['x', '关闭'], ['web', '用浏览器下载', 'pri']] }); break;
   }
 };
-if (HAS_UPD) setTimeout(() => { try { window.AndroidApp.checkUpdate(false); } catch (e) { } }, 3000);
+/* 主屏幕 App（iPad / iPhone）和网页版：读取 version.json 判断有没有新版本，再让离线缓存下载新文件 */
+async function pwaCheck(manual) {
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error(r.status);
+    const v = await r.json(); UPD.info = v;
+    if (v.v && vNewer(v.v, APP_VERSION)) {
+      updStatus(`发现新版本 v${v.v}（当前 v${APP_VERSION}）`); UPD.offer = v.v;
+      navigator.serviceWorker.getRegistration().then(g => g && g.update()).catch(() => { });   /* 先在后台下载 */
+      if (manual || UPD.skip !== v.v) pwaOffer();
+      UPD.manual = false;
+    } else updLatest(APP_VERSION);
+  } catch (e) { updError(); }
+}
+function pwaOffer(st) {
+  const v = UPD.info || {};
+  updDlg({ kick: UPD.ready ? '新版本已下载好' : '发现新版本', title: v.v ? `复习站 v${v.v}${v.t ? '：' + v.t.replace(/^复习站\s*[\d.]+[：:]\s*/, '') : ''}` : '复习站有新版本', notes: v.items || [], text: `当前 v${APP_VERSION} · 更新只要几秒，学习进度不会丢失`, status: st, spin: !!st, actions: st ? [] : [['later', '稍后'], [UPD.ready ? 'reload' : 'pwa', UPD.ready ? '立即刷新' : '立即更新', 'pri']] });
+}
+async function pwaApply() {
+  if (UPD.ready) return location.reload();
+  UPD.busy = true; pwaOffer('正在下载新版本……');
+  let done = false; const go = () => { if (!done) { done = true; location.reload(); } };
+  navigator.serviceWorker.addEventListener('controllerchange', go);
+  try { const g = await navigator.serviceWorker.getRegistration(); if (g) await g.update(); if (UPD.ready) go(); } catch (e) { }
+  setTimeout(go, 15000);
+}
+if (UPD.pwa) {
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had) return; UPD.ready = true; if (!UPD.busy && UPD.skip !== UPD.offer) { if (UPD.info && UPD.info.v) pwaOffer(); else fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(v => { UPD.info = v; UPD.offer = v.v; pwaOffer(); }).catch(() => pwaOffer()); } });
+}
+/* 打开时检查一次；从后台切回来时（超过 10 分钟没检查过）再检查一次 */
+if (HAS_UPD) {
+  setTimeout(() => appCheck(false), 3000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - UPD.last > 10 * 60 * 1000 && !UPD.busy) appCheck(false); });
+}
 /* ---------- 下载 App：苹果设备添加到主屏幕；安卓下载安装包（始终指向最新版） ---------- */
 const PWA_URL = 'https://hzy040122.github.io/foodchem-ipad/';
 const APK_URL = 'https://hzy040122.github.io/foodchem-ipad/android/FoodChemReview.apk';
@@ -842,18 +894,32 @@ const NAV = { learnMod: 1, learnOpen: null, pathC: null, pathStep: 1, pf: { t: '
 function navHTML() {
   syncPages();
   let cur = location.hash.slice(1) || 'today'; 
-  $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站<small>2004–2026 真题 · 11 模块</small></div></div><div class="sep"></div><div class="side-list"><div class="sl-in"><div class="toc" aria-hidden="true">目　录</div>` +
+  $('#sidenav').innerHTML = `<div class="brand">${MARK}<div class="bt">食品化学复习站</div></div><div class="sep"></div><div class="side-list"><div class="sl-in"><div class="toc" aria-hidden="true">目　录</div>` +
     PAGES.map(([id, n], i) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}${id === 'labs' ? ' class="has-beta"' : ''}>${icon(id)}<span class="nm">${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</span><span class="ld" aria-hidden="true"></span><span class="pn" aria-hidden="true">${i + 1}</span></a>`).join('') + `</div></div><div class="foot"><svg class="deco" viewBox="0 0 190 70" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M30 10l20 11.5v23L30 56 10 44.5v-23z"/><path d="M50 21.5l20-11.5 20 11.5v23L70 56 50 44.5"/><path d="M90 44.5l20 11.5M110 56l20-11.5v-23L110 10 90 21.5M130 21.5l20-11.5M150 10l20 11.5"/><circle cx="174" cy="24" r="3"/></svg>${window.AndroidApp || window.__PWA || document.documentElement.classList.contains('ios-app') ? '' : `<a href="#settings" class="dl-link" data-jump="download">${icon('dl')}下载 App</a>`}${meBtnHTML()}</div>`;
-  $('#topnav').innerHTML = `<div class="bar1">${MARK}<b>食品化学复习站</b><span class="sp"></span><button type="button" class="me-mini" data-me aria-label="账号">${avatarHTML()}</button></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
+  const curName = (PAGES.find(x => x[0] === cur) || [0, ''])[1];
+  $('#topnav').innerHTML = `<div class="bar1"><button type="button" class="tn-ic tn-menu" id="tnMenu" aria-label="打开侧栏" aria-controls="sidenav">${SV('<path d="M4 7h16M4 12h16M4 17h16"/>')}</button>${MARK}<b class="tn-brand">食品化学复习站</b><b class="tn-title" aria-hidden="true">${esc(curName)}</b><span class="sp"></span><button type="button" class="tn-ic tn-search" id="tnSearch" aria-label="搜索">${icon('search')}</button><button type="button" class="me-mini" data-me aria-label="账号">${avatarHTML()}</button></div><nav aria-label="主导航">${PAGES.map(([id, n]) => `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}>${icon(id)}${n}${id === 'labs' ? '<sup class="beta">beta</sup>' : ''}</a>`).join('')}</nav>`;
   const a = $('#topnav nav a[aria-current]'); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' });
   /* 底部导航栏（Material 3 和液态玻璃风格在窄屏上使用）：四个常用页面 + 「更多」 */
   const bn = document.getElementById('bnav');
   if (bn) { const main4 = ['today', 'daily', 'path', 'wrong'], inMain = main4.includes(cur);
     bn.innerHTML = main4.map(id => { const pg = PAGES.find(x => x[0] === id); return `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span class="bl">${id === 'daily' ? '自测' : id === 'path' ? '路径' : pg[1]}</span></a>`; }).join('')
-      + `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`;
-    $('#bmore').onclick = openMoreSheet; }
+      + (S.settings.skin === 'glass' ? '' : `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`);
+    const bm = $('#bmore'); if (bm) bm.onclick = openMoreSheet; }
+  $('#tnMenu').onclick = () => drawer(true);
+  $('#tnSearch').onclick = () => featOn('labSearch') ? gsOpen() : go('search');
   gsMount(); fitSide();
 }
+/* 手机上的液态玻璃风格：顶栏左边的「三条杠」拉出和 iPad 一样的侧栏 */
+function drawer(open) {
+  const h = document.documentElement; if (open === h.classList.contains('drawer')) return;
+  let sc = document.getElementById('drScrim');
+  if (!sc) { sc = document.createElement('div'); sc.id = 'drScrim'; sc.className = 'dr-scrim'; sc.onclick = () => drawer(false); document.body.append(sc); }
+  h.classList.toggle('drawer', open);
+  const sn = document.getElementById('sidenav'); if (sn) { sn.setAttribute('aria-modal', open ? 'true' : 'false'); if (open) { fitSide(); const a = sn.querySelector('a[aria-current]') || sn.querySelector('a'); a && a.focus({ preventScroll: true }); } }
+}
+document.addEventListener('click', e => { if (document.documentElement.classList.contains('drawer') && e.target.closest('#sidenav a, #sidenav [data-me]')) drawer(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.documentElement.classList.contains('drawer')) drawer(false); });
+addEventListener('resize', () => { if (innerWidth > 860) drawer(false); });
 /* 「更多」：从底部弹出的全部页面列表 */
 function openMoreSheet() {
   const m = $('#modal'), cur = location.hash.slice(1) || 'today';
@@ -1477,7 +1543,7 @@ function whyStats() {
 /* ---------- 冲刺计划：按考试日期倒推，把没过完的考点分到每一天，最后一周只做错题和模拟卷 ---------- */
 function clusterDone(id) { if (pathDone(id)) return true; const mm = clusterMastery(id); return mm.att >= Math.ceil(mm.tot / 2) && mm.avg >= 2.5; }
 function sprintHTML() {
-  const T = '<h2 class="sp-title">冲刺计划<span class="chip">试验</span></h2>';
+  const T = '<h2 class="sp-title">冲刺计划</h2>';
   if (!S.settings.exam) return `${T}<div class="card sprint"><p class="note" style="margin:0 0 10px">先在设置里填好考试日期，冲刺计划会按剩下的天数，把所有考点分配到每一天。</p><button class="btn sm pri" data-go="settings">去设置考试日期</button></div>`;
   const days = Math.ceil((new Date(S.settings.exam + 'T00:00:00') - sod()) / DAY);
   if (days < 0) return '';
@@ -2127,7 +2193,7 @@ function openSettings(sec) {
       const pop = document.getElementById('setInfo');
       if (e.target.closest('[data-seti]')) return pop ? setInfoClose() : setInfoOpen();
       if (pop && !e.target.closest('#setInfo')) { setInfoClose(); return; }
-      const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') { updStatus && updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); toast('正在检查更新……'); } else setGo(ia.dataset.info); return; }
+      const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') appCheck(true); else setGo(ia.dataset.info); return; }
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
       const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
@@ -2138,7 +2204,7 @@ function openSettings(sec) {
 }
 function setInfoOpen() {
   const win = document.querySelector('.set-win'); if (!win) return;
-  const plat = window.AndroidApp ? '安卓 App' + (window.AndroidApp.version ? ' v' + window.AndroidApp.version() : '') : window.__PWA ? '主屏幕 App' : '网页版';
+  const plat = window.AndroidApp ? '安卓 App' : window.__PWA ? ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? '主屏幕 App' : '网页版') : '网页版';
   const ext = '<path d="M13.5 4.5h6v6M19.5 4.5l-8 8"/><path d="M17.5 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5"/>';
   const d = document.createElement('div'); d.id = 'setInfo'; d.className = 'set-info'; d.setAttribute('role', 'menu');
   d.innerHTML = `<div class="si-v">食品化学复习站 v${esc(APP_VERSION)}<br><span>${esc(plat)}</span></div><hr>
@@ -2285,7 +2351,7 @@ function pSettings(m) {
   </div>
   ${downloadSection()}
   ${HAS_REM ? `<h2>每日学习提醒</h2><div class="card form"><div class="row"><span class="lab">提醒</span>${seg('rem', [['on', '开启'], ['off', '关闭']], REM.on ? 'on' : 'off')}<label for="remt" class="lab" style="min-width:0">时间</label><input type="time" id="remt" value="${esc(REM.time || '20:00')}"></div><p class="note" style="margin:0">每天到点会收到一条通知，写着今天的复习路径和到期题数。当天已经打开过 App 就不再打扰你。第一次开启时，手机会询问是否允许通知，请选「允许」。</p></div>` : ''}
-  ${HAS_UPD ? `<h2>App 更新</h2><div class="card"><div class="row"><span>当前 App 版本 <b>v${esc(window.AndroidApp.version ? window.AndroidApp.version() : '')}</b></span><span class="sp"></span><button class="btn" id="chk">检查更新</button></div><p class="note" id="ust" style="margin-bottom:0">联网时打开 App 会自动检查一次；有新版本会在底部提示，可以直接下载安装，进度不会丢失。</p></div>` : ''}
+  ${HAS_UPD ? `<h2>App 更新</h2><div class="card"><div class="row"><span>当前版本 <b>v${esc(APP_VERSION)}</b></span><span class="sp"></span><button class="btn" id="chk">检查更新</button></div><p class="note" id="ust" style="margin-bottom:0">${IS_APK ? '联网时打开 App' : '打开复习站'}或从后台切回来时会自动检查；有新版本会弹出提示，${IS_APK ? '可以直接下载安装' : '点「立即更新」几秒就好'}，学习进度不会丢失。</p></div>` : ''}
   <h2 id="changelog">更新日志</h2><div class="card"><p class="note" style="margin-top:0">当前版本 v${esc(APP_VERSION)}。下面是最新一次更新，以前的版本点「查看全部更新日志」。</p>
     ${CHANGELOG.slice(0, 1).map(c => `<details class="chlog" open><summary><b class="cv">v${esc(c.v)}</b><span class="ct">${esc(c.t)}</span><span class="note cd">${esc(c.d)}</span></summary>${logItems(c)}</details>`).join('')}
     <a class="chlog-all" href="#changelog"><span>查看全部更新日志</span><span class="note">共 ${CHANGELOG.length} 个版本</span><span class="chev" aria-hidden="true">›</span></a></div>
@@ -2293,7 +2359,7 @@ function pSettings(m) {
   m.addEventListener('click', async e => { const b = e.target.closest('[data-cp]'); if (!b) return; const t = b.dataset.cp;
     try { if (window.AndroidApp) window.AndroidApp.copy(t); else await navigator.clipboard.writeText(t); b.textContent = '已复制'; } catch (err) { prompt('复制这个网址：', t); } });
   if (location.hash === '#settings' && pSettings.jump) { const j = pSettings.jump; pSettings.jump = null; setTimeout(() => { const t = document.getElementById(j); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
-  if (HAS_UPD) $('#chk').onclick = () => { updStatus('正在检查……'); window.AndroidApp.checkUpdate(true); };
+  if (HAS_UPD) $('#chk').onclick = () => appCheck(true);
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save();
     if (k === 'name') { navHTML(); document.querySelectorAll('.set-ov .me-t b, .set-ov .set-nm').forEach(b => b.textContent = meName()); } });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
