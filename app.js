@@ -589,6 +589,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.6', d: '2026-11-26', t: '复习站 2.10.6：设置分组恢复、iPad 设置闪烁和启动画面修正', items: [
+    '设置的分组恢复成 2.10.4 的样子（学习、学习功能、复习工具、应用程序、外观）',
+    '修好了 iPad 上设置浮窗弹出后闪一下的问题：背后的遮罩改为只渐变颜色，浮窗的毛玻璃从一开始就能透出后面的页面',
+    'iPad 主屏幕 App 的启动画面不再变形：启动图只保留纯色背景，图标和名字改由页面自己画出来，任何窗口大小都不会被拉伸'] },
   { v: '2.10.5', d: '2026-11-26', t: '复习站 2.10.5：设置分组整理、iPad 设置弹出动画', items: [
     '设置重新分组：我的备考（个人资料、学习安排、冲刺计划、学习周报）、做题与复习（大题背诵、限时作答、睡前回顾、速查手册）、外观与操作（风格、搜索栏）、通知与触感、数据与更新（备份、App 更新、试验性功能）',
     'iPad 上的设置浮窗也改成从底部往上弹出，关闭时往下滑走',
@@ -1067,6 +1071,7 @@ function render() {
   /* 设置窗口开着时，改动后同步刷新窗口里的内容（正在输入时不刷新，免得打断） */
   if (typeof syncBadge === 'function') syncBadge();
   if (SET.open) { const a = document.activeElement; if (!(a && a.closest && a.closest('.set-ov') && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) setFill(); }
+  if (!render.booted) { render.booted = true; const bt = document.getElementById('boot'); if (bt) { bt.classList.add('gone'); setTimeout(() => bt.remove(), 450); } }
   /* 换页时顶栏标题不做过渡、直接按新页面的位置显示或隐藏，避免新标题先闪一下 */
   document.documentElement.classList.add('lt-snap'); ltUpdate();
   requestAnimationFrame(() => { ltUpdate(); requestAnimationFrame(() => document.documentElement.classList.remove('lt-snap')); });
@@ -2471,17 +2476,14 @@ function setFill() {
   /* 首页 */
   const row = k => { const s = SET_SECS.find(x => x[0] === k); if (!s || !SET.has.has(k)) return '';
     return `<button class="ios-row" data-go="${k}">${SV(s[2])}<span class="ios-n">${s[1]}</span>${SVG_CHEV}</button>`; };
-  /* 分组：一组里一个选项都没有就整组不显示；label 为空时紧接上一组 */
-  const grp = (label, keys) => { const h = keys.map(k => k === 'labs' ? row(k).replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV) : row(k)).join(''); if (!h) return '';
-    return (label ? `<p class="ios-lab">${label}</p>` : '') + `<div class="ios-grp${label ? '' : ' grp-cont'}">${h}</div>`; };
   const root = document.createElement('div'); root.className = 'set-pg'; root.dataset.p = 'root';
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
-    ${grp('我的备考', ['profile', 'study', 'sprint', 'weekly'])}
-    ${grp('做题与复习', ['recite', 'timer', 'night', 'handbook'])}
-    ${look ? `<p class="ios-lab">外观与操作</p><div class="ios-grp set-look"></div>${grp('', ['search'])}` : grp('外观与操作', ['search'])}
-    ${grp(SET.has.has('haptic') ? '通知与触感' : '通知', ['notify', 'haptic'])}
-    ${grp('数据与更新', ['backup', 'update', 'labs'])}
+    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}${row('haptic')}</div>
+    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('search')}</div>
+    <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
+    <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
+    ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
     ${CLOUD.user ? `<div class="ios-grp" style="margin-top:22px"><button class="ios-row red" data-rout>${SV('<path d="M10 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h4M14.5 8l4 4-4 4M9.5 12h9"/>')}<span class="ios-n">退出登录</span></button></div>` : ''}`;
   if (look) { const c = look.querySelector(':scope > .card'); $('.set-look', root).append(...(c ? c.childNodes : look.childNodes)); }
   body.append(root, ...Object.values(pages));

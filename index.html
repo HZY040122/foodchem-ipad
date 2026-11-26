@@ -74,6 +74,10 @@
 <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)" href="splash/744x1133@2-p-dark.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape) and (prefers-color-scheme: light)" href="splash/744x1133@2-l-light.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape) and (prefers-color-scheme: dark)" href="splash/744x1133@2-l-dark.png">
+<style>#boot{position:fixed;inset:0;z-index:200;background:#f5f3ec;transition:opacity .35s ease}#boot.gone{opacity:0;pointer-events:none}
+#boot img{position:absolute;left:50%;top:42%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:21.6px}
+#boot b{position:absolute;left:0;right:0;top:calc(42% + 64px);text-align:center;font:700 19px/1.3 -apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f1e1c}
+@media (prefers-color-scheme: dark){#boot{background:#1f1e1c}#boot b{color:#f0ece4}}</style>
 <script>window.__PWA = true;</script>
 
 <style>
@@ -1724,7 +1728,9 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
 
 /* ===== 2.10.4 手机上设置从底部弹出 ===== */
 @media (prefers-reduced-motion: no-preference) {
-  .set-ov { animation: setFade .3s ease; }
+  /* 遮罩只渐变颜色、不渐变透明度：透明度动画会让里面的毛玻璃在动画期间看不到后面的页面，结束时突然出现，看起来像闪一下 */
+  .set-ov { animation: setFadeBg .3s ease; }
+  @keyframes setFadeBg { from { background-color: rgba(10,15,20,0); } }
   .set-win { animation: setUp .46s cubic-bezier(.2,.9,.25,1) both; }
   .set-ov.out { animation: setFadeOut .32s ease both; pointer-events: none; }
   .set-ov.out .set-win { animation: setDown .32s cubic-bezier(.4,0,.8,.4) both; }
@@ -1745,6 +1751,8 @@ input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
 </style>
 </head>
 <body>
+<div id="boot" aria-hidden="true"><img src="icons/icon-512.png" alt=""><b>食品化学复习站</b></div>
+<script>(function(){var ipad=/iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if(!(navigator.standalone&&ipad)){var b=document.getElementById('boot');if(b)b.remove();}})();</script>
 <div class="top" id="topnav"></div>
 <div class="shell">
   <nav class="side" id="sidenav" aria-label="主导航"></nav>
