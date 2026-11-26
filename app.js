@@ -587,6 +587,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9.5', d: '2026-11-26', t: '复习站 2.9.5：首页问候去掉逗号，ⓘ 弹窗自动收起', items: [
+    '首页问候不再用逗号：第一行是问候语和名字（名字用强调色），第二行「欢迎回来」作为副标题；iPad 和电脑上也统一成这个样式',
+    '设置右上角 ⓘ 弹出的窗口，按到别处或者开始滑动就会自动收起',
+    'ⓘ 弹窗里去掉「检查更新」，检查更新只在设置列表的「App 更新」里'] },
   { v: '2.9.4', d: '2026-11-26', t: '复习站 2.9.4：首页问候排版、下拉同步位置和演示动画修正', items: [
     '手机上首页问候改为两行：「早上好，名字」一行（名字用强调色），「欢迎回来」作为副标题，不再在名字后面突兀换行',
     'iPhone 下拉同步的提示往下移，不再压在顶栏的模糊渐隐上；完成时的对勾和失败时的叉在圆里居中',
@@ -1057,7 +1061,7 @@ function pToday(m) {
   const dur = S.settings.dur || 90;
   const plan = { 60: [30, 20, 10, 0], 90: [40, 25, 15, 10], 120: [50, 30, 25, 15] }[dur];
   const realQ = BANK.filter(q => !q.scen); const mast = realQ.filter(q => qs(q.id).l === 3).length; const pct = mast / realQ.length; const R = 46, CC = 2 * Math.PI * R;
-  m.innerHTML = `<section class="hero">${MOL}<div><div class="kick">${today}${S.settings.goal ? ' · 目标：' + esc(S.settings.goal) : ''}</div><h1 class="${S.settings.name ? 'hi' : ''}">${S.settings.name ? `<span class="hi-1">${greet()}，<span class="hi-nm">${esc(S.settings.name)}</span></span><span class="hi-2">欢迎回来</span>` : '今天的复习'}</h1><p class="lead">${cd} ${S.settings.motto ? esc(S.settings.motto) : '按"复习路径 → 每日自测 → 错题回顾 → 知识点图解"的顺序，每天 1–2 小时，稳扎稳打。'}</p></div>
+  m.innerHTML = `<section class="hero">${MOL}<div><div class="kick">${today}${S.settings.goal ? ' · 目标：' + esc(S.settings.goal) : ''}</div><h1 class="${S.settings.name ? 'hi' : ''}">${S.settings.name ? `<span class="hi-1"><span class="hi-g">${greet()}</span><span class="hi-nm">${esc(S.settings.name)}</span></span><span class="hi-2">欢迎回来</span>` : '今天的复习'}</h1><p class="lead">${cd} ${S.settings.motto ? esc(S.settings.motto) : '按"复习路径 → 每日自测 → 错题回顾 → 知识点图解"的顺序，每天 1–2 小时，稳扎稳打。'}</p></div>
   <div class="ring" title="真题掌握进度"><svg viewBox="0 0 112 112"><circle cx="56" cy="56" r="${R}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="56" cy="56" r="${R}" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="${pct ? 'round' : 'butt'}" stroke-dasharray="${(CC * pct).toFixed(1)} ${CC.toFixed(1)}"/></svg><div class="rv"><b>${Math.round(pct * 100)}%</b><span>真题已掌握</span><span>${mast}/${realQ.length}</span></div></div></section>
   <div class="grid g4">
     <div class="card tile">${icon('today', 'ti')}<b>${due}</b><span>到期复习题</span></div>
@@ -2285,19 +2289,27 @@ function openSettings(sec) {
       <header class="set-hd"><button class="ios-cb" data-setl aria-label="关闭"></button><h2 id="setTitle">设置</h2><button class="ios-cb" data-seti aria-label="关于与更新日志">${SV(SVG_I)}</button></header>
       <div class="set-body" id="setBody"></div></div>`;
     document.body.append(ov);
+    /* ⓘ 弹窗：按到别处或开始滑动就收起（这一下只负责收起，不会顺带点开别的选项） */
+    ov.addEventListener('pointerdown', e => {
+      SET.swallow = false;
+      if (document.getElementById('setInfo') && !e.target.closest('#setInfo, [data-seti]')) { setInfoClose(); SET.swallow = true; }
+    }, true);
+    ov.addEventListener('touchmove', () => { if (document.getElementById('setInfo')) setInfoClose(); }, { passive: true });
+    ov.addEventListener('wheel', () => { if (document.getElementById('setInfo')) setInfoClose(); }, { passive: true });
     ov.addEventListener('click', e => {
+      if (SET.swallow) { SET.swallow = false; return; }
       if (e.target === ov) return closeSettings();
       if (e.target.closest('[data-setl]')) return SET.sec === 'root' ? closeSettings() : setGo('root');
       const pop = document.getElementById('setInfo');
       if (e.target.closest('[data-seti]')) return pop ? setInfoClose() : setInfoOpen();
       if (pop && !e.target.closest('#setInfo')) { setInfoClose(); return; }
-      const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') appCheck(true); else setGo(ia.dataset.info); return; }
+      const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); setGo(ia.dataset.info); return; }
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
       if (e.target.closest('[data-badge]')) return toggleBadge();
       const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
     });
-    $('#setBody').addEventListener('scroll', e => { const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
+    $('#setBody').addEventListener('scroll', e => { if (document.getElementById('setInfo')) setInfoClose(); const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
   }
   setFill(); $('#setBody').scrollTop = 0;
 }
@@ -2308,11 +2320,10 @@ function setInfoOpen() {
   const d = document.createElement('div'); d.id = 'setInfo'; d.className = 'set-info'; d.setAttribute('role', 'menu');
   d.innerHTML = `<div class="si-v">食品化学复习站 v${esc(APP_VERSION)}<br><span>${esc(plat)}</span></div><hr>
     <button data-info="log" role="menuitem">${SV('<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4"/>')}<span>更新日志</span></button>
-    ${HAS_UPD ? `<button data-info="chk" role="menuitem">${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span>检查更新</span></button>` : ''}
     ${SET.has.has('download') ? `<hr><button data-info="download" role="menuitem">${SV(ext)}<span>下载其他平台的 App</span></button>` : ''}`;
   win.append(d);
 }
-function setInfoClose() { const d = document.getElementById('setInfo'); if (d) d.remove(); }
+function setInfoClose() { const d = document.getElementById('setInfo'); if (!d) return; d.removeAttribute('id'); d.classList.add('out'); setTimeout(() => d.remove(), 160); }
 function closeSettings() { const o = document.getElementById('setOv'); if (o) o.remove(); SET.open = false; }
 function setGo(k) {
   const body = $('#setBody'), back = k === 'root';
@@ -2462,7 +2473,7 @@ function pSettings(m) {
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, n]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}">${n}</button>`).join('')}</div>`;
   m.innerHTML = `<div class="kick">SETTINGS</div><h1>设置</h1><p class="lead">个人信息、学习安排和外观都在这里，改完自动保存。</p>
   <h2>个人资料</h2><div class="card form">
-    <div class="row"><label for="nm">你的名字</label><input type="text" id="nm" maxlength="20" placeholder="例如：小林" value="${esc(st.name || '')}"><span class="note">填写后首页显示「${greet()}，${esc(st.name || 'xxx')}，欢迎回来」</span></div>
+    <div class="row"><label for="nm">你的名字</label><input type="text" id="nm" maxlength="20" placeholder="例如：小林" value="${esc(st.name || '')}"><span class="note">填写后首页显示「${greet()} ${esc(st.name || 'xxx')}」和「欢迎回来」</span></div>
     <div class="row"><label for="gl">目标</label><input type="text" id="gl" maxlength="30" placeholder="例如：江南大学 食品科学" value="${esc(st.goal || '')}"><span class="note">显示在首页日期旁</span></div>
     <div class="row"><label for="mt2">座右铭</label><input type="text" id="mt2" maxlength="60" placeholder="给自己的一句话" value="${esc(st.motto || '')}" style="flex:1;min-width:200px"><span class="note">替换首页的默认提示语</span></div>
   </div>
@@ -2496,7 +2507,7 @@ function pSettings(m) {
   const txt = (id, k) => $('#' + id).addEventListener('change', e => { st[k] = e.target.value.trim(); save();
     if (k === 'name') { navHTML(); document.querySelectorAll('.set-ov .me-t b, .set-ov .set-nm').forEach(b => b.textContent = meName()); } });
   txt('nm', 'name'); txt('gl', 'goal'); txt('mt2', 'motto');
-  $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()}，${e.target.value.trim() || 'xxx'}，欢迎回来」`; });
+  $('#nm').addEventListener('input', e => { $('#nm').nextElementSibling.textContent = `填写后首页显示「${greet()} ${e.target.value.trim() || 'xxx'}」和「欢迎回来」`; });
   $('#ex').onchange = e => { st.exam = e.target.value; save(); };
   const pick = (id, fn) => $('#' + id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; fn(b.dataset.v); save(); applyLook(); render(); };
   if (HAS_REM) { const setR = () => { try { window.AndroidApp.setReminder($('#rem [aria-pressed="true"]').dataset.v === 'on', $('#remt').value || '20:00'); toast($('#rem [aria-pressed="true"]').dataset.v === 'on' ? `已设置：每天 ${$('#remt').value} 提醒` : '已关闭每日提醒'); } catch (e) { } };

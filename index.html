@@ -1571,16 +1571,16 @@ body:has(.set-ov) .modal { z-index: 97; }
 @media (prefers-reduced-motion: reduce) { .tm-box .tl { opacity: 1; } .tm-pill .tm-over { opacity: 0; } }
 
 /* ===== 2.9.4 ===== */
-/* 首页问候：「早上好，名字」一行，「欢迎回来」作为副标题，手机上不再在名字后面突兀换行 */
-.hero h1.hi .hi-2::before { content: '，'; }
-@media (max-width: 860px) {
-  .hero h1.hi { display: grid; gap: 6px; line-height: 1.2; }
-  .hero h1.hi .hi-1 { word-break: keep-all; overflow-wrap: anywhere; }
-  .hero h1.hi .hi-nm { color: var(--accent); }
-  .hero h1.hi .hi-2 { font-size: .58em; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
-  .hero h1.hi .hi-2::before { content: none; }
-  [data-skin="md3"] .hero h1.hi .hi-2 { color: inherit; opacity: .75; }
-}
+/* 首页问候（2.9.5）：不用逗号。第一行「问候语 + 名字」，名字用强调色、中间留一点空隙；第二行「欢迎回来」作为副标题 */
+.hero h1.hi { display: grid; gap: 6px; line-height: 1.2; }
+.hero h1.hi .hi-1 { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .32em; row-gap: 2px; }
+.hero h1.hi .hi-g, .hero h1.hi .hi-nm { word-break: keep-all; overflow-wrap: anywhere; }
+.hero h1.hi .hi-nm { color: var(--accent); }
+.hero h1.hi .hi-2 { font-size: .58em; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+[data-skin="md3"] .hero h1.hi .hi-2 { color: inherit; opacity: .75; }
+/* 设置 ⓘ 弹窗收起时淡出 */
+.set-info.out { animation: siOut .16s ease-in forwards; pointer-events: none; }
+@keyframes siOut { to { opacity: 0; transform: scale(.92); } }
 /* 下拉同步：对勾和叉用 SVG 画，保证在圆里居中 */
 .ptr.done .ptr-ic::after, .ptr.fail .ptr-ic::before, .ptr.fail .ptr-ic::after { content: none !important; }
 .ptr.done .ptr-ic { background: var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.4 8.3l2.4 2.4 4.8-5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
