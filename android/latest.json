@@ -1,6 +1,6 @@
 {
-  "versionCode": 40,
-  "versionName": "2.8.2",
-  "apk": "FoodChemReview-v2.8.2.apk",
-  "notes": "iPhone 状态栏适配；手机液态玻璃更流畅；直接覆盖安装，学习进度会保留"
+  "versionCode": 41,
+  "versionName": "2.9",
+  "apk": "FoodChemReview-v2.9.apk",
+  "notes": "左边缘右滑返回、浮窗下滑关闭；点顶栏回到顶部，切换页面记住位置；下拉同步；设置里新增「通知」，每日学习提醒移到这里；专项练习更流畅；直接覆盖安装，学习进度会保留"
 }
