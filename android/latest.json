@@ -1,6 +1,6 @@
 {
-  "versionCode": 52,
-  "versionName": "2.10.5",
-  "apk": "FoodChemReview-v2.10.5.apk",
-  "notes": "设置分组整理；设置弹出与下拉关闭动画；直接覆盖安装，学习进度会保留"
+  "versionCode": 53,
+  "versionName": "2.10.6",
+  "apk": "FoodChemReview-v2.10.6.apk",
+  "notes": "设置分组恢复；直接覆盖安装，学习进度会保留"
 }
