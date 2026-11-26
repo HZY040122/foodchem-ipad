@@ -1596,9 +1596,9 @@ body:has(.set-ov) .modal { z-index: 97; }
 /* 大标题（手机 · iPadOS 风格）：页面标题放大；滚到顶栏下面之前，顶栏中间不显示名字 */
 @media (max-width: 860px) {
   [data-skin="glass"] #main > div > h1 { font-size: 32px; font-weight: 800; line-height: 1.15; letter-spacing: .2px; margin: 2px 0 8px; }
-  [data-skin="glass"] .lt { transform-origin: left center; }
-  [data-skin="glass"] #topnav .tn-title { transition: opacity .2s ease, transform .25s ease; }
-  html.lt-off[data-skin="glass"] #topnav .tn-title { opacity: 0; transform: translateY(5px); }
+  [data-skin="glass"] #topnav .tn-title { transition: opacity .22s ease, scale .22s ease; }
+  html.lt-off[data-skin="glass"] #topnav .tn-title { opacity: 0; scale: .94; }
+  html.lt-snap[data-skin="glass"] #topnav .tn-title { transition: none; }
 }
 /* 推入式详情页（手机） */
 @media (max-width: 860px) {
@@ -1629,18 +1629,39 @@ body:has(.set-ov) .modal { z-index: 97; }
   @keyframes mpShade { from { background-color: rgba(0,0,0,0); } }
   @keyframes mpShadeOut { to { background-color: rgba(0,0,0,0); } }
 }
-/* 错题本左滑 */
-#wl > .li { position: relative; overflow: hidden; touch-action: pan-y; }
-#wl > .li.swp > :not(.sw-acts) { translate: var(--sx, 0px) 0; }
-#wl > .li.sw-anim > :not(.sw-acts) { transition: translate .28s cubic-bezier(.2,.9,.3,1); }
-.sw-acts { position: absolute; top: 0; right: 0; bottom: 0; width: calc(-1 * var(--sx, 0px)); display: flex; overflow: hidden; }
-.li.sw-anim .sw-acts { transition: width .28s cubic-bezier(.2,.9,.3,1); }
-.sw-acts button { flex: 1 1 50%; min-width: 0; border: 0; padding: 0 6px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; cursor: pointer; transition: flex-grow .22s ease; }
-.sw-acts [data-swa="ok"] { background: var(--ok); }
-.sw-acts [data-swa="rm"] { background: var(--bad); }
-.li.sw-full .sw-acts [data-swa="ok"] { flex-grow: 0; flex-basis: 0; padding: 0; }
-.li.sw-full .sw-acts [data-swa="rm"] { flex-grow: 1; }
-.li.sw-gone { transition: height .3s ease, opacity .3s ease, margin .3s ease, padding .3s ease; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; border-width: 0 !important; }
+/* 错题本：点整行展开，右侧 › 箭头；左滑整张卡片露出圆形按钮（iOS 风格） */
+#wl .li[data-q] { cursor: pointer; touch-action: pan-y; align-items: center; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#wl .li[data-q]:active { filter: brightness(.97); }
+.wl-chev { flex: none; margin-left: auto; padding-left: 6px; color: var(--muted); opacity: .55; display: grid; }
+.wl-chev .ico { width: 18px; height: 18px; transition: transform .25s ease; }
+#wl .li.open .wl-chev .ico { transform: rotate(90deg); }
+.sw-wrap { position: relative; --sx: 0px; --sp: 0; }
+.sw-wrap > .li { position: relative; z-index: 1; translate: var(--sx) 0; }
+.sw-wrap.sw-anim > .li { transition: translate .32s cubic-bezier(.2,.9,.3,1); }
+.sw-acts { position: absolute; top: 0; bottom: 0; right: 0; width: 150px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding-right: 2px; z-index: 0; }
+.sw-acts button { flex: none; display: grid; justify-items: center; gap: 6px; width: 66px; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  opacity: var(--sp); scale: calc(.55 + .45 * var(--sp)); }
+.sw-wrap.sw-anim .sw-acts button { transition: opacity .32s ease, scale .32s cubic-bezier(.2,.9,.3,1); }
+.sw-acts [data-swa="ok"] { scale: calc(.4 + .6 * var(--sp)); }
+.sw-ic { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 25px; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 .5px rgba(255,255,255,.25), 0 6px 16px -6px rgba(0,0,0,.35); transition: width .25s cubic-bezier(.2,.9,.3,1); }
+.sw-ic .ico { width: 24px; height: 24px; stroke-width: 2.2; }
+.sw-acts [data-swa="ok"] .sw-ic { background: linear-gradient(180deg, #4cd964, #30b94d); }
+.sw-acts [data-swa="rm"] .sw-ic { background: linear-gradient(180deg, #ff5a4f, #ff3126); }
+.sw-tx { font-size: 12px; font-weight: 600; color: var(--ink-2, var(--ink)); letter-spacing: .02em; }
+.sw-acts button:active .sw-ic { filter: brightness(.9); }
+/* 一直滑到底：「移出」拉长成胶囊，「掌握」退场 */
+.sw-wrap.sw-full .sw-acts { width: calc(var(--sx) * -1 - 6px); }
+.sw-wrap.sw-full .sw-acts [data-swa="ok"] { width: 0; opacity: 0; overflow: hidden; }
+.sw-wrap.sw-full .sw-acts [data-swa="rm"] { width: 100%; }
+.sw-wrap.sw-full .sw-acts [data-swa="rm"] .sw-ic { width: 100%; justify-items: start; padding-left: 16px; box-sizing: border-box; }
+.sw-wrap.sw-full .sw-tx { opacity: 0; }
+.sw-wrap.sw-out .sw-acts { opacity: 0; transition: opacity .2s; }
+.sw-gone { overflow: hidden; transition: height .3s ease, opacity .3s ease, margin .3s ease; opacity: 0; margin-bottom: -8px; }
+/* iPhone：设置里的开关换成系统原生开关（拨动时由系统自己震动） */
+.switch.nsw-done { display: none; }
+input.nsw { flex: none; margin: 0 0 0 auto; accent-color: #34c759; }
+.lab-h input.nsw { margin-left: 12px; }
 /* 触感反馈设置页 */
 .hp-try { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 6px !important; }
 .hp-b { display: grid; justify-items: center; gap: 4px; padding: 12px 4px; border: 0; border-radius: 14px; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }

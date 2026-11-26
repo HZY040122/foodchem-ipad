@@ -589,6 +589,13 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.1', d: '2026-11-26', t: '复习站 2.10.1：错题本改为点题展开、iOS 风格左滑按钮，顶栏标题修正', items: [
+    '错题本去掉「展开」「移出」按钮：点题目就展开或收起（右边的 › 会转向下）；移出只能左滑',
+    '错题本左滑改成 iOS 风格：整张卡片滑开，后面露出绿色「掌握」和红色「移出」两个圆形按钮，跟着手指逐渐放大浮现；一直滑到底时「移出」拉长成胶囊，松手直接移出',
+    '顶栏中间的页面名字改为在原位淡入淡出（之前会从右下方滑进来）',
+    '从一个已经往下滚过的页面切到另一个页面时，新页面的名字不再先在顶栏闪一下',
+    '去掉大标题下拉时的放大效果（会导致页面可以被左右拖动）',
+    'iPhone 上不再显示「触感反馈」设置：iOS 26.5 起苹果不允许网页主动触发震动；改为把设置里的开关换成系统原生开关，拨动时由系统自己震动。安卓不受影响'] },
   { v: '2.10', d: '2026-11-26', t: '复习站 2.10：触感反馈、大标题、推入式详情页、错题本左滑', items: [
     '新增触感反馈（设置 → 学习 → 触感反馈，每台设备单独开关）：评为掌握或答对轻震两下，评为不会或答错连震三下，拨动开关、下拉同步拉到位、底栏按住滑动换标签时轻震一下；iPhone 需要 iOS 18 或更新，iPad 没有触感马达所以不显示这一项',
     '手机上的 iPadOS 风格：每页的标题变成大标题，往上滑到顶栏下面时，顶栏中间才出现页面名字；在页面顶部继续下拉时大标题会轻微放大',
@@ -1007,7 +1014,10 @@ function render() {
   /* 设置窗口开着时，改动后同步刷新窗口里的内容（正在输入时不刷新，免得打断） */
   if (typeof syncBadge === 'function') syncBadge();
   if (SET.open) { const a = document.activeElement; if (!(a && a.closest && a.closest('.set-ov') && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) setFill(); }
-  requestAnimationFrame(ltUpdate);
+  /* 换页时顶栏标题不做过渡、直接按新页面的位置显示或隐藏，避免新标题先闪一下 */
+  document.documentElement.classList.add('lt-snap'); ltUpdate();
+  requestAnimationFrame(() => { ltUpdate(); requestAnimationFrame(() => document.documentElement.classList.remove('lt-snap')); });
+  nativeSwitches(document.getElementById('main'));
 }
 /* 书本风格的翻页（两种方向都以书脊为轴，和真书一样）：
    往后翻：旧的一页放进一张浮在正文上的“纸”里，绕书脊掀起离开，新的一页在下面露出来；
@@ -1348,15 +1358,20 @@ function pWrong(m) {
   list = list.filter(q => (wf.t === '全部' || q.t === wf.t) && (!wf.m || qmod(q) === wf.m)).sort((a, b) => (qs(a.id).l - qs(b.id).l) || (qs(b.id).t - qs(a.id).t));
   m.innerHTML = `<div class="kick">REVIEW · 错题与笔记</div><h1>错题本</h1><p class="lead">自评"不会""模糊"的题和手动加入的题都在这里。连续两次评"掌握"会自动移出，也可以手动移出。可以给每道题写笔记。</p>
   <div class="row" style="margin-bottom:10px"><div class="seg" id="wt">${['全部', '名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => `<button data-t="${t}" aria-pressed="${wf.t === t}">${t === '全部' ? '全部' : TLABEL[t]}</button>`).join('')}</div><select id="wm" aria-label="模块"><option value="0">全部模块</option>${MODS.map(x => `<option value="${x.id}" ${wf.m === x.id ? 'selected' : ''}>${x.id} ${esc(x.name)}</option>`).join('')}</select><span class="sp"></span><span class="note">共 ${tot} 题，当前 ${list.length} 题</span><button class="btn pri" id="wgo" ${list.length ? '' : 'disabled'}>逐题重练</button></div>
-  <div class="list" id="wl">${list.map(q => { const s = qs(q.id); return `<div class="li" data-q="${q.id}"><div class="stripe l${s.l}"></div><div class="main"><div class="t">${esc(q.q.split('\n')[0].slice(0, 90))}</div><div class="s"><span>${q.y || '原创'} · ${TLABEL[q.t]}</span><span>${esc((CL[q.c] || {}).n || '')}</span><span class="lv l${s.l}"><i></i>${LVL[s.l]}</span>${S.settings.labCause && s.why && s.l < 3 ? `<span class="chip why">${WHYN[s.why] || ''}</span>` : ''}<span>练过 ${s.n || 0} 次</span>${s.note ? `<span>笔记：${esc(s.note.slice(0, 30))}${s.note.length > 30 ? '…' : ''}</span>` : ''}</div></div><div class="row"><button class="btn sm" data-a="open">展开</button><button class="btn sm ghost" data-a="rm">移出</button></div></div>`; }).join('') || ('<p class="empty">' + icon('wrong', 'empty-ill') + '错题本是空的。做题时自评"不会"或"模糊"，题目会自动收进来。</p>')}</div>`;
+  <div class="list" id="wl">${list.map(q => { const s = qs(q.id); return `<div class="li" data-q="${q.id}"><div class="stripe l${s.l}"></div><div class="main"><div class="t">${esc(q.q.split('\n')[0].slice(0, 90))}</div><div class="s"><span>${q.y || '原创'} · ${TLABEL[q.t]}</span><span>${esc((CL[q.c] || {}).n || '')}</span><span class="lv l${s.l}"><i></i>${LVL[s.l]}</span>${S.settings.labCause && s.why && s.l < 3 ? `<span class="chip why">${WHYN[s.why] || ''}</span>` : ''}<span>练过 ${s.n || 0} 次</span>${s.note ? `<span>笔记：${esc(s.note.slice(0, 30))}${s.note.length > 30 ? '…' : ''}</span>` : ''}</div></div><span class="wl-chev" aria-hidden="true">${SV('<path d="M9 5.5l6.5 6.5L9 18.5"/>')}</span></div>`; }).join('') || ('<p class="empty">' + icon('wrong', 'empty-ill') + '错题本是空的。做题时自评"不会"或"模糊"，题目会自动收进来。</p>')}</div>`;
   $('#wt').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { wf.t = b.dataset.t; render(); } };
   $('#wm').onchange = e => { wf.m = +e.target.value; render(); };
   $('#wgo').onclick = () => startPractice(list.map(q => q.id), '错题本重练');
+  /* 点题目展开或收起；移出只能左滑 */
   $('#wl').onclick = e => {
-    const b = e.target.closest('button[data-a]'); if (!b) return; const row = b.closest('[data-q]'); const id = row.dataset.q;
-    if (b.dataset.a === 'rm') { const s = Object.assign({}, S.q[id]); s.w = 0; s.t = Date.now(); S.q[id] = s; save(); row.remove(); }
-    if (b.dataset.a === 'open') { const nx = row.nextElementSibling; if (nx && nx.classList.contains('q')) { nx.remove(); b.textContent = '展开'; return; } const c = qcard(BY[id]); $('.nt', c).hidden = false; row.after(c); b.textContent = '收起'; }
+    const row = e.target.closest('.li[data-q]'); if (!row || e.target.closest('.sw-acts')) return;
+    const host = row.parentElement.classList.contains('sw-wrap') ? row.parentElement : row;
+    const nx = host.nextElementSibling;
+    if (nx && nx.classList.contains('q')) { nx.remove(); row.classList.remove('open'); row.setAttribute('aria-expanded', 'false'); return; }
+    const c = qcard(BY[row.dataset.q]); $('.nt', c).hidden = false; host.after(c); row.classList.add('open'); row.setAttribute('aria-expanded', 'true');
   };
+  $$('#wl .li[data-q]').forEach(r => { r.setAttribute('role', 'button'); r.setAttribute('aria-expanded', 'false'); r.tabIndex = 0; });
+  $('#wl').onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.li[data-q]')) { e.preventDefault(); e.target.click(); } };
 }
 
 /* ---------- 模拟卷 ---------- */
@@ -2378,7 +2393,7 @@ function setFill() {
   const pages = {};
   for (const [k, f] of Object.entries(FEAT_PG)) { const d = document.createElement('div'); d.innerHTML = featPageHTML(f); groups[k] = d; }
   { const d = document.createElement('div'); d.innerHTML = searchPageHTML(); groups.search = d; }
-  if (HAP_OK) { const d = document.createElement('div'); d.innerHTML = hapticPageHTML(); groups.haptic = d; }
+  if (HAP_UI) { const d = document.createElement('div'); d.innerHTML = hapticPageHTML(); groups.haptic = d; }
   { const d = document.createElement('div'); d.innerHTML = notifyHTML(); if (groups.remind) { const l = document.createElement('p'); l.className = 'ios-lab'; l.textContent = '每日学习提醒'; d.append(l, ...groups.remind.childNodes); delete groups.remind; } if (BADGE_OK || HAS_REM) groups.notify = d; }
   for (const k of ['handbook', 'weekly']) { const d = document.createElement('div'); d.innerHTML = '<div class="lz"></div>'; groups[k] = d; }
   { const lp = document.createElement('div'); pLabs(lp); $$('.kick, h1', lp).forEach(x => x.remove()); const ld = $('.lead', lp); if (ld) ld.className = 'ios-note';
@@ -2406,6 +2421,7 @@ function setFill() {
   if (SET.sec !== 'root' && !SET.has.has(SET.sec)) SET.sec = 'root';
   setView();
   body.scrollTop = keep;
+  nativeSwitches(body);
 }
 function setView(anim) {
   const win = document.querySelector('.set-win'); if (!win) return;
@@ -2764,7 +2780,22 @@ window.addEventListener('resize', () => { const w = innerWidth > 860; if (w !== 
    安卓 App：调用系统的触感反馈（跟随系统的触感强度）；安卓浏览器：短振动 */
 var IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent);
 var HAP_OK = IS_IPHONE || !!(window.AndroidApp && window.AndroidApp.haptic) || (!!navigator.vibrate && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches));
+/* iOS 26.5 起苹果不再允许网页主动触发震动，iPhone 上不再显示这个设置；设置里的开关在 iPhone 上换成系统原生开关，拨动时由系统自己震 */
+var HAP_UI = HAP_OK && !IS_IPHONE;
 function hapOn() { return S.settings.haptic !== false; }
+var NATIVE_SW = IS_IPHONE && typeof HTMLInputElement !== 'undefined' && 'switch' in HTMLInputElement.prototype;
+function nativeSwitches(root) {
+  if (!NATIVE_SW || !root) return;
+  root.querySelectorAll('button.switch[role="switch"]:not(.nsw-done)').forEach(b => {
+    b.classList.add('nsw-done');
+    const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.className = 'nsw';
+    i.checked = b.getAttribute('aria-checked') === 'true'; i.setAttribute('aria-label', b.getAttribute('aria-label') || '');
+    b.after(i);
+    const sync = () => { i.checked = b.getAttribute('aria-checked') === 'true'; };
+    new MutationObserver(sync).observe(b, { attributes: true, attributeFilter: ['aria-checked'] });
+    i.addEventListener('click', e => { e.stopPropagation(); b.click(); setTimeout(sync, 60); });
+  });
+}
 function iosTap() {
   try { const l = document.createElement('label'), i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); l.setAttribute('aria-hidden', 'true'); l.style.display = 'none'; l.append(i); document.head.append(l); l.click(); l.remove(); } catch (e) { }
 }
@@ -2783,7 +2814,7 @@ function hapticPageHTML() {
   return `<div class="ios-grp dm-wrap"><div class="dm dm-hp" aria-hidden="true"><div class="hp-ph"><i class="w l1"></i><i class="w l2"></i><span class="hp-sc"><b class="c1">掌握 ✓</b><b class="c2">不会 ✗</b><b class="c3"><span class="hp-sw"><i></i></span></b></span><i class="w r1"></i><i class="w r2"></i></div>
     <div class="hp-ls"><span class="c1">评为「掌握」或答对：轻震两下</span><span class="c2">评为「不会」或答错：连震三下</span><span class="c3">拨动开关、松开下拉同步：轻震一下</span></div></div></div>
     <div class="ios-grp" style="margin-top:14px"><div class="ios-row ios-tog" data-hapt role="button">${SV(SET_SECS.find(x => x[0] === 'haptic')[2])}<span class="ios-n">触感反馈</span><button class="switch" role="switch" aria-checked="${hapOn()}" aria-label="触感反馈"><i></i></button></div></div>
-    <p class="ios-note">只在这台设备上生效。${IS_IPHONE ? '需要 iOS 18 或更新的系统；如果感觉不到，请确认 iPhone「设置 → 声音与触感 → 系统触感反馈」已打开。' : '跟随手机系统的触感强度设置。'}</p>
+    <p class="ios-note">只在这台设备上生效，震动强度跟随手机系统的触感设置。</p>
     <p class="ios-lab">试一试</p><div class="ios-grp hp-try">${tries.map(([k, n, ic]) => `<button class="hp-b" data-htry="${k}">${SV(ic)}<span>${n}</span></button>`).join('')}</div>
     <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>做题和操作时手机会轻轻震一下，不用看屏幕也知道操作成功了，用起来更像原生 App。</p><ul><li>自评或自动判分：掌握轻震两下，不会连震三下，模糊轻震一下</li><li>拨动设置里的开关、切换选项时轻震</li><li>下拉同步拉到位、底栏按住滑动切换标签时轻震</li><li>错题本左滑到可以操作的位置时轻震</li></ul></div>`;
 }
@@ -2799,7 +2830,6 @@ function ltUpdate() {
   h.classList.add('lt');
   const hr = h.getBoundingClientRect(), tr = tn.getBoundingClientRect();
   de.classList.toggle('lt-off', hr.bottom > tr.bottom - 6);
-  const y = getScroll(); h.style.transform = y < 0 ? `scale(${(1 + Math.min(-y, 140) / 1100).toFixed(4)})` : '';
 }
 const ltQueue = () => { if (!ltRaf) ltRaf = requestAnimationFrame(ltUpdate); };
 window.addEventListener('scroll', ltQueue, { passive: true });
@@ -2850,27 +2880,38 @@ document.addEventListener('touchstart', e => {
   });
 }, { passive: true });
 
-/* —— 错题本左滑：露出「掌握」和「移出」；一直滑到底直接移出 —— */
+/* —— 错题本左滑：整张卡片往左滑开，露出后面两个圆形按钮「掌握」「移出」；一直滑到底直接移出 —— */
 (function () {
-  const AW = 156;
+  const AW = 150;
   let open = null;
-  const set = (row, x, anim) => { row.style.setProperty('--sx', x + 'px'); row.classList.toggle('sw-anim', !!anim); };
-  const shut = (row, anim = true) => { if (!row) return; set(row, 0, anim); if (open === row) open = null; setTimeout(() => { if (row.style.getPropertyValue('--sx') === '0px') { row.classList.remove('swp'); const a = row.querySelector(':scope > .sw-acts'); if (a) a.remove(); } }, anim ? 300 : 0); };
-  const collapse = row => { const h = row.offsetHeight; row.style.height = h + 'px'; row.classList.add('sw-gone'); void row.offsetWidth; row.style.height = '0px'; setTimeout(() => { const nx = row.nextElementSibling; if (nx && nx.classList.contains('q')) nx.remove(); row.remove(); }, 320); };
+  const wrapOf = r => (r && r.parentElement && r.parentElement.classList.contains('sw-wrap')) ? r.parentElement : null;
+  const set = (row, x, anim) => { const w = wrapOf(row); if (!w) return; w.style.setProperty('--sx', x + 'px'); w.style.setProperty('--sp', Math.min(1, Math.max(0, (-x - 16) / (AW - 16))).toFixed(3)); w.classList.toggle('sw-anim', !!anim); };
+  const ensure = row => {
+    if (wrapOf(row)) return;
+    const w = document.createElement('div'); w.className = 'sw-wrap'; row.before(w); w.append(row);
+    const d = document.createElement('div'); d.className = 'sw-acts';
+    d.innerHTML = `<button data-swa="ok" aria-label="记为掌握"><span class="sw-ic">${SV('<path d="M5.5 12.5l4 4 9-9"/>')}</span><span class="sw-tx">掌握</span></button><button data-swa="rm" aria-label="移出错题本"><span class="sw-ic">${SV('<path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l.9 12.2h9.2L17.5 7M10.2 10.5v5.5M13.8 10.5v5.5"/>')}</span><span class="sw-tx">移出</span></button>`;
+    w.prepend(d); set(row, 0);
+  };
+  const unwrap = row => { const w = wrapOf(row); if (!w) return; w.before(row); w.remove(); };
+  const shut = (row, anim = true) => { if (!row) return; set(row, 0, anim); row.classList.remove('sw-full'); if (open === row) open = null; setTimeout(() => { const w = wrapOf(row); if (w && w.style.getPropertyValue('--sx') === '0px') unwrap(row); }, anim ? 320 : 0); };
+  const collapse = row => { const el = wrapOf(row) || row, nx = el.nextElementSibling; if (nx && nx.classList.contains('q')) nx.remove(); el.style.height = el.offsetHeight + 'px'; el.classList.add('sw-gone'); void el.offsetWidth; el.style.height = '0px'; setTimeout(() => el.remove(), 330); };
+  const gone = row => { const w = wrapOf(row); if (w) w.classList.add('sw-out'); set(row, -(row.offsetWidth + 40), true); open = null; setTimeout(() => collapse(row), 240); };
   const act = (row, a) => {
     const id = row.dataset.q;
-    if (a === 'rm') { const s = Object.assign({}, S.q[id]); s.w = 0; s.t = Date.now(); S.q[id] = s; save(); haptic('confirm'); set(row, -row.offsetWidth, true); setTimeout(() => collapse(row), 200); open = null; return; }
-    if (a === 'ok') { rate(id, 3); if (!qs(id).w) { set(row, -row.offsetWidth, true); setTimeout(() => collapse(row), 200); open = null; } else { shut(row); toast('已记为掌握 · 再评一次掌握会自动移出'); } }
+    if (a === 'rm') { const s = Object.assign({}, S.q[id]); s.w = 0; s.t = Date.now(); S.q[id] = s; save(); haptic('confirm'); gone(row); return; }
+    if (a === 'ok') { rate(id, 3); if (!qs(id).w) gone(row); else { shut(row); toast('已记为掌握 · 再评一次掌握会自动移出'); } }
   };
-  const ensure = row => { if (row.querySelector(':scope > .sw-acts')) return; row.classList.add('swp'); const d = document.createElement('div'); d.className = 'sw-acts'; d.innerHTML = '<button data-swa="ok">掌握</button><button data-swa="rm">移出</button>'; row.append(d); };
   document.addEventListener('click', e => {
-    const b = e.target.closest('.sw-acts [data-swa]'); if (b) { e.stopPropagation(); e.preventDefault(); act(b.closest('.li'), b.dataset.swa); return; }
-    if (open && !e.target.closest('.li.swp')) { shut(open); }
-    else if (open && e.target.closest('.li.swp') === open) { e.stopPropagation(); e.preventDefault(); shut(open); }
+    const b = e.target.closest('.sw-acts [data-swa]'); if (b) { e.stopPropagation(); e.preventDefault(); act(b.closest('.sw-wrap').querySelector(':scope > .li'), b.dataset.swa); return; }
+    if (!open) return;
+    if (e.target.closest('.sw-wrap') === wrapOf(open)) { e.stopPropagation(); e.preventDefault(); }
+    shut(open);
   }, true);
   document.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
-    const row = e.target.closest('#wl > .li'); if (!row || e.target.closest('.sw-acts, input, textarea, select')) { if (open && !row) shut(open); return; }
+    const row = e.target.closest('#wl .li[data-q]');
+    if (!row || e.target.closest('.sw-acts, input, textarea, select')) { if (open && !e.target.closest('.sw-acts')) shut(open); return; }
     if (open && open !== row) shut(open);
     const t = e.touches[0], base = row === open ? -AW : 0, W = row.offsetWidth;
     const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), x: base, on: false, past: false };
@@ -2878,9 +2919,10 @@ document.addEventListener('touchstart', e => {
       const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
       if (!s.on) { if (s.dead) return; if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (Math.abs(dx) < 8 || (base === 0 && dx > 0)) return; s.on = true; ensure(row); }
       ev.preventDefault();
-      let x = Math.min(0, base + dx); if (x < -W * .55) x = -W * .55 + (x + W * .55) * .35;
+      let x = Math.min(0, base + dx); if (x > 0) x = 0;
+      if (x < -W * .62) x = -W * .62 + (x + W * .62) * .3;
       s.x = x; set(row, x);
-      const past = -x > W * .5; if (past !== s.past) { s.past = past; row.classList.toggle('sw-full', past); haptic('tick'); }
+      const past = -x > W * .55; if (past !== s.past) { s.past = past; row.classList.toggle('sw-full', past); wrapOf(row).classList.toggle('sw-full', past); haptic('tick'); }
     }, () => {
       if (!s.on) return;
       const v = (s.x - base) / Math.max(1, Date.now() - s.t0);
