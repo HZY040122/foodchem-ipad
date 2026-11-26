@@ -89,8 +89,10 @@ if (PLATFORM === 'apple' && (navigator.standalone === true || (window.matchMedia
    知识结构图和机理图解（.zoomable）单独支持双指缩放、双击放大/还原，方便看清小字 */
 /* 主屏幕版和安卓 App 用「App 外壳」：只有内容区滚动（见样式表 appshell） */
 if (document.documentElement.classList.contains('ios-app') || window.AndroidApp) document.documentElement.classList.add('appshell');
+/* iPhone 主屏幕 App：页面铺到屏幕边缘，顶栏和底栏按系统状态栏、主屏幕指示条的高度留出空间 */
+if (document.documentElement.classList.contains('ios-app') && /iPhone|iPod/.test(navigator.userAgent)) document.documentElement.classList.add('iphone');
 if (document.documentElement.classList.contains('ios-app')) {
-  const vp = document.querySelector('meta[name=viewport]'); if (vp) vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+  const vp = document.querySelector('meta[name=viewport]'); if (vp) vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' + (document.documentElement.classList.contains('iphone') ? ', viewport-fit=cover' : '');
   const zoomBox = t => t && t.closest ? t.closest('.zoomable') : null;
   const setZoom = (z, s) => { s = Math.min(4, Math.max(1, s)); z.dataset.zs = s; z.classList.toggle('zoomed', s > 1.01); for (const v of z.querySelectorAll('svg:not(svg svg)')) { v.style.width = (s * 100) + '%'; v.style.maxWidth = 'none'; v.style.height = 'auto'; } };
   let zs = null, lastTap = 0, lastBox = null;
@@ -124,6 +126,21 @@ function applyLook() { const de = document.documentElement; const sk = SKINS.som
   de.style.setProperty('--az', az); de.style.setProperty('--zoom', (S.settings.zoom || 1) * az); }
 applyLook();
 let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(applyLook, 120); });
+/* 系统状态栏的颜色跟着页面顶部走（风格、深浅色切换后同步），看起来和页面连成一片 */
+function syncStatusBar() {
+  const de = document.documentElement, sk = de.getAttribute('data-skin') || '', th = de.getAttribute('data-theme');
+  const dark = th === 'dark' || (!th && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  let c = '';
+  if (sk === 'glass') c = dark ? '#2b1b1d' : '#f8e7de';
+  else { const tn = document.getElementById('topnav'); if (tn && innerWidth <= 860) c = getComputedStyle(tn).backgroundColor; if (!c || /rgba\(.*,\s*0\)$/.test(c)) c = getComputedStyle(document.body).backgroundColor; if (!c || /rgba\(.*,\s*0\)$/.test(c)) c = getComputedStyle(de).getPropertyValue('--bg').trim(); }
+  if (!c) return;
+  let ms = document.querySelectorAll('meta[name="theme-color"]');
+  if (!ms.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); ms = [m]; }
+  ms.forEach(m => { m.setAttribute('content', c); m.removeAttribute('media'); });
+}
+const _applyLook = applyLook; applyLook = function () { _applyLook(); syncStatusBar(); };
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncStatusBar);
+syncStatusBar();
 let dbRef = null, syncOK = false, saveT = null, chain = Promise.resolve(), syncMsg = window.AndroidApp ? '进度保存在本机，离线可用' : window.__PWA ? (navigator.serviceWorker && navigator.serviceWorker.controller ? '已可离线使用 · 进度保存在本机' : '正在准备离线内容，请保持联网……') : '进度保存在本浏览器';
 function save() {
   S.updated = Date.now();
@@ -585,6 +602,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.8.2', d: '2026-11-26', t: '复习站 2.8.2：iPhone 状态栏适配和流畅度优化', items: [
+    'iPhone 主屏幕 App：页面铺到屏幕边缘，顶栏按系统状态栏的高度往下排，底部标签栏避开主屏幕指示条',
+    '状态栏的颜色跟着页面顶部走，切换风格或深浅色时同步变化',
+    '手机上的液态玻璃风格更流畅：滚动的卡片和按钮不再各自实时模糊背景，只保留顶栏按钮、底部标签栏、侧栏和弹窗的玻璃效果，滚动时要重新绘制的图层少了很多，外观基本不变'] },
   { v: '2.8.1', d: '2026-11-26', t: '复习站 2.8.1：修复 iPhone 主屏幕 App 的显示问题', items: [
     '修复：iPhone 主屏幕 App 里，液态玻璃风格的顶栏仍有一条背景，内容滚不到按钮下面',
     '修复：iPhone 主屏幕 App 里，点「三条杠」拉出的侧栏被截断，收起后顶部还残留一截',

@@ -1404,11 +1404,28 @@ body:has(.set-ov) .modal { z-index: 97; }
 @media (max-width: 860px) {
   [data-skin="glass"] #topnav::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 100px; z-index: -1; pointer-events: none;
     background: linear-gradient(to bottom, rgba(var(--pane), .55), rgba(var(--pane), 0));
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent); mask-image: linear-gradient(to bottom, #000 45%, transparent); }
   [data-skin="glass"] #topnav { isolation: isolate; }
 }
 .dm-l .k + span { margin-left: -3px; }
+
+/* ===== 2.8.2 iPhone 主屏幕 App：按系统状态栏和主屏幕指示条的高度排版 ===== */
+@media (max-width: 860px) {
+  html.iphone #topnav { padding-top: env(safe-area-inset-top); }
+  html.iphone.appshell[data-skin="glass"] .shell > main { padding-top: calc(76px + env(safe-area-inset-top)); scroll-padding-top: calc(76px + env(safe-area-inset-top)); }
+  html.iphone[data-skin="glass"] #topnav::before { height: calc(100px + env(safe-area-inset-top)); }
+  html.iphone .gs-ov { padding-top: calc(12px + env(safe-area-inset-top)); }
+  html.iphone .modal { padding-top: calc(10px + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom); }
+  html.iphone .upd-ov { padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+/* ===== 2.8.2 手机上的液态玻璃减负：滚动的卡片和按钮不再各自实时模糊背景（背景本来就是柔和渐变，看起来几乎一样），
+   只有顶栏按钮、底部标签栏、侧栏和弹窗这些固定的元素保留模糊，滚动时每一帧要重新计算的图层少了很多 ===== */
+@media (max-width: 860px) {
+  [data-skin="glass"] body { background-attachment: scroll; }
+  [data-skin="glass"] :is(.card, .kitem, .dl-card, .hero, .btn, .sticky, .gs-mpill, .li, .step) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  [data-skin="glass"] :is(.card, .kitem, .dl-card, .hero):not(.flat) { background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 38%), rgba(var(--pane), calc(var(--glass-a) + .12)); }
+  [data-skin="glass"] .btn:not(.pri):not(.ghost) { background: rgba(var(--pane), calc(var(--glass-a) + .3)); }
+}
 </style>
 </head>
 <body>
