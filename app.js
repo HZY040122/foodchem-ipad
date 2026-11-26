@@ -448,7 +448,7 @@ function qcard(q, o = {}) {
   if (q.opts && q.opts.length) body = `<div class="opts">${q.opts.map(([a, t]) => `<button class="opt" data-o="${esc(a)}">${esc(/^\d$/.test(a) ? '（' + a + '）' : a + '.')} ${esc(t)}</button>`).join('')}</div>`;
   else if (q.t === '判断') body = `<div class="row"><button class="opt" data-o="√">√ 对</button><button class="opt" data-o="×">× 错</button></div>`;
   else body = `<textarea placeholder="${q.t === '名解' ? '先写出定义的关键词，再对答案' : OBJ.includes(q.t) ? '填写答案' : '先列出答题要点（可以只写关键词），再对答案'}" aria-label="作答"></textarea>`;
-  const TMR = S.settings.labTimer && TLIM[q.t] && !(q.opts && q.opts.length) && q.t !== '判断';
+  const TMR = featOn('labTimer') && TLIM[q.t] && !(q.opts && q.opts.length) && q.t !== '判断';
   el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}${TMR ? `<span class="chip tmr" data-tmr>⏱ 建议 ${TLIM[q.t]} 分钟${s.tu ? ' · 上次用时 ' + mmss(s.tu) : ''}</span>` : ''}</div><div class="qtext">${esc(q.q)}</div>${body}
     ${S.settings.labPoints && s.miss && s.miss.length && answerPoints(q).length > 1 ? `<div class="miss">上次漏了：${s.miss.map(esc).join('、')}</div>` : ''}
     <div class="row"><button class="btn pri" data-a="show">对答案</button>${featOn('labRecite') && answerPoints(q).length ? '<button class="btn" data-a="recite">背诵</button>' : ''}${q.a && ttsAvail() ? '<button class="btn" data-a="tts">朗读</button>' : ''}${S.settings.labFrame && !OBJ.includes(q.t) && frameFor(q) ? '<button class="btn" data-a="frame">答题框架</button>' : ''}<button class="btn" data-a="star">${s.w ? '已在错题本' : '加入错题本'}</button>${o.noNote ? '' : '<button class="btn ghost" data-a="note">笔记</button>'}<span class="sp"></span>${o.nav || ''}</div>
@@ -587,6 +587,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9.3', d: '2026-11-26', t: '复习站 2.9.3：限时作答转正，下拉同步完成后显示对勾', items: [
+    '限时作答转为正式功能，默认开启：在设置的「学习功能」里开关，页面顶部有演示动画',
+    '下拉同步完成后显示绿色的对勾（失败显示红色的叉），不再一直转圈',
+    'iPad 上下拉同步的提示放在内容区正中、悬浮搜索框下面，不再和搜索框重叠',
+    '已登录的账号页去掉「立即同步」和「退出登录」按钮，这两项在设置首页里'] },
   { v: '2.9.2', d: '2026-11-26', t: '复习站 2.9.2：修复 iPhone 右滑时出现旧页面截图', items: [
     'iPhone / iPad 上切换页面不再新增浏览记录，各页面像原生 App 的标签页一样并列：系统的边缘右滑不会再退到旧页面的截图（比如侧栏还开着的画面）；从左边缘右滑改为拉出侧栏',
     'iPhone 顶栏两个按钮和状态栏的距离恢复到之前的样子'] },
@@ -1880,7 +1885,7 @@ document.addEventListener('keydown', e => {
   if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); gsOpen(); }
 });
 
-const STABLE = new Set(['labRecite', 'labSprint', 'labNight', 'labSearch']);
+const STABLE = new Set(['labRecite', 'labSprint', 'labNight', 'labSearch', 'labTimer']);
 const LABS = [
   { k: 'labRecite', t: '大题背诵模式', d: '简答、论述、情境、名解的题卡上多一个「背诵」按钮，把参考答案拆成一条条要点来背。', how: ['<b>要点提示</b>：只显示每条要点的标题，先回忆，再点开核对', '<b>挖空填词</b>：把答案里的关键词整个挖掉换成横线，点一下横线显示', '<b>全文</b>：显示完整答案'], where: '题卡上「对答案」旁边' },
   { k: 'labPoints', t: '按要点自评', d: '对完答案后，勾上自己答出来的要点，按比例自动给出「不会 / 模糊 / 掌握」，漏掉的要点下次做这题时会提醒。', how: ['答出 80% 以上算「掌握」，40% 以上算「模糊」，再少算「不会」', '模拟卷交卷后，大题可以「按要点给分」，分数按比例自动填好', '漏掉的要点显示在题目下方：「上次漏了：……」'], where: '对完答案后，答案下方' },
@@ -2110,7 +2115,7 @@ function pWeekly(m) {
   };
 }
 /* —— 已转正功能的二级页面：开关 + 说明；搜索栏页面在悬浮搜索框和侧边栏「检索」之间切换 —— */
-const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight' };
+const FEAT_PG = { recite: 'labRecite', sprint: 'labSprint', night: 'labNight', timer: 'labTimer' };
 /* —— 学习功能二级页面顶部的演示动画（纯 CSS 循环播放；系统开了「减弱动态效果」时只显示最后的画面） —— */
 function demoHTML(k) {
   if (k === 'labRecite') return `<div class="dm dm-rc" aria-hidden="true">
@@ -2125,6 +2130,11 @@ function demoHTML(k) {
     return `<div class="dm dm-sp" aria-hidden="true"><div class="dm-sph"><span>离考试 <b>23</b> 天</span><span class="dm-bar"><i></i></span><span class="dm-flag">考试</span></div>
       <div class="dm-days">${cols.map(([d, cs], ci) => `<div class="dm-day${ci >= 4 ? ' end' : ''}"><span>${d}</span>${cs.map(c => `<b style="--d:${(n++) * .35}s">${c}</b>`).join('')}</div>`).join('')}</div></div>`;
   }
+  if (k === 'labTimer') return `<div class="dm dm-tm" aria-hidden="true">
+    <div class="dm-top"><span class="dm-q">简述影响淀粉糊化的因素</span><span class="tm-pill"><i class="tm-dot"></i><b class="tm-run">计时中 · 建议 8 分钟</b><b class="tm-over">已超时 · 只提醒不打断</b></span></div>
+    <div class="tm-bar"><i></i></div>
+    <div class="tm-box"><span class="tl t1">1. 淀粉种类：直链淀粉含量高，糊化温度高</span><span class="tl t2">2. 水分含量：水分不足时难以完全糊化</span><span class="tl t3">3. 糖、盐、脂类：一般使糊化温度升高</span><span class="caret"></span></div>
+    <div class="dm-cap">开始写答案时自动计时，超时只变红提醒</div></div>`;
   if (k === 'labNight') return `<div class="dm dm-nt" aria-hidden="true"><i class="st s1"></i><i class="st s2"></i><i class="st s3"></i><i class="st s4"></i><span class="moon"></span>
     <div class="dm-stack">${[['不会', '美拉德反应的条件'], ['模糊', '淀粉的糊化与老化'], ['不会', '油脂自动氧化历程']].map(([l, t], i) => `<div class="nc n${i + 1}"><b class="${l === '不会' ? 'bad' : 'mid'}">${l}</b>${t}</div>`).join('')}</div>
     <div class="dm-timer"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18"/><circle class="arc" cx="22" cy="22" r="18"/></svg><span>5 分钟</span></div>
@@ -2160,8 +2170,8 @@ function accountSection(pop, mode = 'login') {
   const H = pop ? '' : '<h2>账号与同步</h2>';
   if (!CLOUD.on) return `${H}<div class="${pop ? 'me-sec' : 'card'}"><p class="note" style="margin:0">在 Claude 里打开的这个版本，进度会同步到你的 Claude 账号。想和 iPad、安卓 App 同步，请用 GitHub Pages 网页版（<a href="${PWA_URL}" target="_blank" rel="noopener">${PWA_URL.replace('https://', '')}</a>）或 App 登录同一个复习站账号。</p></div>`;
   const u = CLOUD.user;
-  if (u) return `${H}<div class="${pop ? 'me-sec' : 'card'} acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div><span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button></div>
-    <p class="note" style="margin:8px 0 0">做题记录、错题本、笔记、设置、学习时间会在网页版、iPad 和安卓 App 之间自动同步：改动后 20 秒内上传，打开或回到页面时下载。没网时照常使用，联网后自动补上。</p></div>`;
+  if (u) return `${H}<div class="${pop ? 'me-sec' : 'card'} acct"><div class="row"><span class="av">${esc((u.email || '?')[0].toUpperCase())}</span><div><b>${esc(u.email || '')}</b><div class="note" id="acst">${esc(CLOUD.err || (CLOUD.lastOk ? '上次同步：' + agoText(CLOUD.lastOk) : '还没同步'))}</div></div>${pop ? '' : '<span class="sp"></span><button class="btn pri sm" id="acsync">立即同步</button><button class="btn sm ghost" id="acout">退出登录</button>'}</div>
+    <p class="note" style="margin:8px 0 0">做题记录、错题本、笔记、设置、学习时间会在网页版、iPad 和安卓 App 之间自动同步：改动后 20 秒内上传，打开或回到页面时下载。没网时照常使用，联网后自动补上。${pop ? '要马上同步，可以用设置首页的「立即同步」，或在「今日」页面顶部往下拉；退出登录在设置首页最下面。' : ''}</p></div>`;
   const em = id => `<div class="af-f"><label for="${id}">邮箱</label><input type="email" id="${id}" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${esc(ACCT.email)}"></div>`;
   if (mode === 'signup') return `<div class="${pop ? 'me-sec' : 'card'} acct af">
     <p class="note af-lead">注册一个复习站账号，网页版、iPad、iPhone 和安卓 App 的进度就能自动同步。这台设备上已有的进度会一起带进新账号。</p>
@@ -2248,6 +2258,7 @@ const SET_SECS = [
   ['recite', '大题背诵模式', '<path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8z"/><path d="M12 6.3v13"/>'],
   ['sprint', '冲刺计划', '<path d="M5.5 21V4.5M5.5 4.5h11l-2.2 3.7 2.2 3.8h-11"/>'],
   ['night', '睡前五分钟回顾', '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>'],
+  ['timer', '限时作答', '<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4l2.5 2M9.5 3.5h5M18.5 7l1.5-1.5"/>'],
   ['search', '搜索栏', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'],
   ['handbook', '考前速查手册', '<path d="M6 3.5h11.5v17H6a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M4.5 17.5A1.5 1.5 0 0 1 6 16h11.5M9 7.5h5.5M9 10.5h4"/>'],
   ['weekly', '学习周报', '<path d="M4.5 20V4M4.5 20h15"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>'],
@@ -2353,7 +2364,7 @@ function setFill() {
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
     <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}</div>
-    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('search')}</div>
+    <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('timer')}${row('search')}</div>
     <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
     <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
     ${look ? `<p class="ios-lab">外观</p><div class="ios-grp set-look"></div>` : ''}
@@ -2600,20 +2611,28 @@ document.addEventListener('touchstart', e => {
 /* —— 下拉同步：在页面顶部继续往下拉，松手后和云端同步一次 —— */
 (function () {
   let el = null, touching = false, armed = false, busy = false;
-  const ensure = () => { if (!el) { el = document.createElement('div'); el.id = 'ptr'; el.className = 'ptr'; el.innerHTML = '<span class="ptr-ic"></span><span class="ptr-t"></span>'; document.body.append(el); } const tn = document.getElementById('topnav'); const r = tn && tn.getBoundingClientRect(); el.style.top = ((r && r.height && innerWidth <= 860) ? r.bottom + 6 : 12) + 'px'; return el; };
-  const hide = () => { if (el && !busy) { el.classList.remove('on', 'arm'); el.style.opacity = 0; } };
+  const ensure = () => {
+    if (!el) { el = document.createElement('div'); el.id = 'ptr'; el.className = 'ptr'; el.innerHTML = '<span class="ptr-ic"></span><span class="ptr-t"></span>'; document.body.append(el); }
+    const mm = document.getElementById('main'), mr = mm && mm.getBoundingClientRect(), tn = document.getElementById('topnav'), tr = tn && tn.getBoundingClientRect();
+    const gp = document.getElementById('gsPill'), gr = gp && getComputedStyle(gp).display !== 'none' ? gp.getBoundingClientRect() : null;
+    let top = 12, left = innerWidth / 2;
+    if (innerWidth <= 860) { if (tr && tr.height) top = tr.bottom + 6; }
+    else { if (mr) left = mr.left + mr.width / 2; top = gr && gr.height ? gr.bottom + 10 : (mr ? mr.top + 12 : 12); }
+    el.style.top = top + 'px'; el.style.left = left + 'px'; return el;
+  };
+  const hide = () => { if (el && !busy) { el.classList.remove('on', 'arm'); el.style.opacity = 0; setTimeout(() => { if (el && !busy && el.style.opacity === '0') el.classList.remove('done', 'fail'); }, 250); } };
   const onScroll = () => {
     if (!touching || busy || !CLOUD.user || (location.hash.slice(1) || 'today') !== 'today') return;
     const y = getScroll(); if (y >= -4) { hide(); armed = false; return; }
-    const d = -y; ensure(); el.classList.add('on'); el.style.opacity = Math.min(1, d / 60);
+    const d = -y; ensure(); el.classList.remove('done', 'fail'); el.classList.add('on'); el.style.opacity = Math.min(1, d / 60);
     armed = d > 72; el.classList.toggle('arm', armed); el.querySelector('.ptr-t').textContent = armed ? '松开同步' : '下拉同步';
     el.querySelector('.ptr-ic').style.transform = `rotate(${Math.min(d, 72) * 4}deg)`;
   };
   document.addEventListener('touchstart', () => { touching = true; }, { passive: true });
   document.addEventListener('touchend', () => {
     touching = false; if (!armed || busy) { hide(); return; }
-    armed = false; busy = true; ensure(); el.classList.add('busy'); el.querySelector('.ptr-t').textContent = '正在同步…';
-    Promise.resolve(cloudSync()).catch(() => { }).finally(() => { busy = false; el.classList.remove('busy', 'arm'); el.querySelector('.ptr-t').textContent = CLOUD.err ? '同步失败' : '已同步'; setTimeout(hide, 900); });
+    armed = false; busy = true; ensure(); el.classList.remove('done', 'fail'); el.classList.add('busy'); el.querySelector('.ptr-ic').style.transform = ''; el.querySelector('.ptr-t').textContent = '正在同步…';
+    Promise.resolve(cloudSync()).catch(() => { }).finally(() => { busy = false; el.classList.remove('busy', 'arm'); el.classList.add(CLOUD.err ? 'fail' : 'done'); el.querySelector('.ptr-t').textContent = CLOUD.err ? '同步失败' : '已同步'; setTimeout(hide, 1200); });
   }, { passive: true });
   window.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('scroll', e => { if (e.target && e.target.id === 'main') onScroll(); }, { passive: true, capture: true });

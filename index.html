@@ -1542,6 +1542,33 @@ body:has(.set-ov) .modal { z-index: 97; }
 .af-again { justify-self: center; }
 [data-skin="glass"] .af-f input { background: rgba(var(--pane), calc(var(--glass-a) + .35)); border-color: rgba(255,255,255,.5); }
 [data-skin="book"] .af-f input { border-radius: 4px; background: color-mix(in srgb, var(--paper) 70%, #fff); }
+
+/* ===== 2.9.3 下拉同步：完成后对勾、失败叉 ===== */
+.ptr.done .ptr-ic, .ptr.fail .ptr-ic { position: relative; border: 0; background: var(--ok); transform: none !important; animation: ptrPop .4s cubic-bezier(.2,.9,.3,1.4); }
+.ptr.fail .ptr-ic { background: var(--bad); }
+.ptr.done .ptr-ic::after { content: ''; position: absolute; left: 5.5px; top: 2.5px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.ptr.fail .ptr-ic::before, .ptr.fail .ptr-ic::after { content: ''; position: absolute; left: 7px; top: 3.5px; width: 2px; height: 9px; background: #fff; border-radius: 1px; transform: rotate(45deg); }
+.ptr.fail .ptr-ic::before { transform: rotate(-45deg); }
+.ptr.done .ptr-t { color: var(--ok); } .ptr.fail .ptr-t { color: var(--bad); }
+@keyframes ptrPop { 0% { transform: scale(.3); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+/* ===== 2.9.3 限时作答演示 ===== */
+.tm-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 2px 9px; border-radius: 99px; font-size: 11.5px; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); position: relative; animation: tmPill 8s infinite both; }
+.tm-pill b { font-weight: 600; white-space: nowrap; }
+.tm-pill .tm-over { position: absolute; left: 24px; opacity: 0; animation: tmOver 8s infinite both; }
+.tm-pill .tm-run { animation: tmRun 8s infinite both; }
+.tm-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: dmBlink 1s steps(1) infinite; }
+@keyframes tmPill { 0%, 70% { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); } 74%, 96% { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); } 100% { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); } }
+@keyframes tmRun { 0%, 70% { opacity: 1; } 73%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes tmOver { 0%, 71% { opacity: 0; } 74%, 96% { opacity: 1; } 100% { opacity: 0; } }
+.tm-bar { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; margin: 2px 0 10px; }
+.tm-bar i { display: block; height: 100%; width: 100%; border-radius: 3px; transform-origin: left; background: var(--ok); animation: tmBar 8s infinite both; }
+@keyframes tmBar { 0% { transform: scaleX(.02); background: var(--ok); } 70% { transform: scaleX(1); background: var(--ok); } 74%, 96% { transform: scaleX(1); background: var(--bad); } 100% { transform: scaleX(.02); } }
+.tm-box { border-radius: 12px; padding: 8px 12px; background: color-mix(in srgb, var(--ink) 4%, transparent); display: grid; gap: 4px; font-size: 12.5px; min-height: 76px; position: relative; }
+.tm-box .tl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; animation: tmLine 8s infinite both; }
+.tm-box .t2 { animation-delay: 1.3s; } .tm-box .t3 { animation-delay: 2.6s; }
+@keyframes tmLine { 0%, 4% { opacity: 0; transform: translateY(3px); } 8%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+.tm-box .caret { position: absolute; right: 12px; bottom: 9px; width: 1.5px; height: 14px; background: var(--accent); animation: dmBlink 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .tm-box .tl { opacity: 1; } .tm-pill .tm-over { opacity: 0; } }
 </style>
 </head>
 <body>
