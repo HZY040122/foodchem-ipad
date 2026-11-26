@@ -589,6 +589,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.4', d: '2026-11-26', t: '复习站 2.10.4：设置从底部弹出，侧栏细节', items: [
+    '手机上设置改成从屏幕底部往上滑出，关闭时往下滑走；从侧栏打开设置，关掉后侧栏仍然开着',
+    '修好了从侧栏进入设置时闪两下的问题',
+    '推开式侧栏：被推开页面的上方改为直角（状态栏不属于网页，圆角伸不进去），下方保持圆角',
+    '侧栏选项的行距改为按选项个数和屏幕高度自动计算，在一屏放得下的前提下尽量宽松'] },
   { v: '2.10.3', d: '2026-11-26', t: '复习站 2.10.3：推开式侧栏细节修正', items: [
     '侧栏打开时，被推开页面的圆角上下不再露出奇怪的色块',
     '从侧栏点进设置时，设置窗口直接盖上来，侧栏在下面悄悄收起，不再先闪一下当前页面',
@@ -1009,8 +1014,10 @@ document.addEventListener('click', e => {
   if (!document.documentElement.classList.contains('drawer')) return;
   if (e.target.closest('#sidenav a')) return drawer(false);
   /* 从侧栏打开设置：设置窗口先盖上来，等它完全出现后再在下面悄悄收起侧栏（不做动画），避免先闪一下当前页面 */
-  if (e.target.closest('#sidenav [data-me]')) { if (!drPush()) return drawer(false); setTimeout(() => drawerSnap(false), 380); }
+  /* 推开式侧栏：设置从底部弹上来，关掉设置后侧栏仍然开着 */
+  if (e.target.closest('#sidenav [data-me]')) { if (!drPush()) return drawer(false); }
 });
+window.addEventListener('hashchange', () => { if (document.documentElement.classList.contains('drawer')) drawer(false); });
 function drawerSnap(open) {
   const de = document.documentElement; de.classList.add('dr-drag'); drawer(open);
   if (!open) de.classList.remove('dr-on');
@@ -2313,6 +2320,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && ME.open) m
 function fitSide() {
   const nv = document.getElementById('sidenav'), sl = nv && nv.querySelector('.side-list'); if (!sl || !sl.offsetParent) return;
   nv.classList.remove('fit1', 'fit2', 'fit3');
+  /* 推开式侧栏：按选项个数和可用高度算行距，尽量宽松但保证一屏放得下 */
+  if (drPush()) {
+    const n = sl.querySelectorAll('a').length || 1;
+    let pad = 13;
+    for (let i = 0; i < 3; i++) {
+      nv.style.setProperty('--sdp', pad.toFixed(1) + 'px'); nv.style.setProperty('--sdf', pad < 6 ? '16px' : '17px');
+      const over = sl.scrollHeight - sl.clientHeight; if (over <= 0) break;
+      pad = Math.max(4, pad - over / (2 * n) - .3);
+    }
+    return;
+  }
+  nv.style.removeProperty('--sdp'); nv.style.removeProperty('--sdf');
   for (const c of ['fit1', 'fit2', 'fit3']) { if (sl.scrollHeight - sl.clientHeight <= 2) break; nv.classList.add(c); }
 }
 window.addEventListener('resize', () => fitSide());
@@ -2392,7 +2411,11 @@ function setInfoOpen() {
   win.append(d);
 }
 function setInfoClose() { const d = document.getElementById('setInfo'); if (!d) return; d.removeAttribute('id'); d.classList.add('out'); setTimeout(() => d.remove(), 160); }
-function closeSettings() { const o = document.getElementById('setOv'); if (o) o.remove(); SET.open = false; }
+function closeSettings(now) {
+  const o = document.getElementById('setOv'); SET.open = false; if (!o) return;
+  if (now === true || innerWidth > 860 || matchMedia('(prefers-reduced-motion: reduce)').matches) { o.remove(); return; }
+  o.removeAttribute('id'); o.classList.add('out'); setTimeout(() => o.remove(), 340);
+}
 function setGo(k) {
   const body = $('#setBody'), back = k === 'root';
   if (!back && SET.sec === 'root') SET.rootTop = body.scrollTop;
@@ -2679,7 +2702,7 @@ document.addEventListener('touchstart', e => {
   const el = e.target; if (el.closest('input, textarea, select, .seg, .dm-days, .zoomable, .sheet-wrap')) return;
   let tgt = el.closest('#modal .modal:not(.push) > .card'), close = null;
   if (tgt) close = () => { const x = document.querySelector('#modal [data-x]'); if (x) x.click(); else document.getElementById('modal').innerHTML = ''; };
-  else if ((tgt = el.closest('.set-win'))) close = () => closeSettings();
+  else if ((tgt = el.closest('.set-win'))) close = () => closeSettings(true);
   if (!tgt) return;
   const sc = scrollParent(el), s = { y0: t.clientY, x0: t.clientX, t0: Date.now(), dy: 0, on: false };
   trackTouch(e, ev => {
