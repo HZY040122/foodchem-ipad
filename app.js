@@ -589,6 +589,11 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.10.3', d: '2026-11-26', t: '复习站 2.10.3：推开式侧栏细节修正', items: [
+    '侧栏打开时，被推开页面的圆角上下不再露出奇怪的色块',
+    '从侧栏点进设置时，设置窗口直接盖上来，侧栏在下面悄悄收起，不再先闪一下当前页面',
+    '拉出侧栏再推回去时，页面背景不再闪一下',
+    '侧栏选项字号加大（17 号）、行距加宽，图标也放大一点'] },
   { v: '2.10.2', d: '2026-11-26', t: '复习站 2.10.2：推开式侧栏、启动画面字体修正', items: [
     '主屏幕 App（手机）的侧栏改成像 Claude App 那样：整页带圆角往右推开，侧栏露在下面；从屏幕左边缘往右拉可以跟手拉开，往左拉或点右边露出的页面收回',
     '启动画面上「食品化学复习站」的「复」字大小不一致的问题修好了（之前用了日文字形）'] },
@@ -1000,7 +1005,17 @@ function drawer(open) {
   else { clearTimeout(drawer.t); drawer.t = setTimeout(() => { if (!h.classList.contains('drawer') && !h.classList.contains('dr-drag')) h.classList.remove('dr-on'); }, 420); }
   const sn = document.getElementById('sidenav'); if (sn) { sn.setAttribute('aria-modal', open ? 'true' : 'false'); if (open) { fitSide(); const a = sn.querySelector('a[aria-current]') || sn.querySelector('a'); a && a.focus({ preventScroll: true }); } }
 }
-document.addEventListener('click', e => { if (document.documentElement.classList.contains('drawer') && e.target.closest('#sidenav a, #sidenav [data-me]')) drawer(false); });
+document.addEventListener('click', e => {
+  if (!document.documentElement.classList.contains('drawer')) return;
+  if (e.target.closest('#sidenav a')) return drawer(false);
+  /* 从侧栏打开设置：设置窗口先盖上来，等它完全出现后再在下面悄悄收起侧栏（不做动画），避免先闪一下当前页面 */
+  if (e.target.closest('#sidenav [data-me]')) { if (!drPush()) return drawer(false); setTimeout(() => drawerSnap(false), 380); }
+});
+function drawerSnap(open) {
+  const de = document.documentElement; de.classList.add('dr-drag'); drawer(open);
+  if (!open) de.classList.remove('dr-on');
+  requestAnimationFrame(() => requestAnimationFrame(() => de.classList.remove('dr-drag')));
+}
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.documentElement.classList.contains('drawer')) drawer(false); });
 addEventListener('resize', () => { if (innerWidth > 860) drawer(false); });
 /* 「更多」：从底部弹出的全部页面列表 */

@@ -1,7 +1,7 @@
 /* 食品化学复习站 · iPad 离线缓存
    第一次联网打开时，把下面列出的文件全部存到 iPad 上；之后无论有没有网络，都直接从 iPad 上读取。
    以后更新：替换文件后，iPad 下次联网打开时会自动下载新版本（再打开一次即生效）。 */
-const VERSION = 'fc-e6ab7a8245';
+const VERSION = 'fc-3e3c97b9d6';
 const FILES = ["./", "index.html", "app.js", "diagrams.js", "data/bank.js", "data/meta.js", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener('install', e => {
