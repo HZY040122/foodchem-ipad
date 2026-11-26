@@ -1,6 +1,6 @@
 {
-  "versionCode": 41,
-  "versionName": "2.9",
-  "apk": "FoodChemReview-v2.9.apk",
-  "notes": "左边缘右滑返回、浮窗下滑关闭；点顶栏回到顶部，切换页面记住位置；下拉同步；设置里新增「通知」，每日学习提醒移到这里；专项练习更流畅；直接覆盖安装，学习进度会保留"
+  "versionCode": 42,
+  "versionName": "2.9.1",
+  "apk": "FoodChemReview-v2.9.1.apk",
+  "notes": "注册账号和找回密码改成单独的页面；下拉同步只在今日页面；直接覆盖安装，学习进度会保留"
 }
