@@ -78,7 +78,7 @@ let S = blank();
 try { const r = localStorage.getItem(LS); if (r) S = Object.assign(blank(), JSON.parse(r)); } catch (e) { }
 /* 同步用：本机编号（学习时长按设备分别记，合并时相加）；只属于本机的设置（风格、字号等不同设备各自独立） */
 let DEV = ''; try { DEV = localStorage.getItem('fcsite.dev') || ''; if (!DEV) { DEV = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem('fcsite.dev', DEV); } } catch (e) { DEV = 'd0'; }
-const LOCAL_SET = ['skin', 'glassA', 'md3Dyn', 'zoom', 'theme', 'seenVer', 'autoTime'];
+const LOCAL_SET = ['skin', 'glassA', 'md3Dyn', 'zoom', 'theme', 'seenVer', 'autoTime', 'badge'];
 let SET_SNAP = {};
 function snapSettings() { SET_SNAP = {}; for (const [k, v] of Object.entries(S.settings || {})) if (k !== '_t') SET_SNAP[k] = JSON.stringify(v); }
 snapSettings();
@@ -126,21 +126,6 @@ function applyLook() { const de = document.documentElement; const sk = SKINS.som
   de.style.setProperty('--az', az); de.style.setProperty('--zoom', (S.settings.zoom || 1) * az); }
 applyLook();
 let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(applyLook, 120); });
-/* 系统状态栏的颜色跟着页面顶部走（风格、深浅色切换后同步），看起来和页面连成一片 */
-function syncStatusBar() {
-  const de = document.documentElement, sk = de.getAttribute('data-skin') || '', th = de.getAttribute('data-theme');
-  const dark = th === 'dark' || (!th && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  let c = '';
-  if (sk === 'glass') c = dark ? '#2b1b1d' : '#f8e7de';
-  else { const tn = document.getElementById('topnav'); if (tn && innerWidth <= 860) c = getComputedStyle(tn).backgroundColor; if (!c || /rgba\(.*,\s*0\)$/.test(c)) c = getComputedStyle(document.body).backgroundColor; if (!c || /rgba\(.*,\s*0\)$/.test(c)) c = getComputedStyle(de).getPropertyValue('--bg').trim(); }
-  if (!c) return;
-  let ms = document.querySelectorAll('meta[name="theme-color"]');
-  if (!ms.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); ms = [m]; }
-  ms.forEach(m => { m.setAttribute('content', c); m.removeAttribute('media'); });
-}
-const _applyLook = applyLook; applyLook = function () { _applyLook(); syncStatusBar(); };
-if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncStatusBar);
-syncStatusBar();
 let dbRef = null, syncOK = false, saveT = null, chain = Promise.resolve(), syncMsg = window.AndroidApp ? '进度保存在本机，离线可用' : window.__PWA ? (navigator.serviceWorker && navigator.serviceWorker.controller ? '已可离线使用 · 进度保存在本机' : '正在准备离线内容，请保持联网……') : '进度保存在本浏览器';
 function save() {
   S.updated = Date.now();
@@ -602,6 +587,16 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.9', d: '2026-11-26', t: '复习站 2.9：更像原生 App', items: [
+    '从屏幕左边缘往右滑返回上一页；题卡和设置窗口在顶部时往下滑就能关掉',
+    '点顶栏回到页面顶部；从标签栏或侧栏切换页面时回到上次看到的位置，再点一次当前标签回到顶部',
+    '登录后，在页面顶部继续往下拉，松手就和云端同步一次',
+    '液态玻璃风格：按住底部标签栏左右滑，会出现跟着手指走的玻璃放大镜，松手切换页面；标签栏的高度和位置调成和系统 App 一样',
+    '设置里新增「通知」：可以在主屏幕图标上显示今天到期的复习题数；安卓的每日学习提醒也移到这里',
+    '主屏幕 App 打开时显示启动画面，不再白屏一闪；iPad 分屏、台前调度时窗口变窄会自动切换布局',
+    'iPhone 状态栏的颜色和顶栏连成一片，顶栏更紧凑，滚动边缘的渐隐效果恢复',
+    '更流畅：专项练习的题目列表改为分批显示，换题、评分不再整页重画几百行；切换页面时少做几次排版计算',
+    '手机上的液态玻璃恢复之前的效果'] },
   { v: '2.8.2', d: '2026-11-26', t: '复习站 2.8.2：iPhone 状态栏适配和流畅度优化', items: [
     'iPhone 主屏幕 App：页面铺到屏幕边缘，顶栏按系统状态栏的高度往下排，底部标签栏避开主屏幕指示条',
     '状态栏的颜色跟着页面顶部走，切换风格或深浅色时同步变化',
@@ -927,12 +922,12 @@ function navHTML() {
   /* 底部导航栏（Material 3 和液态玻璃风格在窄屏上使用）：四个常用页面 + 「更多」 */
   const bn = document.getElementById('bnav');
   if (bn) { const main4 = ['today', 'daily', 'path', 'wrong'], inMain = main4.includes(cur);
-    bn.innerHTML = main4.map(id => { const pg = PAGES.find(x => x[0] === id); return `<a href="#${id}" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span class="bl">${id === 'daily' ? '自测' : id === 'path' ? '路径' : pg[1]}</span></a>`; }).join('')
+    bn.innerHTML = main4.map(id => { const pg = PAGES.find(x => x[0] === id); return `<a href="#${id}" draggable="false" ${cur === id ? 'aria-current="page"' : ''}><span class="bi">${icon(id)}</span><span class="bl">${id === 'daily' ? '自测' : id === 'path' ? '路径' : pg[1]}</span></a>`; }).join('')
       + (S.settings.skin === 'glass' ? '' : `<button type="button" id="bmore" ${inMain ? '' : 'aria-current="page"'}><span class="bi">${SV('<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>')}</span><span class="bl">${inMain ? '更多' : esc((PAGES.find(x => x[0] === cur) || [0, '更多'])[1].replace('试验性功能', '试验'))}</span></button>`);
     const bm = $('#bmore'); if (bm) bm.onclick = openMoreSheet; }
   $('#tnMenu').onclick = () => drawer(true);
   $('#tnSearch').onclick = () => featOn('labSearch') ? gsOpen() : go('search');
-  gsMount(); fitSide();
+  gsMount(); const pk = PAGES.map(x => x[0]).join(); if (pk !== navHTML.pk) { navHTML.pk = pk; requestAnimationFrame(fitSide); }
 }
 /* 手机上的液态玻璃风格：顶栏左边的「三条杠」拉出和 iPad 一样的侧栏 */
 function drawer(open) {
@@ -954,7 +949,6 @@ function openMoreSheet() {
   document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', k); } });
 }
 function go(page) { if (location.hash.slice(1) === page) render(); else location.hash = page; }
-window.addEventListener('hashchange', () => { if (SET.open && !['#settings', '#labs', '#handbook', '#weekly'].includes(location.hash)) closeSettings(); render(); toTop(); });
 /* 侧栏「下载 App」：跳到设置页的下载区 */
 document.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; pSettings.jump = a.dataset.jump;
   if (location.hash === '#settings') { e.preventDefault(); const t = document.getElementById(pSettings.jump); pSettings.jump = null; if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
@@ -978,6 +972,7 @@ function render() {
   render.last = p; render.lastIdx = pi;
   main.replaceChildren(m); f(m);
   /* 设置窗口开着时，改动后同步刷新窗口里的内容（正在输入时不刷新，免得打断） */
+  if (typeof syncBadge === 'function') syncBadge();
   if (SET.open) { const a = document.activeElement; if (!(a && a.closest && a.closest('.set-ov') && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) setFill(); }
 }
 /* 书本风格的翻页（两种方向都以书脊为轴，和真书一样）：
@@ -1252,12 +1247,17 @@ function pPractice(m) {
     if (f.c) $('#fcx').onclick = () => { f.c = ''; render(); };
   }
   $('#lst').onclick = () => { f.showList = !f.showList; render(); };
-  if (f.showList) { $('#pl2').innerHTML = `<div class="list" style="margin-bottom:12px;max-height:340px;overflow:auto">${list.map((q, i) => `<div class="li" data-i="${i}" style="cursor:pointer;padding:6px 10px"><div class="stripe l${qs(q.id).l}"></div><div class="main"><div class="t" style="font-size:14px">${esc(q.q.split('\n')[0].slice(0, 70))}</div><div class="s">${q.y || '原创'} · ${TLABEL[q.t]}</div></div></div>`).join('')}</div>`; $('#pl2').onclick = e => { const r = e.target.closest('[data-i]'); if (r) { f.i = +r.dataset.i; f.showList = false; render(); } }; }
+  if (f.showList) {   /* 题目列表分批画：先画当前题附近的一批，滚到底再接着画，换题时不用重画几百行 */
+    const row = (q, i) => `<div class="li" data-i="${i}" style="cursor:pointer;padding:6px 10px"><div class="stripe l${qs(q.id).l}"></div><div class="main"><div class="t" style="font-size:14px">${esc(q.q.split('\n')[0].slice(0, 70))}</div><div class="s">${q.y || '原创'} · ${TLABEL[q.t]}</div></div></div>`;
+    let shown = Math.min(list.length, Math.max(50, f.i + 25));
+    $('#pl2').innerHTML = `<div class="list" style="margin-bottom:12px;max-height:340px;overflow:auto">${list.slice(0, shown).map(row).join('')}</div>`;
+    const box = $('#pl2 .list'); box.addEventListener('scroll', () => { if (shown < list.length && box.scrollTop + box.clientHeight > box.scrollHeight - 240) { box.insertAdjacentHTML('beforeend', list.slice(shown, shown + 60).map((q, j) => row(q, shown + j)).join('')); shown = Math.min(list.length, shown + 60); } }, { passive: true });
+    $('#pl2').onclick = e => { const r = e.target.closest('[data-i]'); if (r) { f.i = +r.dataset.i; f.showList = false; render(); } }; }
   if (!list.length) { $('#card').innerHTML = '<p class="empty">这个筛选下没有题目，换个条件试试。</p>'; return; }
   const q = list[f.i];
   const nav = `<button class="btn sm" data-n="-1" ${f.i ? '' : 'disabled'}>上一题</button><button class="btn sm pri" data-n="1" ${f.i < list.length - 1 ? '' : 'disabled'}>下一题</button>`;
   const card = qcard(q, { nav });
-  card.addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) { f.i = Math.max(0, Math.min(list.length - 1, f.i + +b.dataset.n)); render(); toTop(); } });
+  card.addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) { f.i = Math.max(0, Math.min(list.length - 1, f.i + +b.dataset.n)); toTop(); render(); } });
   $('#card').append(card);
 }
 
@@ -2213,6 +2213,7 @@ const SET_SECS = [
   ['profile', '个人资料', '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/>'],
   ['study', '学习安排', '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'],
   ['remind', '每日学习提醒', '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'],
+  ['notify', '通知', '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'],
   ['look', '外观', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>'],
   ['download', '下载 App', '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>'],
   ['update', 'App 更新', '<circle cx="12" cy="12" r="8.5"/><path d="M12 16V8.5M8.8 11.5 12 8.3l3.2 3.2"/>'],
@@ -2250,6 +2251,7 @@ function openSettings(sec) {
       const ia = e.target.closest('[data-info]'); if (ia) { setInfoClose(); if (ia.dataset.info === 'chk') appCheck(true); else setGo(ia.dataset.info); return; }
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
+      if (e.target.closest('[data-badge]')) return toggleBadge();
       const sr = e.target.closest('[data-srch]'); if (sr) { S.settings.labSearch = sr.dataset.srch === 'float'; save(); render(); return; }
     });
     $('#setBody').addEventListener('scroll', e => { const h = document.querySelector('.set-hd'); if (h) h.classList.toggle('scrolled', e.target.scrollTop > 4); }, { passive: true });
@@ -2310,6 +2312,7 @@ function setFill() {
   const pages = {};
   for (const [k, f] of Object.entries(FEAT_PG)) { const d = document.createElement('div'); d.innerHTML = featPageHTML(f); groups[k] = d; }
   { const d = document.createElement('div'); d.innerHTML = searchPageHTML(); groups.search = d; }
+  { const d = document.createElement('div'); d.innerHTML = notifyHTML(); if (groups.remind) { const l = document.createElement('p'); l.className = 'ios-lab'; l.textContent = '每日学习提醒'; d.append(l, ...groups.remind.childNodes); delete groups.remind; } if (BADGE_OK || HAS_REM) groups.notify = d; }
   for (const k of ['handbook', 'weekly']) { const d = document.createElement('div'); d.innerHTML = '<div class="lz"></div>'; groups[k] = d; }
   { const lp = document.createElement('div'); pLabs(lp); $$('.kick, h1', lp).forEach(x => x.remove()); const ld = $('.lead', lp); if (ld) ld.className = 'ios-note';
     lp.addEventListener('click', e => { if (e.target.closest('[data-sw]')) navHTML(); }); groups.labs = { childNodes: [lp] }; }
@@ -2320,7 +2323,7 @@ function setFill() {
   const root = document.createElement('div'); root.className = 'set-pg'; root.dataset.p = 'root';
   root.innerHTML = `<div class="ios-grp"><button class="ios-me" data-go="acct"><span class="av">${avatarHTML()}</span><span class="ios-me-t"><b>${esc(meName())}</b><span class="note">${CLOUD.user ? esc(CLOUD.user.email || '') + ' · ' + esc(meSub()) : CLOUD.on ? '未登录 · 进度只保存在这台设备' : '在 Claude 里使用'}</span></span></button>
       ${CLOUD.on ? CLOUD.user ? `<button class="ios-row acc" data-rsync>${SV('<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1M17.5 3.5v3.6h-3.6M6.5 20.5v-3.6h3.6"/>')}<span class="ios-n">立即同步</span><span class="ios-v" id="rsyncSt"></span></button>` : `<button class="ios-row acc" data-go="acct">${SV('<path d="M12 5v14M5 12h14"/>')}<span class="ios-n">登录或注册账号</span></button>` : ''}</div>
-    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('remind')}</div>
+    <p class="ios-lab">学习</p><div class="ios-grp">${row('profile')}${row('study')}${row('notify')}</div>
     <p class="ios-lab">学习功能</p><div class="ios-grp">${row('recite')}${row('sprint')}${row('night')}${row('search')}</div>
     <p class="ios-lab">复习工具</p><div class="ios-grp">${row('handbook')}${row('weekly')}</div>
     <p class="ios-lab">应用程序</p><div class="ios-grp">${row('update')}${row('backup')}${row('labs').replace('</span>' + SVG_CHEV, '<sup class="beta">beta</sup></span>' + SVG_CHEV)}</div>
@@ -2436,6 +2439,202 @@ function pSettings(m) {
   $('#imp').onclick = () => { try { const R = JSON.parse($('#bk').value); if (!R || typeof R.q !== 'object') throw 0; R.resetAt = S.resetAt; /* 导入的备份是你主动要恢复的数据，不受之前「清空进度」的影响 */ S = merge(R); snapSettings(); save(); applyLook(); $('#bkm').textContent = '导入成功，已和现有进度合并。'; } catch (e) { $('#bkm').textContent = '导入失败：文本不是有效的备份。'; } };
   $('#rst').onclick = () => { const b = $('#rst'); if (b.dataset.c) { const keep = S.settings; S = blank(); S.settings = keep; S.resetAt = Date.now(); save(); render(); } else { b.dataset.c = 1; b.textContent = '再点一次确认清空（个人设置会保留）'; b.classList.add('r1'); } };
 }
+
+/* ================= 2.9 原生 App 体验 ================= */
+/* 当前负责滚动的容器：App 外壳里是内容区 main，普通网页里是整个窗口 */
+function scroller() { const mm = document.getElementById('main'); if (mm) { const o = getComputedStyle(mm).overflowY; if ((o === 'auto' || o === 'scroll') && mm.clientHeight < innerHeight + 2 && mm.scrollHeight > mm.clientHeight) return mm; } return window; }
+const getScroll = () => { const s = scroller(); return s === window ? window.scrollY : s.scrollTop; };
+const setScroll = y => { const s = scroller(); if (s === window) window.scrollTo(0, y); else s.scrollTop = y; const mm = document.getElementById('main'); if (s === window && mm) mm.scrollTop = 0; };
+const scrollTopSmooth = () => { const s = scroller(); s.scrollTo({ top: 0, behavior: 'smooth' }); };
+/* 各页面的滚动位置：从标签栏、侧栏切换时回到上次的位置；再点一次当前标签回到顶部 */
+const SCROLL = {}; let navTab = false; const navStack = [location.hash.slice(1) || 'today'];
+const NOSTACK = ['settings', 'labs', 'handbook', 'weekly'];
+window.addEventListener('hashchange', () => {
+  if (SET.open && !['#settings', '#labs', '#handbook', '#weekly'].includes(location.hash)) closeSettings();
+  const prev = render.last, cur = location.hash.slice(1) || 'today';
+  if (prev) SCROLL[prev] = getScroll();
+  if (!NOSTACK.includes(cur)) { if (navStack.length > 1 && navStack[navStack.length - 2] === cur) navStack.pop(); else if (navStack[navStack.length - 1] !== cur) navStack.push(cur); if (navStack.length > 40) navStack.shift(); }
+  setScroll(0); render();
+  if (navTab && SCROLL[cur]) setScroll(SCROLL[cur]);
+  navTab = false;
+});
+document.addEventListener('click', e => {
+  const a = e.target.closest('#bnav a, #sidenav a[href^="#"], #topnav nav a'); if (!a || a.dataset.jump) return;
+  const h = a.getAttribute('href').slice(1);
+  if (h === (location.hash.slice(1) || 'today')) { e.preventDefault(); scrollTopSmooth(); } else navTab = true;
+}, true);
+/* 点顶栏（按钮以外的地方）回到顶部，代替系统「点状态栏回顶部」 */
+document.addEventListener('click', e => { const b = e.target.closest('#topnav .bar1'); if (b && !e.target.closest('button, a, input')) scrollTopSmooth(); });
+
+/* —— 手势：从屏幕左边缘右滑返回；浮窗（题卡、设置）在顶部时下滑关闭 —— */
+function scrollParent(el) { for (let n = el; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n; } return null; }
+function trackTouch(start, onMove, onEnd) {
+  const mv = e => onMove(e), en = e => { document.removeEventListener('touchmove', mv); document.removeEventListener('touchend', en); document.removeEventListener('touchcancel', en); onEnd(e); };
+  document.addEventListener('touchmove', mv, { passive: false }); document.addEventListener('touchend', en); document.addEventListener('touchcancel', en);
+}
+document.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0], de = document.documentElement;
+  /* 左边缘右滑 */
+  if (t.clientX <= 22 && !document.querySelector('#modal > *, .set-ov, .upd-ov, .gs-ov') && !de.classList.contains('drawer')) {
+    const pg = document.querySelector('#main > div'); if (!pg) return;
+    const canBack = navStack.length > 1, canDrawer = !canBack && de.getAttribute('data-skin') === 'glass' && innerWidth <= 860;
+    if (!canBack && !canDrawer) return;
+    const s = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, on: false };
+    trackTouch(e, ev => {
+      const p = ev.touches[0], dx = p.clientX - s.x0, dy = p.clientY - s.y0;
+      if (!s.on) { if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { s.dead = true; return; } if (s.dead || dx < 8) return; s.on = true; }
+      ev.preventDefault(); s.dx = Math.max(0, dx);
+      if (canBack) { pg.style.transition = 'none'; pg.style.transform = `translateX(${s.dx}px)`; pg.style.boxShadow = '-14px 0 36px rgba(0,0,0,.14)'; }
+      else if (s.dx > 36) { drawer(true); s.on = false; s.dead = true; }
+    }, () => {
+      if (!s.on || !canBack) return;
+      const v = s.dx / Math.max(1, Date.now() - s.t0);
+      if (s.dx > 90 || (v > .5 && s.dx > 30)) { pg.style.transition = 'transform .18s ease-out'; pg.style.transform = `translateX(${innerWidth}px)`; setTimeout(() => history.back(), 170); }
+      else { pg.style.transition = 'transform .28s cubic-bezier(.2,.9,.3,1.1)'; pg.style.transform = ''; setTimeout(() => { pg.style.boxShadow = ''; pg.style.transition = ''; }, 300); }
+    });
+    return;
+  }
+  /* 浮窗下滑关闭（手机） */
+  if (innerWidth > 860) return;
+  const el = e.target; if (el.closest('input, textarea, select, .seg, .dm-days, .zoomable, .sheet-wrap')) return;
+  let tgt = el.closest('#modal .modal > .card'), close = null;
+  if (tgt) close = () => { const x = document.querySelector('#modal [data-x]'); if (x) x.click(); else document.getElementById('modal').innerHTML = ''; };
+  else if ((tgt = el.closest('.set-win'))) close = () => closeSettings();
+  if (!tgt) return;
+  const sc = scrollParent(el), s = { y0: t.clientY, x0: t.clientX, t0: Date.now(), dy: 0, on: false };
+  trackTouch(e, ev => {
+    const p = ev.touches[0], dy = p.clientY - s.y0, dx = p.clientX - s.x0;
+    if (!s.on) { if (s.dead) return; if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) { s.dead = true; return; } if (dy > 8 && (!sc || sc.scrollTop <= 0)) s.on = true; else { if (Math.abs(dy) > 8) s.dead = true; return; } }
+    ev.preventDefault(); s.dy = Math.max(0, dy - 8);
+    tgt.style.transition = 'none'; tgt.style.transform = `translateY(${s.dy}px)`;
+  }, () => {
+    if (!s.on) return;
+    const v = s.dy / Math.max(1, Date.now() - s.t0);
+    if (s.dy > 120 || (v > .6 && s.dy > 40)) { tgt.style.transition = 'transform .22s ease-in'; tgt.style.transform = `translateY(${innerHeight}px)`; setTimeout(close, 200); }
+    else { tgt.style.transition = 'transform .3s cubic-bezier(.2,.9,.3,1.1)'; tgt.style.transform = ''; setTimeout(() => { tgt.style.transition = ''; }, 320); }
+  });
+}, { passive: true });
+
+/* —— 下拉同步：在页面顶部继续往下拉，松手后和云端同步一次 —— */
+(function () {
+  let el = null, touching = false, armed = false, busy = false;
+  const ensure = () => { if (!el) { el = document.createElement('div'); el.id = 'ptr'; el.className = 'ptr'; el.innerHTML = '<span class="ptr-ic"></span><span class="ptr-t"></span>'; document.body.append(el); } const tn = document.getElementById('topnav'); const r = tn && tn.getBoundingClientRect(); el.style.top = ((r && r.height && innerWidth <= 860) ? r.bottom + 6 : 12) + 'px'; return el; };
+  const hide = () => { if (el && !busy) { el.classList.remove('on', 'arm'); el.style.opacity = 0; } };
+  const onScroll = () => {
+    if (!touching || busy || !CLOUD.user) return;
+    const y = getScroll(); if (y >= -4) { hide(); armed = false; return; }
+    const d = -y; ensure(); el.classList.add('on'); el.style.opacity = Math.min(1, d / 60);
+    armed = d > 72; el.classList.toggle('arm', armed); el.querySelector('.ptr-t').textContent = armed ? '松开同步' : '下拉同步';
+    el.querySelector('.ptr-ic').style.transform = `rotate(${Math.min(d, 72) * 4}deg)`;
+  };
+  document.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+  document.addEventListener('touchend', () => {
+    touching = false; if (!armed || busy) { hide(); return; }
+    armed = false; busy = true; ensure(); el.classList.add('busy'); el.querySelector('.ptr-t').textContent = '正在同步…';
+    Promise.resolve(cloudSync()).catch(() => { }).finally(() => { busy = false; el.classList.remove('busy', 'arm'); el.querySelector('.ptr-t').textContent = CLOUD.err ? '同步失败' : '已同步'; setTimeout(hide, 900); });
+  }, { passive: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('scroll', e => { if (e.target && e.target.id === 'main') onScroll(); }, { passive: true, capture: true });
+})();
+
+/* —— 底部标签栏的液态玻璃放大镜：按住标签栏左右滑，跟着手指走，松手切换到对应页面 —— */
+(function () {
+  let st = null, swallow = 0;
+  const items = bn => [...bn.querySelectorAll(':scope > a, :scope > button')];
+  const nearest = (bn, x) => { let best = null, bd = 1e9; for (const it of items(bn)) { const r = it.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - x); if (d < bd) { bd = d; best = it; } } return best; };
+  function place(x, S0 = st) {
+    const { lens, inner, br, w, h } = S0;
+    const cx = Math.max(br.left + w / 2 - 6, Math.min(br.right - w / 2 + 6, x)), left = cx - w / 2 - br.left;
+    lens.style.transform = `translate3d(${left}px, 0, 0) scale(${S0.sc})`;
+    inner.style.transform = `translate3d(${-left}px, ${(h - br.height) / 2}px, 0)`;
+    inner.style.transformOrigin = `${w / 2}px ${h / 2}px`;
+  }
+  document.addEventListener('pointerdown', e => {
+    const bn = e.target.closest('#bnav'); if (!bn || document.documentElement.getAttribute('data-skin') !== 'glass' || innerWidth > 860 || (e.pointerType === 'mouse' && e.button)) return;
+    e.preventDefault();   /* 不让浏览器把它当成拖动链接 */
+    const br = bn.getBoundingClientRect(), it = nearest(bn, e.clientX), ir = it.getBoundingClientRect();
+    const w = ir.width + 22, h = br.height + 14;
+    const lens = document.createElement('div'); lens.className = 'bn-lens'; lens.style.width = w + 'px'; lens.style.height = h + 'px'; lens.style.top = (-(h - br.height) / 2) + 'px';
+    const inner = document.createElement('div'); inner.className = 'bn-lens-in'; inner.style.width = br.width + 'px'; inner.style.height = br.height + 'px';
+    inner.innerHTML = items(bn).map(x => x.outerHTML).join('');
+    lens.append(inner); bn.append(lens); bn.classList.add('lensing');
+    st = { bn, lens, inner, br, w, h, x0: e.clientX, moved: false, sc: .86, id: e.pointerId };
+    try { bn.setPointerCapture(e.pointerId); } catch (_) { }
+    place(e.clientX); requestAnimationFrame(() => { if (st) { st.sc = 1; lens.classList.add('on'); place(e.clientX); } });
+  });
+  document.addEventListener('pointermove', e => { if (!st || e.pointerId !== st.id) return; if (Math.abs(e.clientX - st.x0) > 6) st.moved = true; place(e.clientX); }, { passive: true });
+  const finish = (e, go) => {
+    if (!st || (e && e.pointerId !== st.id)) return; const s = st; st = null;
+    const it = go ? nearest(s.bn, e.clientX) : null;
+    s.sc = .9;
+    if (it) { const r = it.getBoundingClientRect(); place(r.left + r.width / 2, s); } s.lens.classList.remove('on'); s.lens.classList.add('off');
+    setTimeout(() => { s.lens.remove(); s.bn.classList.remove('lensing'); }, 220);
+    if (!it) return;
+    swallow = Date.now();
+    if (it.tagName === 'A') { const h = it.getAttribute('href').slice(1); if (h === (location.hash.slice(1) || 'today')) scrollTopSmooth(); else { navTab = true; location.hash = h; } }
+    else it.click();
+  };
+  document.addEventListener('pointerup', e => finish(e, true));
+  document.addEventListener('pointercancel', e => finish(e, false));
+  document.addEventListener('click', e => { if (Date.now() - swallow < 500 && e.target.closest('#bnav')) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+})();
+
+/* —— iOS 26 主屏幕 App 的状态栏颜色取自页面顶部的固定元素：放一条和顶栏同色的细条，风格变了或浮窗关掉后重新放一次，让系统重新取色 —— */
+function sbColor() {
+  const de = document.documentElement, sk = de.getAttribute('data-skin') || '', th = de.getAttribute('data-theme');
+  const dark = th === 'dark' || (!th && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (sk === 'glass') return dark ? '#251a1d' : '#f6e5dd';
+  const ok = c => c && !/rgba\(.*,\s*0\)$/.test(c) && c !== 'transparent';
+  const tn = document.getElementById('topnav'); let c = tn && innerWidth <= 860 ? getComputedStyle(tn).backgroundColor : '';
+  if (!ok(c)) c = getComputedStyle(document.body).backgroundColor; if (!ok(c)) c = getComputedStyle(de).getPropertyValue('--bg').trim();
+  return c;
+}
+function syncStatusBar() {
+  const de = document.documentElement, c = sbColor(); if (!c) return;
+  de.style.setProperty('--sbc', c);
+  let ms = document.querySelectorAll('meta[name="theme-color"]');
+  if (!ms.length) { const m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); ms = [m]; }
+  ms.forEach(m => { m.setAttribute('content', c); m.removeAttribute('media'); });
+  if (de.classList.contains('iphone')) { const o = document.getElementById('sbTint'); if (o) o.remove(); const t = document.createElement('div'); t.id = 'sbTint'; t.style.background = c; document.body.append(t); }
+}
+const _applyLook = applyLook; applyLook = function () { _applyLook(); syncStatusBar(); };
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncStatusBar);
+if (document.documentElement.classList.contains('iphone')) {   /* 浮窗（题卡、设置、更新提示、搜索）关掉后重新取色 */
+  let tm = 0; const kick = () => { clearTimeout(tm); tm = setTimeout(syncStatusBar, 60); };
+  new MutationObserver(ms => { if (ms.some(m => [...m.removedNodes].some(n => n.nodeType === 1 && n.id !== 'sbTint' && /set-ov|upd-ov|gs-ov|modal/.test(n.className || '')))) kick(); }).observe(document.body, { childList: true });
+  const md = document.getElementById('modal'); if (md) new MutationObserver(() => { if (!md.children.length) kick(); }).observe(md, { childList: true });
+}
+syncStatusBar();
+
+/* —— App 图标角标：显示今天到期的复习题数（需要 iOS 16.4 以上的主屏幕 App，并允许通知） —— */
+const BADGE_OK = 'setAppBadge' in navigator && !window.AndroidApp;
+const badgePerm = () => !('Notification' in window) || Notification.permission === 'granted';
+let badgeT = 0;
+function syncBadge() {
+  if (!BADGE_OK) return; clearTimeout(badgeT);
+  badgeT = setTimeout(() => { try { if (S.settings.badge && badgePerm()) { const n = BANK.filter(q => isDue(q.id)).length; n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } else navigator.clearAppBadge(); } catch (e) { } }, 400);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(badgeT); if (BADGE_OK && S.settings.badge && badgePerm()) try { const n = BANK.filter(q => isDue(q.id)).length; n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (e) { } } });
+async function toggleBadge() {
+  if (!BADGE_OK) return;
+  if (S.settings.badge) { S.settings.badge = false; save(); syncBadge(); return render(); }
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    let p = 'denied'; try { p = await Notification.requestPermission(); } catch (e) { }
+    if (p !== 'granted') { toast('没有获得通知权限：可以到 iPhone「设置 → 通知 → 食品化学」里打开'); return render(); }
+  }
+  S.settings.badge = true; save(); syncBadge(); render();
+}
+function notifyHTML() {
+  const on = !!S.settings.badge && badgePerm();
+  return `<div class="ios-grp dm-wrap"><div class="dm dm-bd" aria-hidden="true"><div class="bd-icons"><i></i><i></i><span class="bd-app">${MARK}<b class="bd-n"><em>12</em></b></span><i></i></div><div class="dm-cap">今天到期的复习题数显示在主屏幕图标上，打开前就知道要复习多少</div></div></div>
+    <p class="ios-lab">App 图标角标</p><div class="ios-grp"><div class="ios-row ios-tog${BADGE_OK ? '' : ' off'}" ${BADGE_OK ? 'data-badge role="button"' : ''}>${SV('<rect x="4" y="6" width="13" height="13" rx="3.5"/><circle cx="17.5" cy="6.5" r="3.2" fill="currentColor" stroke="none"/>')}<span class="ios-n">显示到期复习题数</span><button class="switch" role="switch" aria-checked="${on}" aria-label="显示到期复习题数" ${BADGE_OK ? '' : 'disabled'}><i></i></button></div></div>
+    <p class="ios-note">${BADGE_OK ? '数字会在打开复习站、做完题和切到后台时更新。第一次打开时系统会询问是否允许通知，选「允许」才能显示角标。' : window.AndroidApp ? '安卓 App 暂不支持图标角标。' : '需要 iPhone / iPad（iOS 16.4 以上）上从主屏幕打开的复习站，才能显示图标角标。'}</p>`;
+}
+
+/* —— 分屏、台前调度：窗口宽度跨过手机 / 平板布局的分界时重新排版 —— */
+let wideNow = innerWidth > 860;
+window.addEventListener('resize', () => { const w = innerWidth > 860; if (w !== wideNow) { wideNow = w; if (!w) { } else drawer(false); const y = getScroll(); render(); setScroll(y); syncStatusBar(); } });
 
 await Promise.race([syncReady, new Promise(r => setTimeout(r, 4000))]);
 render();
