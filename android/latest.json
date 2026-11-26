@@ -1,6 +1,6 @@
 {
-  "versionCode": 37,
-  "versionName": "2.7.37",
-  "apk": "FoodChemReview-v2.7.37.apk",
-  "notes": "2.7：速查手册和学习周报放进设置；速查手册可以生成 PDF，用系统打印界面另存或打印；背诵、冲刺、睡前回顾各有设置页；搜索栏可选悬浮或侧边栏。直接覆盖安装，进度会保留。"
+  "versionCode": 38,
+  "versionName": "2.8",
+  "apk": "FoodChemReview-v2.8.apk",
+  "notes": "iPhone 液态玻璃风格的新顶栏；所有平台的更新提示改为居中大浮窗；安卓、iPad、iPhone、网页版的版本号统一为 2.8；直接覆盖安装，学习进度会保留"
 }
