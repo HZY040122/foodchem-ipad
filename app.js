@@ -245,6 +245,33 @@ async function cloudPut(state, keepalive) {
 function cloudMsg(e) { const m = e && e.message || ''; return m === 'RULES' ? '同步被拒绝：请在 Firebase 里贴好数据库安全规则' : /Failed to fetch|NetworkError|Load failed|network/i.test(m) ? '现在没有网络，联网后会自动同步' : m.length < 40 ? '同步失败：' + m : '同步失败，稍后会自动重试'; }
 function agoText(t) { if (!t) return ''; const s = (Date.now() - t) / 1000; return s < 60 ? '刚刚' : s < 3600 ? Math.round(s / 60) + ' 分钟前' : new Date(t).toTimeString().slice(0, 5); }
 /* 同步一次：先取云端、合并进本机，再把合并结果写回云端。两边都不会丢东西 */
+/* 后台同步拉到别的设备的进度后要重画页面：重画前记下错题本、往年问法里展开着的题（和里面写到一半的答案），
+   重画后原样展开回去，不会让人以为题目「自己收起来了」 */
+function softRender() {
+  const keep = [], y = typeof getScroll === 'function' ? getScroll() : 0;
+  ['wl', 'old'].forEach(id => {
+    const L = document.getElementById(id); if (!L) return;
+    L.querySelectorAll(':scope > .q').forEach(c => {
+      const pr = c.previousElementSibling, row = pr && (pr.matches('[data-q]') ? pr : pr.querySelector(':scope > [data-q]'));
+      if (row) keep.push([id, row.dataset.q, [...c.querySelectorAll('textarea')].map(t => t.value)]);
+    });
+  });
+  render();
+  if (!keep.length) return;
+  ACC_HOLD = true;
+  try {
+    keep.forEach(([id, q, tv]) => {
+      const L = document.getElementById(id); if (!L) return;
+      const row = L.querySelector(`:scope > [data-q="${CSS.escape(q)}"]`); if (!row) return;
+      const nx = row.nextElementSibling; if (nx && nx.classList.contains('q')) return;
+      row.click();
+      const c = row.nextElementSibling; if (c && c.classList.contains('q')) c.querySelectorAll('textarea').forEach((t, i) => { if (tv[i]) { t.value = tv[i]; const nt = t.closest('.nt'); if (nt) nt.hidden = false; } });
+    });
+  } finally { ACC_HOLD = false; }
+  if (typeof setScroll === 'function') setScroll(y);
+}
+var ACC_HOLD = false;
+window.__fcSoftRender = softRender;
 async function cloudSync(opts = {}) {
   if (!CLOUD.on || !CLOUD.user || CLOUD.busy) return;
   CLOUD.busy = true; if (!opts.quiet) setSync('正在同步……');
@@ -256,7 +283,7 @@ async function cloudSync(opts = {}) {
     if (!R || JSON.stringify(S) !== JSON.stringify(R)) await cloudPut(S);
     CLOUD.lastOk = Date.now(); CLOUD.err = '';
     setSync(`${agoText(CLOUD.lastOk)} 已同步 · ${CLOUD.user.email}`);
-    if (changedLocal && !opts.noRender) { const a = document.activeElement; if (!(a && /TEXTAREA|INPUT/.test(a.tagName))) render(); }
+    if (changedLocal && !opts.noRender) { const a = document.activeElement; if (!(a && /TEXTAREA|INPUT/.test(a.tagName))) softRender(); }
   } catch (e) { CLOUD.err = cloudMsg(e); setSync(CLOUD.err); }
   finally { CLOUD.busy = false; $$('.me-s').forEach(e => e.textContent = meSub()); }
 }
@@ -283,7 +310,7 @@ const syncReady = (async () => {
     setSync('正在连接账号同步……');
     const tm = setTimeout(() => setSync('同步暂时连不上，进度先保存在本浏览器'), 10000);
     const snap = await dbRef.get(); clearTimeout(tm); syncOK = true;
-    if (snap.exists) { const R = snap.data() || {}; const before = JSON.stringify(S); S = merge(R); snapSettings(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } if (JSON.stringify(S) !== JSON.stringify(R)) save(); if (JSON.stringify(S) !== before) render(); }
+    if (snap.exists) { const R = snap.data() || {}; const before = JSON.stringify(S); S = merge(R); snapSettings(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } if (JSON.stringify(S) !== JSON.stringify(R)) save(); if (JSON.stringify(S) !== before) softRender(); }
     else if (S.updated) save();
     setSync('进度已同步到你的账号');
   } catch (e) { syncOK = false; setSync('进度保存在本浏览器'); }
@@ -589,6 +616,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.12.1', d: '2026-11-27', t: '复习站 2.12.1：展开的题不再自己收起，设置细节修正', items: [
+    '修好了错题本、往年问法里展开的题有时自己收起来的问题：原因是后台同步拉到别的设备的进度后会重画页面。现在重画后会把原来展开的题和写到一半的答案原样恢复',
+    '设置里「风格」的预览图改成和「颜色模式」一样大小（3:2），里面的元素按比例画，不再变形',
+    'iPhone、iPad 上点过的按钮不再一直保持高亮（比如下拉关闭设置后，侧栏底部的设置按钮还亮着）：只有接了鼠标或触控板时才显示悬停高亮'] },
   { v: '2.12', d: '2026-11-26', t: '复习站 2.12：名解闪卡转为正式功能，每组张数可调', items: [
     '名解闪卡从试验性功能移出，成为正式功能，默认开启；设置 → 学习功能 → 名解闪卡里可以开关，关掉后侧边栏不显示',
     '名解闪卡的设置页可以选每组张数：10、15、20、30 或 50 张（默认 20），从下一组开始生效',
@@ -2040,7 +2071,7 @@ const LABS = [
 ];
 /* 试验性功能「展开一题自动收起上一题」：收起同一列表里其他展开的题卡，并保持刚点的那一行在屏幕上的位置不动 */
 function accordionCollapse(list, row) {
-  if (!S.settings.labAccordion || !list) return;
+  if (!S.settings.labAccordion || !list || ACC_HOLD) return;
   const host = r => (r.parentElement && r.parentElement.classList.contains('sw-wrap')) ? r.parentElement : r;
   const y0 = row.getBoundingClientRect().top;
   let any = false;
