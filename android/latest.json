@@ -1,6 +1,6 @@
 {
-  "versionCode": 60,
-  "versionName": "2.13",
-  "apk": "FoodChemReview-v2.13.apk",
-  "notes": "冲刺计划可以选考点「过完」的标准；直接覆盖安装，学习进度会保留"
+  "versionCode": 61,
+  "versionName": "2.13.1",
+  "apk": "FoodChemReview-v2.13.1.apk",
+  "notes": "专项练习筛选时题数不再边做边变少；直接覆盖安装，学习进度会保留"
 }
