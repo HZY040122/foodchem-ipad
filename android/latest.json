@@ -1,6 +1,6 @@
 {
-  "versionCode": 59,
-  "versionName": "2.12.3",
-  "apk": "FoodChemReview-v2.12.3.apk",
-  "notes": "搜索框细节修正；直接覆盖安装，学习进度会保留"
+  "versionCode": 60,
+  "versionName": "2.13",
+  "apk": "FoodChemReview-v2.13.apk",
+  "notes": "冲刺计划可以选考点「过完」的标准；直接覆盖安装，学习进度会保留"
 }
