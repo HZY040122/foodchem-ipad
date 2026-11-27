@@ -271,6 +271,8 @@ function softRender() {
   if (typeof setScroll === 'function') setScroll(y);
 }
 var ACC_HOLD = false;
+/* 长按按钮、头像、链接时不让系统把它们拖起来（iPad 的拖放），也不弹链接预览 */
+document.addEventListener('dragstart', e => { const t = e.target && (e.target.nodeType === 1 ? e.target : e.target.parentElement); if (t && t.closest('a, img, button, svg, [role="button"], .me, #bnav, #sidenav, #topnav')) e.preventDefault(); }, true);
 window.__fcSoftRender = softRender;
 async function cloudSync(opts = {}) {
   if (!CLOUD.on || !CLOUD.user || CLOUD.busy) return;
@@ -279,7 +281,9 @@ async function cloudSync(opts = {}) {
     const R = await cloudGet(); CLOUD.lastPull = Date.now();
     const before = JSON.stringify(S);
     if (R) { S = merge(R); snapSettings(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { } }
-    const changedLocal = JSON.stringify(S) !== before;
+    /* 只有真正影响当前页面的变化才重画：「最后修改时间」变了不算；学习时长记录只在今日、进度页面才需要重画 */
+    const B0 = JSON.parse(before), pg = (location.hash.slice(1) || 'today').split(/[/?]/)[0];
+    const changedLocal = Object.keys(Object.assign({}, B0, S)).some(k => k !== 'updated' && !(k === 'log' && !['today', 'stats'].includes(pg)) && JSON.stringify(B0[k]) !== JSON.stringify(S[k]));
     if (!R || JSON.stringify(S) !== JSON.stringify(R)) await cloudPut(S);
     CLOUD.lastOk = Date.now(); CLOUD.err = '';
     setSync(`${agoText(CLOUD.lastOk)} 已同步 · ${CLOUD.user.email}`);
@@ -616,6 +620,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.12.2', d: '2026-11-27', t: '复习站 2.12.2：切后台不再收起展开的题、不再闪屏，长按不能拖动按钮', items: [
+    '修好了 iPad 切到后台再回来时展开的题被收起、偶尔闪一下屏的问题：iPadOS 在后台截快照时会临时改变窗口大小，之前会被当成分屏触发重新排版；现在只在页面可见、窗口大小稳定后才重排，重排也会保留展开的题',
+    '长按侧栏选项、头像、底栏和其他按钮、链接时，不会再被拖起来，也不会弹出链接预览'] },
   { v: '2.12.1', d: '2026-11-27', t: '复习站 2.12.1：展开的题不再自己收起，设置细节修正', items: [
     '修好了错题本、往年问法里展开的题有时自己收起来的问题：原因是后台同步拉到别的设备的进度后会重画页面。现在重画后会把原来展开的题和写到一半的答案原样恢复',
     '设置里「风格」的预览图改成和「颜色模式」一样大小（3:2），里面的元素按比例画，不再变形',
@@ -1118,6 +1125,7 @@ function render() {
   /* 换页时顶栏标题不做过渡、直接按新页面的位置显示或隐藏，避免新标题先闪一下 */
   document.documentElement.classList.add('lt-snap'); ltUpdate();
   requestAnimationFrame(() => { ltUpdate(); requestAnimationFrame(() => document.documentElement.classList.remove('lt-snap')); });
+  document.querySelectorAll('a:not([draggable]), img:not([draggable])').forEach(x => { x.draggable = false; });
   nativeSwitches(document.getElementById('main'));
 }
 /* 书本风格的翻页（两种方向都以书脊为轴，和真书一样）：
@@ -2435,7 +2443,7 @@ function fitSide() {
   nv.style.removeProperty('--sdp'); nv.style.removeProperty('--sdf');
   for (const c of ['fit1', 'fit2', 'fit3']) { if (sl.scrollHeight - sl.clientHeight <= 2) break; nv.classList.add(c); }
 }
-window.addEventListener('resize', () => fitSide());
+window.addEventListener('resize', () => { if (!document.hidden) fitSide(); });
 /* ========== 设置窗口（2.5 预览）：仿 Claude iPad 版设置——居中的单栏浮窗，分组列表，点进二级页面 ========== */
 const SET_SECS = [
   ['acct', '账号', '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>'],
@@ -2948,7 +2956,20 @@ function notifyHTML() {
 
 /* —— 分屏、台前调度：窗口宽度跨过手机 / 平板布局的分界时重新排版 —— */
 let wideNow = innerWidth > 860;
-window.addEventListener('resize', () => { const w = innerWidth > 860; if (w !== wideNow) { wideNow = w; if (!w) { } else drawer(false); const y = getScroll(); render(); setScroll(y); syncStatusBar(); } });
+/* iPadOS 在后台、多任务切换时会把窗口临时改成别的尺寸来截快照。这些临时尺寸不能触发重新排版，否则展开的题会被收起，切回来时还会闪一下：
+   只在页面可见、并且新宽度稳定 350 毫秒后才重排；重排用 softRender，保留展开的题 */
+let wideT = 0;
+function wideCheck() {
+  clearTimeout(wideT);
+  if (document.hidden) return;
+  wideT = setTimeout(() => {
+    if (document.hidden) return;
+    const w = innerWidth > 860; if (w === wideNow) return;
+    wideNow = w; if (w) drawer(false); softRender(); syncStatusBar();
+  }, 350);
+}
+window.addEventListener('resize', wideCheck);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(wideT); else wideCheck(); });
 
 
 /* ===================== 2.10：触感反馈、大标题、推入式详情页、错题本左滑 ===================== */
