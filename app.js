@@ -620,6 +620,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.13', d: '2026-11-27', t: '复习站 2.13：冲刺计划可以选「过完」的标准', items: [
+    '设置 → 冲刺计划里新增「考点怎样算过完」：满足任一（默认，和之前一样）、只看六成以上的题掌握、只看复习路径三步完成',
+    '改完马上生效：首页冲刺计划的「考点过完」数量、进度条下面的说明和每天分配的考点都会按新标准重新计算'] },
   { v: '2.12.3', d: '2026-11-27', t: '复习站 2.12.3：搜索框细节', items: [
     '再次打开搜索框时，上次的搜索词不再处于全选状态，光标停在末尾，可以直接接着改'] },
   { v: '2.12.2', d: '2026-11-27', t: '复习站 2.12.2：切后台不再收起展开的题、不再闪屏，长按不能拖动按钮', items: [
@@ -1740,7 +1743,11 @@ function whyStats() {
 }
 
 /* ---------- 冲刺计划：按考试日期倒推，把没过完的考点分到每一天，最后一周只做错题和模拟卷 ---------- */
-function clusterDone(id) { return pathDone(id) || clusterMastered(id); }
+/* 冲刺计划里「过完」的标准（设置 → 冲刺计划）：any 两者满足其一（默认）、mastery 只看题目掌握、path 只看复习路径 */
+const SPRINT_RULES = [['any', '满足任一'], ['mastery', '六成题掌握'], ['path', '路径三步完成']];
+function sprintRule() { const r = S.settings.sprintRule; return SPRINT_RULES.some(x => x[0] === r) ? r : 'any'; }
+function clusterDone(id) { const r = sprintRule(); return r === 'path' ? pathDone(id) : r === 'mastery' ? clusterMastered(id) : (pathDone(id) || clusterMastered(id)); }
+function sprintRuleText() { const r = sprintRule(); return r === 'path' ? '复习路径三步全部做完才算过完' : r === 'mastery' ? '考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」就算过完' : '走完复习路径三步，或者考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」，都算过完'; }
 function sprintHTML() {
   const T = '<h2 class="sp-title">冲刺计划</h2>';
   if (!S.settings.exam) return `${T}<div class="card sprint"><p class="note" style="margin:0 0 10px">先在设置里填好考试日期，冲刺计划会按剩下的天数，把所有考点分配到每一天。</p><button class="btn sm pri" data-go="settings">去设置考试日期</button></div>`;
@@ -1748,9 +1755,9 @@ function sprintHTML() {
   if (days < 0) return '';
   const all = Object.keys(CS).sort((a, b) => CS[b].prio - CS[a].prio), left = all.filter(id => !clusterDone(id)), done = all.length - left.length;
   const pct = Math.round(done / all.length * 100);
-  const byPath = all.filter(pathDone).length, byMast = done - byPath;
+  const rule = sprintRule(), byPath = rule === 'mastery' ? 0 : all.filter(pathDone).length, byMast = done - byPath;
   const head = `<div class="sp-h"><span class="note">离考试 <b>${days}</b> 天</span><span class="sp"></span><span class="note">考点过完 <b>${done}</b>/${all.length}</span></div><div class="kbar"><i class="l3" style="width:${Math.max(pct, 2)}%"></i></div>
-    ${done ? `<p class="note sp-why">其中走完复习路径 ${byPath} 个${byMast ? `，题目已掌握 ${byMast} 个（六成以上的题评过「掌握」）` : ''}</p>` : ''}`;
+    ${done ? `<p class="note sp-why">${rule === 'path' ? `按「复习路径三步完成」计算` : rule === 'mastery' ? `按「六成以上的题掌握」计算` : `其中走完复习路径 ${byPath} 个${byMast ? `，题目已掌握 ${byMast} 个（六成以上的题评过「掌握」）` : ''}`}</p>` : ''}`;
   const chip = id => `<button class="chip cl" data-cl="${id}">${esc(CL[id].n)}</button>`;
   let body = '';
   if (days === 0) body = `<p class="sp-ph">今天考试，加油！</p><p class="note">不再刷新题。早点出门，带好证件和文具，考前翻一下错题本里的笔记就好。</p>`;
@@ -1768,7 +1775,7 @@ function sprintHTML() {
       body = `<p class="sp-ph">考点学习阶段：还有 ${left.length} 个考点，每天 ${per} 个，${L} 天内过完，最后 7 天留给错题和模拟卷</p>
         <div class="sp-today"><span class="note">今天</span>${today.map(chip).join('')}</div>
         ${next.length ? `<details class="sp-next"><summary>接下来几天</summary>${next.map(([d, ids]) => `<div class="sp-day"><span class="note">${dl(d)}</span>${ids.map(chip).join('')}</div>`).join('')}</details>` : ''}
-        <p class="note" style="margin:8px 0 0">点考点进入复习路径，三步做完就算过完；一个考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」，也算过完、自动跳过。计划每天按你的进度重新分配。</p>`;
+        <p class="note" style="margin:8px 0 0">点考点进入复习路径。${sprintRuleText()}，过完的考点自动跳过（标准可以在设置 → 冲刺计划里改）。计划每天按你的进度重新分配。</p>`;
     }
   }
   return `${T}<div class="card sprint">${head}${body}</div>`;
@@ -2071,7 +2078,7 @@ const LABS = [
   { k: 'labTimer', t: '限时作答', d: '按考试节奏给名解和大题计时：名解 3 分钟、简答 8 分钟、论述和分析 15 分钟。开始写的时候自动计时，超时只变红提醒，不会打断你。', how: ['在输入框里打字或点进去就开始计时', '点「对答案」停止，显示这题用了多久', '用时会记在这道题上，下次做时能看到上次用时'], where: '题卡左上角的标签栏' },
   { k: 'labCompare', t: '易混概念对比', d: '把常被问「区别」的概念做成对照表：糊化和老化、结合水和自由水、酶促和非酶褐变、三种油脂氧化、三种酸败等 13 组。', how: ['「直接看」用来理解，「挖空练习」把表格盖住，点一格看一格', '可以按模块筛选', '打开后侧边栏多一个「易混对比」'], where: '侧边栏「易混对比」' },
   { k: 'labFlash', t: '名解闪卡', d: '名词解释做成一张张卡片，先在心里说出定义，再翻面核对。右滑「记住了」、左滑「还不会」，适合碎片时间快速过一轮。', how: ['每组张数可以在下面调，默认 20 张；没掌握和到期的排在前面', '同一个名词在不同年份考过，只出现一次，结果一起记', '打开时侧边栏有「名解闪卡」，关掉就不显示'], where: '侧边栏「名解闪卡」' },
-  { k: 'labSprint', t: '冲刺计划', d: '按设置里的考试日期倒推：把还没过完的考点按常考程度分到每一天，最后 7 天只安排错题和模拟卷，考前两天只回顾。', how: ['走完复习路径三步，或者考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」，就算过完、自动跳过', '计划每天按你的进度重新分配，落下了也不用补', '需要先在设置里填好考试日期'], where: '首页「今日计划」上方' },
+  { k: 'labSprint', t: '冲刺计划', d: '按设置里的考试日期倒推：把还没过完的考点按常考程度分到每一天，最后 7 天只安排错题和模拟卷，考前两天只回顾。', how: ['过完的考点自动跳过；「过完」的标准可以在下面选：六成以上的题掌握、复习路径三步完成，或两者满足任一（默认）', '计划每天按你的进度重新分配，落下了也不用补', '需要先在设置里填好考试日期'], where: '首页「今日计划」上方' },
   { k: 'labCause', t: '错因标签', d: '评「不会」或「模糊」时，顺手选一下错在哪里：概念不清、记混了、漏要点、审题错、会但写不出。进度页会统计你最常见的失分原因，并给出建议。', how: ['评为「掌握」后，这道题的错因自动清除', '错题本里会显示每道题的错因', '统计只算还没掌握的题'], where: '题卡打分按钮下方；进度页' },
   { k: 'labFrame', t: '答题框架库', d: '考研大题的问法很固定：影响因素、机理、区别、作用、控制措施、性质、情境分析……每一类都有可以套用的写作框架。遇到没见过的题，先认出问法，再按框架填内容。', how: ['新增「答题框架」页面：8 类问法的框架、小贴士和真题例子', '题卡上多一个「答题框架」按钮，按题目的问法自动匹配', '名解统一用「定义 + 本质或条件 + 意义」的写法'], where: '侧边栏「答题框架」；名解和大题的题卡上' },
   { k: 'labMockDiag', t: '模拟卷诊断报告', d: '模拟卷交卷并打完分后，按模块、题型和考点分析丢分，指出丢分最多的地方，一键重练低分题。', how: ['按模块、按题型显示丢了多少分', '列出丢分最多的考点，点一下走复习路径', '得分率低于 60% 的题可以一键重练（打低分的题会自动进入错题本）'], where: '模拟卷交卷后，试卷顶部' },
@@ -2345,6 +2352,7 @@ function featPageHTML(k) {
   const f = LABS.find(x => x.k === k), sec = SET_SECS.find(x => FEAT_PG[x[0]] === k);
   return `<div class="ios-grp dm-wrap">${demoHTML(k)}</div><div class="ios-grp" style="margin-top:14px"><div class="ios-row ios-tog" data-feat="${k}" role="button">${SV(sec[2])}<span class="ios-n">${esc(sec[1])}</span><button class="switch" role="switch" aria-checked="${featOn(k)}" aria-label="${esc(sec[1])}"><i></i></button></div></div>
     <p class="ios-note">出现在：${esc(f.where)}</p>
+    ${k === 'labSprint' ? `<p class="ios-lab">考点怎样算过完</p><div class="ios-grp sp-rule" role="radiogroup" aria-label="考点怎样算过完">${[['any', '满足任一就算过完', '六成以上的题掌握，或复习路径三步做完'], ['mastery', '六成以上的题掌握', '考点里六成以上的题（相同的题只算一次）最近一次评了「掌握」'], ['path', '复习路径三步完成', '复习路径的三步都点了「完成这一步」']].map(([v, n, d]) => `<button class="ios-row sp-r" data-spr="${v}" role="radio" aria-checked="${sprintRule() === v}"><span class="ios-n"><b>${n}</b><small>${d}</small></span><span class="sp-ck" aria-hidden="true">${SV('<path d="M5.5 12.5l4 4 9-9"/>')}</span></button>`).join('')}</div><p class="ios-note">改完马上生效，首页冲刺计划的「考点过完」和每天分配的考点会跟着重新计算。</p>` : ''}
     ${k === 'labFlash' ? `<p class="ios-lab">每组张数</p><div class="ios-grp fl-n"><div class="seg" role="radiogroup" aria-label="每组张数">${FLASH_NS.map(n => `<button data-fln="${n}" role="radio" aria-checked="${flashN() === n}" aria-pressed="${flashN() === n}">${n} 张</button>`).join('')}</div></div><p class="ios-note">改完后从下一组开始生效。一组张数多，一次过得多；碎片时间建议 10–20 张。</p>` : ''}
     <p class="ios-lab">功能说明</p><div class="ios-grp ios-txt"><p>${esc(f.d)}</p><ul>${f.how.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
 }
@@ -2505,6 +2513,7 @@ function openSettings(sec) {
       const g = e.target.closest('[data-go]'); if (g) return setGo(g.dataset.go);
       const ft = e.target.closest('[data-feat]'); if (ft) { const k = ft.dataset.feat; S.settings[k] = !featOn(k); save(); $('.switch', ft).setAttribute('aria-checked', featOn(k)); const ar = document.activeElement; render(); return; }
       if (e.target.closest('[data-badge]')) return toggleBadge();
+      const spr = e.target.closest('[data-spr]'); if (spr) { S.settings.sprintRule = spr.dataset.spr; save(); $$('[data-spr]').forEach(b => b.setAttribute('aria-checked', b.dataset.spr === sprintRule())); haptic('tick'); render(); return; }
       const fn = e.target.closest('[data-fln]'); if (fn) { S.settings.flashN = +fn.dataset.fln; save(); $$('[data-fln]').forEach(b => { const on = +b.dataset.fln === flashN(); b.setAttribute('aria-pressed', on); b.setAttribute('aria-checked', on); }); if (FL.deck && FL.i >= FL.deck.length) FL.deck = null; return; }
       if (e.target.closest('[data-hapt]')) { S.settings.haptic = !hapOn(); save(); $$('[data-hapt] .switch').forEach(x => x.setAttribute('aria-checked', hapOn())); if (hapOn()) haptic('tick'); return; }
       const ht = e.target.closest('[data-htry]'); if (ht) { haptic(ht.dataset.htry, true); ht.classList.remove('hit'); void ht.offsetWidth; ht.classList.add('hit'); return; }
