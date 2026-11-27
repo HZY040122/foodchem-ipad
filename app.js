@@ -620,6 +620,8 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.12.3', d: '2026-11-27', t: '复习站 2.12.3：搜索框细节', items: [
+    '再次打开搜索框时，上次的搜索词不再处于全选状态，光标停在末尾，可以直接接着改'] },
   { v: '2.12.2', d: '2026-11-27', t: '复习站 2.12.2：切后台不再收起展开的题、不再闪屏，长按不能拖动按钮', items: [
     '修好了 iPad 切到后台再回来时展开的题被收起、偶尔闪一下屏的问题：iPadOS 在后台截快照时会临时改变窗口大小，之前会被当成分屏触发重新排版；现在只在页面可见、窗口大小稳定后才重排，重排也会保留展开的题',
     '长按侧栏选项、头像、底栏和其他按钮、链接时，不会再被拖起来，也不会弹出链接预览'] },
@@ -2050,7 +2052,8 @@ function gsOpen(restore) {
   });
   if (NAV.q) { run(); if (restore === true && GS.scroll) res.scrollTop = GS.scroll; }
   /* 从题卡返回时不弹键盘，方便接着往下看结果 */
-  if (restore !== true) setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  /* 重新打开时保留上次的搜索词，光标放在末尾，不再全选 */
+  if (restore !== true) setTimeout(() => { inp.focus(); const n = inp.value.length; try { inp.setSelectionRange(n, n); } catch (e) { } }, 30);
 }
 function gsClose() { const ov = document.getElementById('gsOv'); if (ov) ov.remove(); GS.open = false; }
 document.addEventListener('keydown', e => {
