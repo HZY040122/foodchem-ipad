@@ -1,6 +1,6 @@
 {
-  "versionCode": 56,
-  "versionName": "2.12",
-  "apk": "FoodChemReview-v2.12.apk",
-  "notes": "名解闪卡转为正式功能，每组张数可调；左右滑不再误触上下滚动；直接覆盖安装，学习进度会保留"
+  "versionCode": 57,
+  "versionName": "2.12.1",
+  "apk": "FoodChemReview-v2.12.1.apk",
+  "notes": "展开的题不再自己收起；设置细节修正；直接覆盖安装，学习进度会保留"
 }
