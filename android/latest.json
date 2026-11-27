@@ -1,6 +1,6 @@
 {
-  "versionCode": 58,
-  "versionName": "2.12.2",
-  "apk": "FoodChemReview-v2.12.2.apk",
-  "notes": "切后台不再收起展开的题；长按按钮不再被拖动；直接覆盖安装，学习进度会保留"
+  "versionCode": 59,
+  "versionName": "2.12.3",
+  "apk": "FoodChemReview-v2.12.3.apk",
+  "notes": "搜索框细节修正；直接覆盖安装，学习进度会保留"
 }
