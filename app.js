@@ -620,6 +620,9 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.13.1', d: '2026-11-27', t: '复习站 2.13.1：专项练习筛选修正', items: [
+    '修好了专项练习按「未练」「不会」「模糊」「今天到期」等筛选时，边做边评分会让题目总数变少、做到一半就显示做完、点不了下一题的问题：题目清单在选好筛选条件时定下来，做过的题留在本轮，总数和第几题不再变',
+    '改筛选条件、点「回到筛选」或离开专项练习再回来时，才按最新进度重新筛选；按掌握程度筛选时，题数旁边会显示本轮已做几题'] },
   { v: '2.13', d: '2026-11-27', t: '复习站 2.13：冲刺计划可以选「过完」的标准', items: [
     '设置 → 冲刺计划里新增「考点怎样算过完」：满足任一（默认，和之前一样）、只看六成以上的题掌握、只看复习路径三步完成',
     '改完马上生效：首页冲刺计划的「考点过完」数量、进度条下面的说明和每天分配的考点都会按新标准重新计算'] },
@@ -1394,9 +1397,18 @@ function filtered() {
   return a;
 }
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
+/* 专项练习的题目清单在选好筛选条件时定下来：边做边评分不会把做过的题从「未练」「不会」这些筛选里挤掉，
+   总数和第几题保持不变；改筛选条件、点「回到筛选」或离开这个页面再回来时才重新筛选 */
+function practiceList() {
+  const f = NAV.pf, key = JSON.stringify([f.t, f.m, f.lv, f.y1, f.y2, f.order, f.seed, f.c, f.ids]);
+  if (f.snap && f.snap.key === key) return f.snap.ids.map(id => BY[id]).filter(Boolean);
+  const list = filtered(); f.snap = { key, ids: list.map(q => q.id) }; return list;
+}
+window.addEventListener('hashchange', () => { if ((location.hash.slice(1) || 'today').split(/[/?]/)[0] !== 'practice' && NAV.pf.snap) { NAV.pf.snap = null; if (NAV.pf.lv !== 'all' && !NAV.pf.ids) NAV.pf.i = 0; } });
 function pPractice(m) {
   const f = NAV.pf;
-  const list = filtered(); if (f.i >= list.length) f.i = 0;
+  const list = practiceList(); if (f.i >= list.length) f.i = 0;
+  const doneN = (f.lv !== 'all') ? list.filter(q => f.lv === 'due' ? !isDue(q.id) : qs(q.id).l !== +f.lv).length : 0;
   m.innerHTML = `<div class="kick">PRACTICE · 2004–2026 真题</div><h1>专项练习</h1><p class="lead">按题型、模块、掌握程度、年份筛选。做完自评"不会/模糊/掌握"，系统会安排下次复习时间（不会：10 分钟后；模糊：明天；掌握：2→4→7→15→30 天）。</p>
   ${f.ids ? `<div class="warnbox row"><span>正在练：<b>${esc(f.label || '自选题目')}</b>（${list.length} 题）</span><span class="sp"></span><button class="btn sm" id="clr">回到筛选</button></div>` : `<div class="card flat"><div class="grid" style="gap:8px">
     <div class="seg" id="ft">${['全部', '名解', '简答', '论述', '分析', '选择', '填空', '判断'].map(t => `<button data-t="${t}" aria-pressed="${f.t === t}">${t === '全部' ? '全部题型' : TLABEL[t]}</button>`).join('')}</div>
@@ -1405,9 +1417,9 @@ function pPractice(m) {
     <select id="y1" aria-label="起始年份">${YEARS.slice().reverse().map(y => `<option ${f.y1 === y ? 'selected' : ''}>${y}</option>`).join('')}</select><span class="note">至</span><select id="y2" aria-label="结束年份">${YEARS.map(y => `<option ${f.y2 === y ? 'selected' : ''}>${y}</option>`).join('')}</select>
     <select id="fo" aria-label="排序">${[['new', '新题在前'], ['old', '旧题在前'], ['hot', '高频考点优先'], ['rand', '随机']].map(([v, n]) => `<option value="${v}" ${f.order === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
     ${f.c ? `<span class="chip">考点：${esc(CL[f.c].n)} <button class="btn sm ghost" id="fcx" aria-label="取消考点筛选">×</button></span>` : ''}</div></div></div>`}
-  <div class="row" style="margin:12px 0"><span class="note">共 ${list.length} 题${list.length ? `，第 ${f.i + 1} 题` : ''}</span><span class="sp"></span><button class="btn sm" id="lst">${f.showList ? '收起列表' : '题目列表'}</button></div>
+  <div class="row" style="margin:12px 0"><span class="note">共 ${list.length} 题${list.length ? `，第 ${f.i + 1} 题` : ''}${doneN ? `<span class="pr-done"> · 本轮已做 ${doneN} 题（做过的题留在本轮，改筛选或重新进入页面后更新）</span>` : ''}</span><span class="sp"></span><button class="btn sm" id="lst">${f.showList ? '收起列表' : '题目列表'}</button></div>
   <div id="pl2"></div><div id="card"></div>`;
-  if (f.ids) $('#clr').onclick = () => { f.ids = null; f.i = 0; render(); };
+  if (f.ids) $('#clr').onclick = () => { f.ids = null; f.i = 0; f.snap = null; render(); };
   else {
     $('#ft').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { f.t = b.dataset.t; f.i = 0; render(); } };
     $('#fm').onchange = e => { f.m = +e.target.value; f.i = 0; render(); };
