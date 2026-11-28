@@ -1,6 +1,6 @@
 {
-  "versionCode": 61,
-  "versionName": "2.13.1",
-  "apk": "FoodChemReview-v2.13.1.apk",
-  "notes": "专项练习筛选时题数不再边做边变少；直接覆盖安装，学习进度会保留"
+  "versionCode": 62,
+  "versionName": "2.13.2",
+  "apk": "FoodChemReview-v2.13.2.apk",
+  "notes": "判断题新样式；2004 年编号选择题可以点选判分；直接覆盖安装，学习进度会保留"
 }
