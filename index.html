@@ -1809,6 +1809,29 @@ nav.side a, nav.side .me, #bnav a, #topnav button, .ios-row, .btn, .seg button, 
 .sp-ck { flex: none; color: var(--accent); opacity: 0; transition: opacity .15s; }
 .sp-ck .ico { width: 20px; height: 20px; stroke-width: 2.4; }
 .sp-r[aria-checked="true"] .sp-ck { opacity: 1; }
+
+/* 2.13.2 判断题：两个并排大按钮，圆形勾/叉图标 */
+.tf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt.tf { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 14px; min-height: 54px; text-align: center; font-size: 16px; font-weight: 600; transition: background-color .2s, box-shadow .2s, border-color .2s, transform .12s; }
+.opt.tf:active:not(:disabled) { transform: scale(.97); }
+.tf-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; flex: none; transition: background-color .2s, color .2s; }
+.tf-ic .ico { width: 18px; height: 18px; stroke-width: 2.6; }
+.tf-y .tf-ic { color: var(--ok); background: var(--ok-soft); }
+.tf-n .tf-ic { color: var(--bad); background: var(--bad-soft); }
+.opt.tf.sel .tf-ic { background: var(--accent); color: #fff; }
+.opt.tf.right .tf-ic { background: var(--ok); color: #fff; }
+.opt.tf.wrong .tf-ic { background: var(--bad); color: #fff; }
+.opt.tf.right .tf-t { color: var(--ok); } .opt.tf.wrong .tf-t { color: var(--bad); }
+.opt.tf.right .tf-ic, .opt.tf.wrong .tf-ic { animation: tfPop .32s cubic-bezier(.2,1.6,.4,1); }
+@keyframes tfPop { from { transform: scale(.6); } }
+@media (prefers-reduced-motion: reduce) { .opt.tf.right .tf-ic, .opt.tf.wrong .tf-ic { animation: none; } }
+/* 一题多空 / 多选 */
+.mb-wrap { display: grid; gap: 12px; }
+.mb-blank { display: grid; gap: 6px; }
+.mb-lab { font-size: 13px; color: var(--muted); font-weight: 600; }
+.mb-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mb-opts .opt { padding: 6px 12px; }
+.mb-res { font-size: 13px; font-weight: 600; } .mb-res.ok { color: var(--ok); } .mb-res.no { color: var(--bad); }
 </style>
 </head>
 <body>

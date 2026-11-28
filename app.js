@@ -345,6 +345,23 @@ const isDue = id => { const s = S.q[id]; return s && s.l > 0 && s.d <= Date.now(
 /* ---------- 题卡 ---------- */
 function keyLetter(q) { const m = /^\s*([A-E])(?![A-Za-z])/.exec(q.key || ''); return m ? m[1] : null; }
 function keyTF(q) { const m = /^\s*([√×])/.exec(q.key || ''); return m ? m[1] : null; }
+/* 判断题的两个按钮：圆形图标 + 对/错 */
+const TF_IC = { '√': '<path d="M6.5 12.5l3.8 3.8 7.2-8.1"/>', '×': '<path d="M7.5 7.5l9 9M16.5 7.5l-9 9"/>' };
+function tfBtns(attr, cls = () => '') { return `<div class="tf-row">${[['√', '对'], ['×', '错']].map(([a, t]) => `<button class="opt tf ${a === '√' ? 'tf-y' : 'tf-n'}${cls(a)}" ${attr}="${a}" aria-label="${t}"><span class="tf-ic">${SV(TF_IC[a])}</span><span class="tf-t">${t}</span></button>`).join('')}</div>`; }
+/* 选择题的正确选项：字母（A–E），或 2004 年那种（1）（2）编号且只有一个答案 */
+function choiceKey(q) {
+  if (!(q.opts && q.opts.length)) return null;
+  const k = keyLetter(q); if (k && q.opts.some(([a]) => a === k)) return k;
+  const n = /^\s*[（(](\d)[)）][^；;（(]*$/.exec(q.key || ''); return n && q.opts.some(([a]) => a === n[1]) ? n[1] : null;
+}
+/* 一题多空或多选（2004 年的几道）：按「；」把答案拆成每一空要选的编号；空数对不上时当成一空多选 */
+function choiceBlanks(q) {
+  if (q.t !== '选择' || !(q.opts && q.opts.length) || choiceKey(q)) return null;
+  const ids = new Set(q.opts.map(([a]) => a)), segs = (q.key || '').split(/[；;]/).map(x => (x.match(/\d/g) || []).filter(d => ids.has(d))).filter(x => x.length);
+  if (!segs.length) return null;
+  const nb = (q.q.match(/_{2,}/g) || []).length;
+  return nb >= 2 && segs.length === nb ? segs : [[...new Set(segs.flat())]];
+}
 function chipsFor(q, extra = '') {
   const s = qs(q.id); const c = CL[q.c];
   const src = q.src === '汇编' ? '<span class="chip src1">汇编答案</span>' : q.src === '补充' ? '<span class="chip src2">补充答案</span>' : '<span class="chip src3">整理答案</span>';
@@ -475,10 +492,12 @@ window.addEventListener('hashchange', ttsStop);
 
 function qcard(q, o = {}) {
   const el = document.createElement('div'); el.className = 'card q'; el.dataset.id = q.id;
-  const s = qs(q.id); const kl = keyLetter(q), tf = keyTF(q);
+  const s = qs(q.id); const kl = choiceKey(q), tf = keyTF(q), MB = choiceBlanks(q);
   let body = '';
-  if (q.opts && q.opts.length) body = `<div class="opts">${q.opts.map(([a, t]) => `<button class="opt" data-o="${esc(a)}">${esc(/^\d$/.test(a) ? '（' + a + '）' : a + '.')} ${esc(t)}</button>`).join('')}</div>`;
-  else if (q.t === '判断') body = `<div class="row"><button class="opt" data-o="√">√ 对</button><button class="opt" data-o="×">× 错</button></div>`;
+  const optLab = a => /^\d$/.test(a) ? '（' + a + '）' : a + '.';
+  if (MB) body = `<div class="mb-wrap">${MB.map((want, i) => `<div class="mb-blank" data-bi="${i}">${MB.length > 1 ? `<span class="mb-lab">第 ${i + 1} 空${want.length > 1 ? `（选 ${want.length} 个）` : ''}</span>` : `<span class="mb-lab">选 ${want.length} 个</span>`}<div class="mb-opts">${q.opts.map(([a, t]) => `<button class="opt mb-o" data-mb="${esc(a)}" aria-pressed="false">${esc(optLab(a))} ${esc(t)}</button>`).join('')}</div></div>`).join('')}<div class="row"><span class="sp"></span><button class="btn sm pri" data-mbok disabled>确认答案</button></div></div>`;
+  else if (q.opts && q.opts.length) body = `<div class="opts">${q.opts.map(([a, t]) => `<button class="opt" data-o="${esc(a)}">${esc(/^\d$/.test(a) ? '（' + a + '）' : a + '.')} ${esc(t)}</button>`).join('')}</div>`;
+  else if (q.t === '判断') body = tfBtns('data-o');
   else body = `<textarea placeholder="${q.t === '名解' ? '先写出定义的关键词，再对答案' : OBJ.includes(q.t) ? '填写答案' : '先列出答题要点（可以只写关键词），再对答案'}" aria-label="作答"></textarea>`;
   const TMR = featOn('labTimer') && TLIM[q.t] && !(q.opts && q.opts.length) && q.t !== '判断';
   el.innerHTML = `<div class="qmeta">${chipsFor(q, o.extraChip || '')}${TMR ? `<span class="chip tmr" data-tmr>⏱ 建议 ${TLIM[q.t]} 分钟${s.tu ? ' · 上次用时 ' + mmss(s.tu) : ''}</span>` : ''}</div><div class="qtext">${esc(q.q)}</div>${body}
@@ -532,6 +551,27 @@ function qcard(q, o = {}) {
     const rp = e.target.closest('[data-rp]'); if (rp) { const open = rp.classList.toggle('open'); $('.rc1', rp).hidden = !open; $('.rtap', rp).hidden = open; return; }
     const fc = e.target.closest('.fc'); if (fc) { const open = fc.classList.toggle('open'); $('.fct', fc).hidden = !open; $('.fcb', fc).hidden = open; return; }
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.mb !== undefined && MB) {
+      if (shown) return;
+      const bl = b.closest('.mb-blank'), want = MB[+bl.dataset.bi];
+      if (want.length === 1) $$('.mb-o', bl).forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+      else b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      $$('.mb-o', bl).forEach(x => x.classList.toggle('sel', x.getAttribute('aria-pressed') === 'true'));
+      $('[data-mbok]', el).disabled = !$$('.mb-blank', el).every(x => $$('.mb-o[aria-pressed="true"]', x).length);
+      return;
+    }
+    if (b.dataset.mbok !== undefined && MB) {
+      if (shown) return;
+      let all = true;
+      $$('.mb-blank', el).forEach(bl => {
+        const want = new Set(MB[+bl.dataset.bi]), got = new Set($$('.mb-o[aria-pressed="true"]', bl).map(x => x.dataset.mb));
+        const ok = want.size === got.size && [...want].every(x => got.has(x)); if (!ok) all = false;
+        $$('.mb-o', bl).forEach(x => { x.disabled = true; if (want.has(x.dataset.mb)) x.classList.add('right'); else if (got.has(x.dataset.mb)) x.classList.add('wrong'); });
+        bl.insertAdjacentHTML('beforeend', `<span class="mb-res ${ok ? 'ok' : 'no'}">${ok ? '✓ 对' : '✗ 正确：' + MB[+bl.dataset.bi].map(d => '（' + d + '）').join('')}</span>`);
+      });
+      b.hidden = true; reveal(); doRate(all ? 3 : 1, true);
+      return;
+    }
     if (b.dataset.o) {
       if (shown) return;
       $$('.opt', el).forEach(x => x.classList.remove('sel')); b.classList.add('sel');
@@ -620,6 +660,10 @@ function openModal(node, title, opt = {}) {
 }
 /* ---------- 版本与更新日志：每次更新在最前面加一条，版本号变了，打开时就会弹一次更新说明 ---------- */
 const CHANGELOG = [
+  { v: '2.13.2', d: '2026-11-28', t: '复习站 2.13.2：判断题新样式，2004 年选择题可以点选判分', items: [
+    '判断题的「对」「错」改成两个并排的大按钮，带圆形的勾和叉图标；选完后答对变绿、答错变红，正确的那个也会标出来。每日自测、专项练习、模拟卷都是这个样式',
+    '2004 年用（1）（2）编号的选择题，点选后会自动判分了（之前只认字母选项）',
+    '2004 年几道一题多空或多选的选择题，改成按空点选：每一空选好后点「确认答案」，逐空标出对错再自动判分'] },
   { v: '2.13.1', d: '2026-11-27', t: '复习站 2.13.1：专项练习筛选修正', items: [
     '修好了专项练习按「未练」「不会」「模糊」「今天到期」等筛选时，边做边评分会让题目总数变少、做到一半就显示做完、点不了下一题的问题：题目清单在选好筛选条件时定下来，做过的题留在本轮，总数和第几题不再变',
     '改筛选条件、点「回到筛选」或离开专项练习再回来时，才按最新进度重新筛选；按掌握程度筛选时，题数旁边会显示本轮已做几题'] },
@@ -1536,7 +1580,7 @@ function mockOpts(q, M) {
   const items = q.t === '判断' ? [['√', '对'], ['×', '错']] : q.opts;
   const lab = a => q.t === '判断' ? a : /^\d$/.test(a) ? '（' + a + '）' : a + '.';
   const sh = a => /^\d$/.test(a) ? '（' + a + '）' : a;
-  return `<div class="opts">${items.map(([a, t]) => `<button class="${cls(a)}" data-mo="${esc(a)}" ${M.sub ? 'disabled' : ''}>${esc(lab(a))} ${esc(t)}</button>`).join('')}</div>${M.sub ? `<p class="note">${mine ? (mine === right ? '✓ 答对了' : '✗ 你选了 ' + esc(sh(mine)) + '，正确答案是 ' + esc(sh(right))) : '未作答 · 正确答案是 ' + esc(sh(right))}（已自动判分）</p>` : ''}`;
+  return `${q.t === '判断' ? tfBtns('data-mo', a => cls(a).replace(/^opt/, '')).replace(/<button /g, M.sub ? '<button disabled ' : '<button ') : `<div class="opts">${items.map(([a, t]) => `<button class="${cls(a)}" data-mo="${esc(a)}" ${M.sub ? 'disabled' : ''}>${esc(lab(a))} ${esc(t)}</button>`).join('')}</div>`}${M.sub ? `<p class="note">${mine ? (mine === right ? '✓ 答对了' : '✗ 你选了 ' + esc(sh(mine)) + '，正确答案是 ' + esc(sh(right))) : '未作答 · 正确答案是 ' + esc(sh(right))}（已自动判分）</p>` : ''}`;
 }
 function pMock(m) {
   const M = NAV.mock;
